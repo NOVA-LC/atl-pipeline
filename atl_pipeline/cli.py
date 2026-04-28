@@ -1,36 +1,69 @@
 """Daily orchestrator. One command runs the whole pipeline.
 
 Usage:
-  python -m atl_pipeline.cli run --xlsx outscraper.xlsx --batch-size 50
-  python -m atl_pipeline.cli verify          # only run verify stage on pending leads
-  python -m atl_pipeline.cli research        # only run research
-  python -m atl_pipeline.cli generate-deploy # generate + deploy demos
-  python -m atl_pipeline.cli send-day1       # send Day-1 cold emails
-  python -m atl_pipeline.cli send-followups  # Day-3 + Day-7 sequencing
-  python -m atl_pipeline.cli blog --lead-id N # post one blog essay
+  python -m atl_pipeline.cli scrape           # autonomous: hit Outscraper for fresh leads
+  python -m atl_pipeline.cli run --xlsx outscraper.xlsx   # full daily run
+  python -m atl_pipeline.cli daily            # scrape + run + send (one-command cron)
+  python -m atl_pipeline.cli send-followups   # Day-3 + Day-7 sequencing
+  python -m atl_pipeline.cli status           # see pipeline state
 """
-import os, json, click
+import os, json, datetime, click
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-from . import db, ingest as _ingest, verify, research, generate, deploy, email as _email, blog
+from . import (db, ingest as _ingest, dedup, verify, research, generate,
+               deploy, email as _email, blog, enrich, email_verify, scraper, warmup)
 
 @click.group()
 def cli(): pass
 
+# ---------------------------------------------------------------------------
+# scrape — autonomous Outscraper job
+# ---------------------------------------------------------------------------
+@cli.command()
+@click.option('--queries', default=5, help='Number of queries to rotate through today')
+@click.option('--per-query', default=25, help='Results per query')
+def scrape(queries, per_query):
+    api = os.environ.get('OUTSCRAPER_API_KEY')
+    if not api:
+        click.echo('  ! OUTSCRAPER_API_KEY missing — paste it in .env'); return
+    click.echo('Submitting Outscraper job...')
+    out = scraper.daily_scrape(api, n_queries=queries, limit_per_query=per_query)
+    click.echo(f'  ✓ scraped → {out}')
+
+# ---------------------------------------------------------------------------
+# run — process an xlsx through the full pipeline
+# ---------------------------------------------------------------------------
 @cli.command()
 @click.option('--xlsx', required=True, type=click.Path(exists=True))
-@click.option('--batch-size', default=50)
+@click.option('--max-sends', default=None, type=int, help='Override warmup cap for today')
 @click.option('--skip-blog', is_flag=True)
-def run(xlsx, batch_size, skip_blog):
-    """Full daily run: ingest → verify → research → generate → deploy → email Day-1 → blog."""
+def run(xlsx, max_sends, skip_blog):
+    env = dict(os.environ)
+    cap = max_sends if max_sends is not None else warmup.todays_max_sends()
+    click.echo(f'Pipeline day {warmup.day_of_pipeline()} · todays send cap: {cap}')
+
+    # 1. INGEST
     click.echo(f'Ingesting {xlsx}...')
     inserted, skipped = _ingest.ingest(xlsx)
     click.echo(f'  upserted {inserted}, skipped {skipped}')
 
-    click.echo('Verifying website status (parallel)...')
+    # 2. DEDUP — within DB (across all leads ever, not just today's batch)
     with db.conn() as c:
-        pending = db.leads_pending(c, 'verify')[:batch_size]
+        all_leads = [dict(r) for r in c.execute('SELECT * FROM leads WHERE verify_status IS NULL').fetchall()]
+    if all_leads:
+        kept, dropped = dedup.apply_dedup(all_leads)
+        click.echo(f'Dedup: kept {len(kept)}, dropped {len(dropped)}')
+        if dropped:
+            with db.conn() as c:
+                for d in dropped:
+                    db.update_lead(c, d['id'], verify_status='duplicate', notes=d.get('dropped_reason'))
+
+    # 3. VERIFY website (parallel)
+    click.echo('Verifying website status...')
+    with db.conn() as c:
+        pending = db.leads_pending(c, 'verify')[:max(cap*3, 50)]   # over-verify so we have headroom for filtering
     click.echo(f'  {len(pending)} to verify')
     if pending:
         results = verify.verify_batch([dict(l) for l in pending])
@@ -38,9 +71,10 @@ def run(xlsx, batch_size, skip_blog):
             for lid, r in results.items():
                 db.update_lead(c, lid, verify_status=r['verdict'], verify_payload=json.dumps(r))
 
-    click.echo('Researching (parallel, slow)...')
+    # 4. RESEARCH (parallel, costs money)
+    click.echo('Researching...')
     with db.conn() as c:
-        pending = db.leads_pending(c, 'research')[:batch_size]
+        pending = db.leads_pending(c, 'research')[:cap*2]
     click.echo(f'  {len(pending)} to research')
     if pending:
         results = research.research_batch([dict(l) for l in pending])
@@ -49,10 +83,48 @@ def run(xlsx, batch_size, skip_blog):
                 status = 'failed' if '_error' in r or '_parse_error' in r else 'done'
                 db.update_lead(c, lid, research_status=status, research_payload=json.dumps(r))
 
+    # 5. ENRICH — find owner email for leads without one
+    click.echo('Enriching emails (Hunter / Snov)...')
+    with db.conn() as c:
+        rows = c.execute("""SELECT * FROM leads WHERE research_status='done'
+                            AND (email IS NULL OR email = '')""").fetchall()
+    enriched = 0
+    for row in rows:
+        lead = dict(row)
+        r = json.loads(lead.get('research_payload') or '{}')
+        out = enrich.enrich_lead(lead, r, env)
+        if out.get('owner_email'):
+            with db.conn() as c:
+                db.update_lead(c, lead['id'], email=out['owner_email'],
+                               research_payload=json.dumps({**r, **out}))
+            enriched += 1
+    click.echo(f'  found {enriched} new emails')
+
+    # 6. EMAIL VERIFY — drop invalid + risky before they bounce
+    click.echo('Verifying emails (MX + syntax + Reoon)...')
+    with db.conn() as c:
+        rows = c.execute("""SELECT id, email FROM leads
+                            WHERE email IS NOT NULL AND email != ''
+                            AND (verify_email_payload IS NULL)""").fetchall()
+    if rows:
+        try:
+            email_results = email_verify.verify_batch([r['email'] for r in rows], reoon_key=env.get('REOON_API_KEY'))
+            with db.conn() as c:
+                for r in rows:
+                    res = email_results.get(r['email'], {'verdict':'unknown'})
+                    db.update_lead(c, r['id'], verify_email_payload=json.dumps(res))
+                    if res['verdict'] in ('invalid', 'risky'):
+                        # blank out the email so we never send to it
+                        db.update_lead(c, r['id'], email='', notes=f"email-{res['verdict']}: {res.get('reason')}")
+            click.echo(f'  verified {len(rows)} emails')
+        except Exception as e:
+            click.echo(f'  ! email-verify error: {e}')
+
+    # 7. GENERATE demo HTML
     click.echo('Generating demo HTML...')
     with db.conn() as c:
-        pending = db.leads_pending(c, 'demo')
-    repo_path = os.environ['DEMOS_REPO_LOCAL']
+        pending = db.leads_pending(c, 'demo')[:cap]
+    repo_path = os.environ.get('DEMOS_REPO_LOCAL', './demos_repo')
     slugs = []
     for lead_row in pending:
         lead = dict(lead_row)
@@ -64,70 +136,91 @@ def run(xlsx, batch_size, skip_blog):
         slugs.append(lead['slug'])
     if slugs:
         click.echo(f'  committing + pushing {len(slugs)} demos...')
-        deploy.git_commit_and_push(repo_path, f'demos: batch of {len(slugs)}', slugs)
+        deploy.git_commit_and_push(repo_path, f'demos: {datetime.date.today().isoformat()} batch of {len(slugs)}', slugs)
 
-    click.echo('Deploying to Vercel (creating projects + triggering deploys)...')
+    # 8. DEPLOY — Vercel project per slug
+    click.echo('Deploying to Vercel...')
     with db.conn() as c:
         pending = db.leads_pending(c, 'deploy')
-    repo_full = f"{os.environ.get('GITHUB_OWNER','NOVA-LC')}/{os.environ['DEMOS_REPO_NAME']}"
-    repo_id = int(os.environ['DEMOS_REPO_VERCEL_REPO_ID'])
-    vc_token = os.environ['VERCEL_TOKEN']
+    repo_full = f"{os.environ.get('GITHUB_OWNER','NOVA-LC')}/{os.environ.get('DEMOS_REPO_NAME','atlanta-website-demos')}"
+    repo_id = int(os.environ.get('DEMOS_REPO_VERCEL_REPO_ID', 0))
+    vc_token = os.environ.get('VERCEL_TOKEN')
     team_id = os.environ.get('VERCEL_TEAM_ID') or None
+    deployed = 0
     for lead_row in pending:
         lead = dict(lead_row)
-        out = deploy.deploy_lead(lead, lead['demo_html'], repo_path, repo_full, repo_id, vc_token, team_id)
-        with db.conn() as c:
-            db.update_lead(c, lead['id'], vercel_project=out['slug'], vercel_url=out['url'])
-        click.echo(f"  ✓ {out['slug']} → {out['url']}")
+        try:
+            out = deploy.deploy_lead(lead, lead['demo_html'], repo_path, repo_full, repo_id, vc_token, team_id)
+            with db.conn() as c:
+                db.update_lead(c, lead['id'], vercel_project=out['slug'], vercel_url=out['url'])
+            deployed += 1
+        except Exception as e:
+            click.echo(f"  ! deploy failed for {lead['slug']}: {e}")
+    click.echo(f'  ✓ deployed {deployed} demos')
 
-    click.echo('Sending Day-1 emails...')
+    # 9. EMAIL — Day-1 sends, capped by warmup
+    click.echo(f'Sending Day-1 emails (cap: {cap})...')
     with db.conn() as c:
-        pending = db.leads_pending(c, 'email1')
-    env = dict(os.environ)
+        pending = db.leads_pending(c, 'email1')[:cap]
+    sent = 0
     for lead_row in pending:
         lead = dict(lead_row)
         r = json.loads(lead.get('research_payload') or '{}')
-        result = _email.send_day1(lead, lead['vercel_url'], r, env)
-        if result and result.get('resend_id'):
-            with db.conn() as c:
-                db.update_lead(c, lead['id'],
-                    email1_sent_at=__import__('datetime').datetime.utcnow().isoformat(),  # let SQL fill it
-                    email1_resend_id=result['resend_id'])
-            click.echo(f"  ✉ {lead['email']} subject={result['subject']}")
+        try:
+            result = _email.send_day1(lead, lead['vercel_url'], r, env)
+            if result and result.get('resend_id'):
+                with db.conn() as c:
+                    db.update_lead(c, lead['id'],
+                        email1_sent_at=datetime.datetime.utcnow().isoformat(),
+                        email1_resend_id=result['resend_id'])
+                sent += 1
+                click.echo(f"  ✉ {lead['email']}")
+        except Exception as e:
+            click.echo(f"  ! send failed for {lead['email']}: {e}")
+    click.echo(f'  sent {sent}/{cap} Day-1 emails')
 
-    if not skip_blog:
+    # 10. BLOG drop
+    if not skip_blog and sent > 0:
         click.echo('Blog drop to gonenova...')
-        # Pick the most interesting deployed lead today
         with db.conn() as c:
-            row = c.execute("""SELECT * FROM leads
-                WHERE vercel_url IS NOT NULL
-                  AND research_status='done'
-                  AND id NOT IN (SELECT lead_id FROM blog_posts WHERE lead_id IS NOT NULL)
-                ORDER BY rating DESC, reviews DESC LIMIT 1""").fetchone()
+            row = c.execute("""SELECT * FROM leads WHERE vercel_url IS NOT NULL AND research_status='done'
+                                AND id NOT IN (SELECT lead_id FROM blog_posts WHERE lead_id IS NOT NULL)
+                                ORDER BY rating DESC, reviews DESC LIMIT 1""").fetchone()
         if row:
             lead = dict(row)
             r = json.loads(lead.get('research_payload') or '{}')
-            out = blog.post_essay(lead, r, lead['vercel_url'], env)
-            click.echo(f"  ✓ blog: {out['path']} (commit={out['commit']})")
-            with db.conn() as c:
-                c.execute('INSERT INTO blog_posts (slug, lead_id, title, gonenova_path, published_at) VALUES (?,?,?,?,datetime("now"))',
-                          (out['slug'], lead['id'], lead['business_name'], out['path']))
-
+            try:
+                out = blog.post_essay(lead, r, lead['vercel_url'], env)
+                with db.conn() as c:
+                    c.execute('INSERT INTO blog_posts (slug, lead_id, title, gonenova_path, published_at) VALUES (?,?,?,?,datetime("now"))',
+                              (out['slug'], lead['id'], lead['business_name'], out['path']))
+                click.echo(f"  ✓ blog: {out['path']}")
+            except Exception as e:
+                click.echo(f"  ! blog failed: {e}")
     click.echo('Done.')
 
+# ---------------------------------------------------------------------------
+# daily — scrape + run, one command
+# ---------------------------------------------------------------------------
 @cli.command()
-@click.option('--limit', default=50)
-def status(limit):
-    with db.conn() as c:
-        rows = c.execute("""SELECT business_name, verify_status, research_status, vercel_url, email1_sent_at
-                            FROM leads ORDER BY updated_at DESC LIMIT ?""", (limit,)).fetchall()
-    for r in rows:
-        click.echo(f"  {r['business_name']:35s} verify={r['verify_status'] or '-':6s} research={r['research_status'] or '-':6s} url={r['vercel_url'] or '-':40s} d1={r['email1_sent_at'] or '-'}")
+@click.pass_context
+def daily(ctx):
+    """Scrape fresh leads then run the full pipeline. Set this as a cron."""
+    ctx.invoke(scrape)
+    # find today's xlsx
+    today = datetime.date.today().isoformat()
+    xlsx = Path('./scrapes') / f'outscraper-{today}.xlsx'
+    if not xlsx.exists():
+        click.echo(f'  ! no xlsx at {xlsx} — scrape may have produced no results')
+        return
+    ctx.invoke(run, xlsx=str(xlsx))
 
+# ---------------------------------------------------------------------------
+# send-followups — Day-3 + Day-7
+# ---------------------------------------------------------------------------
 @cli.command()
 @click.option('--limit', default=50)
 def send_followups(limit):
-    """Send Day-3 + Day-7 follow-ups. Run daily as a cron."""
     env = dict(os.environ)
     with db.conn() as c:
         d3 = db.leads_pending(c, 'email2')[:limit]
@@ -140,15 +233,30 @@ def send_followups(limit):
         for row in batch:
             lead = dict(row)
             r = json.loads(lead.get('research_payload') or '{}')
-            msg = _email.write_email(prompt_tpl, lead, lead['vercel_url'], r)
-            status, resp = _email.send_via_resend(
-                env['RESEND_API_KEY'], env.get('RESEND_FROM_EMAIL'), env.get('RESEND_FROM_NAME','Tyler · Nova'),
-                lead['email'], msg['subject'], msg['body'], reply_to=env.get('RESEND_REPLY_TO')
-            )
-            if status == 200 and resp.get('id'):
-                with db.conn() as c:
-                    db.update_lead(c, lead['id'], **{field_at: __import__('datetime').datetime.utcnow().isoformat(), field_id: resp['id']})
-                click.echo(f"  ✉ {lead['email']} {field_at}")
+            try:
+                msg = _email.write_email(prompt_tpl, lead, lead['vercel_url'], r)
+                status, resp = _email.send_via_resend(
+                    env['RESEND_API_KEY'], env.get('RESEND_FROM_EMAIL'), env.get('RESEND_FROM_NAME','Tyler · Nova'),
+                    lead['email'], msg['subject'], msg['body'], reply_to=env.get('RESEND_REPLY_TO')
+                )
+                if status == 200 and resp.get('id'):
+                    with db.conn() as c:
+                        db.update_lead(c, lead['id'], **{field_at: datetime.datetime.utcnow().isoformat(), field_id: resp['id']})
+                    click.echo(f"  ✉ {lead['email']} {field_at}")
+            except Exception as e:
+                click.echo(f"  ! followup failed: {e}")
+
+@cli.command()
+@click.option('--limit', default=50)
+def status(limit):
+    """Pipeline state snapshot."""
+    w = warmup.status()
+    click.echo(f"Warmup: day {w['day']}, today's cap: {w['cap_today']}, tomorrow: {w['cap_tomorrow']}")
+    with db.conn() as c:
+        rows = c.execute("""SELECT business_name, verify_status, research_status, vercel_url, email1_sent_at
+                            FROM leads ORDER BY updated_at DESC LIMIT ?""", (limit,)).fetchall()
+    for r in rows:
+        click.echo(f"  {r['business_name'][:30]:30s} verify={r['verify_status'] or '-':9s} research={r['research_status'] or '-':6s} url={r['vercel_url'] or '-':40s} d1={r['email1_sent_at'] or '-'}")
 
 if __name__ == '__main__':
     cli()

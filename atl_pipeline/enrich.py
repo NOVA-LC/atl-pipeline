@@ -1,0 +1,161 @@
+"""Find owner email + LinkedIn for leads that don't have one.
+
+Outscraper surfaces email on ~10-15% of leads. We can lift that to 50-70% by chaining:
+
+1. Hunter.io domain-search    — given a website domain, returns all known emails
+2. Hunter.io email-finder     — given website + first/last name, predicts the email
+3. Snov.io domain-search       — alternative to Hunter
+4. Apollo.io people-search    — finds owner LinkedIn + email by company name + city
+5. Web search → owner LinkedIn → fetch profile → guess email pattern
+
+For our case (small home-services), Hunter has best ROI:
+- $34/mo for 500 searches
+- Free tier: 25 searches/mo
+- Confidence score per result; we drop anything below 80
+
+The enrich.py output schema (stored in research_payload):
+{
+  "owner_email": "joey@pulliamhvac.com",
+  "owner_email_confidence": 92,
+  "owner_email_source": "hunter-finder",
+  "owner_linkedin": "...",
+  "domain_emails": [{"value":"...", "confidence":..., "first_name":"...", "last_name":"...", "position":"..."}]
+}
+"""
+import os, re, requests
+from urllib.parse import urlparse
+
+def domain_from_research(research):
+    """Best-effort: pull a website domain from research payload (LinkedIn → company website, etc.)."""
+    if not research:
+        return None
+    # Prefer explicit website if research found one
+    for k in ('owned_website', 'website'):
+        if research.get(k):
+            return urlparse(research[k]).netloc.lower().replace('www.', '')
+    return None
+
+def hunter_domain_search(domain, api_key):
+    """Returns list of {value, first_name, last_name, position, confidence}."""
+    if not domain or not api_key:
+        return []
+    try:
+        r = requests.get('https://api.hunter.io/v2/domain-search',
+                         params={'domain': domain, 'api_key': api_key, 'limit': 10},
+                         timeout=15)
+        if r.status_code == 200:
+            return r.json().get('data', {}).get('emails', []) or []
+    except Exception:
+        pass
+    return []
+
+def hunter_email_finder(domain, first_name, last_name, api_key):
+    """Predicts the email for a person at a domain. Returns (email, confidence)."""
+    if not (domain and first_name and last_name and api_key):
+        return None, None
+    try:
+        r = requests.get('https://api.hunter.io/v2/email-finder',
+                         params={'domain': domain, 'first_name': first_name, 'last_name': last_name, 'api_key': api_key},
+                         timeout=15)
+        if r.status_code == 200:
+            d = r.json().get('data') or {}
+            return d.get('email'), d.get('score')
+    except Exception:
+        pass
+    return None, None
+
+def snov_domain_search(domain, snov_id, snov_secret):
+    """Snov.io alternative. Requires OAuth client credentials flow."""
+    if not (domain and snov_id and snov_secret):
+        return []
+    try:
+        # Get token
+        tok = requests.post('https://api.snov.io/v1/oauth/access_token', data={
+            'grant_type': 'client_credentials',
+            'client_id': snov_id, 'client_secret': snov_secret,
+        }, timeout=10).json().get('access_token')
+        if not tok:
+            return []
+        # Search
+        r = requests.post('https://api.snov.io/v2/domain-search', headers={'Authorization': f'Bearer {tok}'},
+                          json={'domain': domain, 'limit': 10}, timeout=15)
+        if r.status_code == 200:
+            return r.json().get('emails', [])
+    except Exception:
+        pass
+    return []
+
+def enrich_lead(lead, research, env):
+    """Try to find an owner email if the lead doesn't have one.
+
+    Returns enrichment payload (may be empty dict if nothing found).
+    """
+    out = {}
+    if lead.get('email'):
+        return out  # already has one
+
+    domain = domain_from_research(research)
+    hunter_key = env.get('HUNTER_API_KEY')
+    snov_id = env.get('SNOV_CLIENT_ID')
+    snov_secret = env.get('SNOV_CLIENT_SECRET')
+
+    candidates = []
+
+    # 1. Hunter domain search
+    if domain and hunter_key:
+        emails = hunter_domain_search(domain, hunter_key)
+        for e in emails:
+            candidates.append({
+                'email': e['value'], 'confidence': e.get('confidence', 0),
+                'first_name': e.get('first_name'), 'last_name': e.get('last_name'),
+                'position': e.get('position'), 'source': 'hunter-domain'
+            })
+
+    # 2. Hunter email-finder by owner name (if research found one)
+    owner_name = (research or {}).get('owner_name', '')
+    if domain and hunter_key and owner_name and owner_name.lower() != 'unknown':
+        parts = owner_name.split()
+        if len(parts) >= 2:
+            email, score = hunter_email_finder(domain, parts[0], parts[-1], hunter_key)
+            if email:
+                candidates.append({
+                    'email': email, 'confidence': score or 0,
+                    'first_name': parts[0], 'last_name': parts[-1],
+                    'position': 'owner', 'source': 'hunter-finder'
+                })
+
+    # 3. Snov fallback
+    if domain and snov_id and snov_secret and not candidates:
+        snov_emails = snov_domain_search(domain, snov_id, snov_secret)
+        for e in snov_emails:
+            candidates.append({
+                'email': e.get('email'), 'confidence': 75,
+                'first_name': e.get('firstName'), 'last_name': e.get('lastName'),
+                'position': e.get('position'), 'source': 'snov-domain'
+            })
+
+    if not candidates:
+        return out
+
+    # Pick best:
+    # - prefer exec/owner positions
+    # - then highest confidence
+    # - filter out role-based unless nothing else
+    EXEC_KEYWORDS = ('owner','founder','president','ceo','principal')
+    ROLE_PREFIXES = ('info@','contact@','admin@','support@','sales@','noreply@')
+
+    def score(c):
+        s = c.get('confidence', 0) or 0
+        pos = (c.get('position') or '').lower()
+        if any(k in pos for k in EXEC_KEYWORDS): s += 30
+        if (c.get('email') or '').lower().startswith(ROLE_PREFIXES): s -= 25
+        return s
+
+    best = max(candidates, key=score)
+    out['owner_email'] = best['email']
+    out['owner_email_confidence'] = best.get('confidence')
+    out['owner_email_source'] = best.get('source')
+    out['enrich_first_name'] = best.get('first_name')
+    out['enrich_last_name'] = best.get('last_name')
+    out['domain_emails'] = candidates  # for audit
+    return out

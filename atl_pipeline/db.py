@@ -22,8 +22,9 @@ CREATE TABLE IF NOT EXISTS leads (
     google_maps_url TEXT,
     raw_outscraper  TEXT,                       -- json blob
     -- pipeline state
-    verify_status   TEXT,                       -- pending | yes | no | unsure | likely
+    verify_status   TEXT,                       -- pending | yes | no | unsure | likely | duplicate
     verify_payload  TEXT,                       -- json
+    verify_email_payload TEXT,                  -- json: result of email_verify.verify()
     research_status TEXT,                       -- pending | done | failed
     research_payload TEXT,                      -- json: owner, brand_colors, hooks, etc.
     slug            TEXT UNIQUE,                -- subfolder name in demos repo
