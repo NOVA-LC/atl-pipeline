@@ -91,7 +91,7 @@ def run(xlsx, batch_size, skip_blog):
         if result and result.get('resend_id'):
             with db.conn() as c:
                 db.update_lead(c, lead['id'],
-                    email1_sent_at='datetime("now")',  # let SQL fill it
+                    email1_sent_at=__import__('datetime').datetime.utcnow().isoformat(),  # let SQL fill it
                     email1_resend_id=result['resend_id'])
             click.echo(f"  ✉ {lead['email']} subject={result['subject']}")
 
@@ -147,7 +147,7 @@ def send_followups(limit):
             )
             if status == 200 and resp.get('id'):
                 with db.conn() as c:
-                    db.update_lead(c, lead['id'], **{field_at: 'datetime("now")', field_id: resp['id']})
+                    db.update_lead(c, lead['id'], **{field_at: __import__('datetime').datetime.utcnow().isoformat(), field_id: resp['id']})
                 click.echo(f"  ✉ {lead['email']} {field_at}")
 
 if __name__ == '__main__':
