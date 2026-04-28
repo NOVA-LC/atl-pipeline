@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ business_name }} — {{ tagline }}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:{{ bg|default('#FAFAF7') }};color:{{ ink|default('#0E2238') }};line-height:1.6;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Fraunces',serif;letter-spacing:-.02em}
+.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:{{ bg_blur|default('rgba(250,250,247,.85)') }};border-bottom:1px solid rgba(0,0,0,.08);padding:16px 0}
+.nav-row{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Fraunces',serif;font-weight:600;font-size:22px;color:{{ ink|default('#0E2238') }}}
+.logo span{color:{{ accent }}}
+.nav-links{display:flex;gap:30px;font-size:14px;font-weight:500}
+.nav-links a{color:{{ ink|default('#0E2238') }};text-decoration:none;opacity:.7}
+.nav-cta{padding:11px 22px;background:{{ ink|default('#0E2238') }};color:#fff;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600}
+.hero{padding:80px 0 60px;background:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)),url("{{ hero_img }}") center/cover}
+.eyebrow{font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:{{ accent }};margin-bottom:24px}
+.hero h1{font-family:'Fraunces',serif;font-size:clamp(44px,7vw,108px);font-weight:500;line-height:1.05;margin-bottom:32px;max-width:1100px}
+.hero h1 em{font-style:italic;font-weight:400;color:{{ accent }}}
+.hero-sub{font-size:21px;max-width:620px;color:#445971;margin-bottom:40px;font-weight:300}
+.cta-row{display:flex;gap:14px;flex-wrap:wrap}
+.btn-primary{padding:18px 36px;background:{{ ink|default('#0E2238') }};color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px}
+.btn-ghost{padding:18px 36px;background:transparent;color:{{ ink|default('#0E2238') }};border:1.5px solid rgba(0,0,0,.2);border-radius:999px;text-decoration:none;font-weight:600;font-size:16px}
+section{padding:100px 0}
+.sec-h{font-family:'Fraunces',serif;font-size:clamp(36px,5vw,64px);font-weight:500;line-height:1.05;margin-bottom:24px;max-width:880px}
+.sec-h em{font-style:italic;color:{{ accent }}}
+.sec-lead{font-size:19px;max-width:680px;color:#445971;margin-bottom:60px;font-weight:300}
+.stats{padding:60px 0;border-top:1px solid rgba(0,0,0,.1);border-bottom:1px solid rgba(0,0,0,.1)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:60px}
+.stat .num{font-family:'Fraunces',serif;font-weight:500;font-size:64px;color:{{ ink|default('#0E2238') }};line-height:1}
+.stat .num em{font-style:italic;color:{{ accent }}}
+.stat .lbl{font-size:13px;font-weight:500;letter-spacing:.05em;color:#445971;margin-top:10px;text-transform:uppercase}
+.svc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(0,0,0,.1)}
+.svc{background:{{ bg|default('#FAFAF7') }};padding:48px 36px}
+.svc-num{font-family:'Fraunces',serif;font-weight:500;font-size:14px;color:{{ accent }};margin-bottom:20px}
+.svc h3{font-family:'Fraunces',serif;font-size:24px;margin-bottom:12px}
+.svc p{color:#445971;font-size:15px;line-height:1.7}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.cta-band{padding:120px 0;text-align:center}
+.cta-band h2{font-family:'Fraunces',serif;font-size:clamp(40px,6vw,80px);font-weight:500;margin-bottom:30px}
+.cta-band h2 em{font-style:italic;color:{{ accent }}}
+footer{padding:60px 0 30px;border-top:1px solid rgba(0,0,0,.1);font-size:14px;color:#445971}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:60px;margin-bottom:40px}
+.foot-grid h5{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:{{ ink|default('#0E2238') }}}
+.foot-grid p, .foot-grid a{display:block;padding:4px 0;color:#445971;text-decoration:none}
+.demo-tag{position:fixed;bottom:24px;right:24px;background:{{ ink|default('#0E2238') }};color:#fff;padding:14px 22px;border-radius:999px;font-size:13px;font-weight:500;z-index:100}
+.demo-tag::before{content:'DEMO · ';opacity:.6}
+@media(max-width:900px){.nav-links,.foot-grid{display:none}.stat-grid,.svc-grid,.gallery-grid{grid-template-columns:1fr;gap:30px}section{padding:60px 0}}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nav-row">
+<div class="logo">{{ business_name }}</div>
+<div class="nav-links">
+<a href="#services">Services</a>
+<a href="#about">About</a>
+<a href="#gallery">Work</a>
+<a href="#contact">Contact</a>
+</div>
+<a href="tel:{{ phone }}" class="nav-cta">📞 {{ phone_display }}</a>
+</div></nav>
+
+<section class="hero"><div class="wrap">
+<div class="eyebrow">{{ city }}, {{ state }}{% if owner_name and owner_name != 'unknown' %} · A note from {{ owner_first_name }}{% endif %}</div>
+<h1>{{ headline_top }}<br><em>{{ headline_em }}</em>{% if headline_bottom %}<br>{{ headline_bottom }}{% endif %}</h1>
+<p class="hero-sub">{{ hero_sub }}</p>
+<div class="cta-row">
+<a href="tel:{{ phone }}" class="btn-primary">📞 Call · {{ phone_display }}</a>
+<a href="#services" class="btn-ghost">What we do →</a>
+</div>
+</div></section>
+
+<div class="wrap"><div class="stats"><div class="stat-grid">
+<div class="stat"><div class="num">{{ rating|default('★') }}{% if rating %}<em>★</em>{% endif %}</div><div class="lbl">{% if reviews %}{{ reviews }} Google reviews{% else %}Trusted local{% endif %}</div></div>
+<div class="stat"><div class="num">{{ years_in_business or 'Local' }}</div><div class="lbl">{% if years_in_business %}years in {{ city }}{% else %}{{ city }} {{ state }}{% endif %}</div></div>
+<div class="stat"><div class="num">{{ same_day or '24/7' }}</div><div class="lbl">{{ availability_lbl|default('availability') }}</div></div>
+<div class="stat"><div class="num"><em>Free</em></div><div class="lbl">estimates</div></div>
+</div></div></div>
+
+<section id="services"><div class="wrap">
+<div class="eyebrow">— What we do</div>
+<h2 class="sec-h">{{ services_h }}</h2>
+<p class="sec-lead">{{ services_lead }}</p>
+<div class="svc-grid">
+{% for svc in services %}
+<div class="svc"><div class="svc-num">— {{ '%02d'|format(loop.index) }}</div><h3>{{ svc.title }}</h3><p>{{ svc.body }}</p></div>
+{% endfor %}
+</div>
+</div></section>
+
+<section id="about"><div class="wrap">
+<div class="eyebrow">— About</div>
+<h2 class="sec-h">{{ about_h }}</h2>
+<p class="sec-lead">{{ about_body }}</p>
+{% if wow_facts %}
+<ul style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:30px">
+{% for f in wow_facts %}
+<li style="padding:24px;background:rgba(0,0,0,.03);border-radius:12px;border-left:3px solid {{ accent }}">{{ f }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+</div></section>
+
+<section id="gallery"><div class="wrap">
+<div class="eyebrow">— On the job</div>
+<h2 class="sec-h">A look at the <em>work</em>.</h2>
+<div class="gallery-grid">
+{% for p in gallery %}
+<figure style="margin:0;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:{{ '4/5' if loop.index0 % 2 == 1 else '4/3' }};box-shadow:0 20px 40px -25px rgba(0,0,0,.25)">
+<img src="{{ p.url }}" alt="{{ p.caption }}" style="width:100%;height:100%;object-fit:cover;display:block">
+<figcaption style="position:absolute;left:0;right:0;bottom:0;padding:18px;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);color:#fff;font-size:13px">{{ p.caption }}</figcaption>
+</figure>
+{% endfor %}
+</div>
+</div></section>
+
+{% if reviews_list %}
+<section id="reviews" style="background:rgba(0,0,0,.03)"><div class="wrap">
+<div class="eyebrow">— Real reviews</div>
+<h2 class="sec-h">{{ rating }}★ across <em>{{ reviews }}</em> reviews.</h2>
+<div style="display:grid;grid-template-columns:repeat({{ reviews_list|length }},1fr);gap:24px;margin-top:40px">
+{% for r in reviews_list %}
+<div style="background:#fff;padding:32px;border-radius:14px">
+<div style="color:#FBBF24;font-size:16px;letter-spacing:2px;margin-bottom:14px">{{ '★' * r.stars|int }}</div>
+<p style="font-size:15px;line-height:1.65;margin-bottom:16px">"{{ r.text }}"</p>
+<div style="font-size:13px;color:#666">— {{ r.author }} · {{ r.date }} · <em>via {{ r.source }}</em></div>
+</div>
+{% endfor %}
+</div>
+</div></section>
+{% endif %}
+
+<section class="cta-band" id="contact"><div class="wrap">
+<h2>{{ cta_h }}</h2>
+<p style="font-size:19px;color:#445971;max-width:600px;margin:0 auto 40px;font-weight:300">{{ cta_sub }}</p>
+<div class="cta-row" style="justify-content:center">
+<a href="tel:{{ phone }}" class="btn-primary">📞 {{ phone_display }}</a>
+{% if google_maps_url %}<a href="{{ google_maps_url }}" target="_blank" class="btn-ghost">View on Google Maps →</a>{% endif %}
+</div>
+</div></section>
+
+<footer><div class="wrap"><div class="foot-grid">
+<div><div class="logo">{{ business_name }}</div><p style="margin-top:14px;max-width:300px">{{ footer_blurb }}</p></div>
+<div><h5>Visit</h5>{% if address %}<p>{{ address }}</p>{% endif %}<p>{{ city }}, {{ state }}</p>{% if hours %}<p>{{ hours }}</p>{% endif %}</div>
+<div><h5>Contact</h5><a href="tel:{{ phone }}">{{ phone_display }}</a>{% if google_maps_url %}<a href="{{ google_maps_url }}" target="_blank">Google Maps →</a>{% endif %}</div>
+</div><div style="padding-top:30px;border-top:1px solid rgba(0,0,0,.1);display:flex;justify-content:space-between;font-size:13px">
+<div>© 2026 {{ business_name }}</div>{% if rating %}<div>{{ rating }}★ on Google</div>{% endif %}
+</div></div></footer>
+
+<div class="demo-tag">{{ business_name }}</div>
+
+</body>
+</html>
