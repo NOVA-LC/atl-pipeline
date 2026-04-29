@@ -85,6 +85,46 @@ def snov_domain_search(domain, snov_id, snov_secret):
         pass
     return []
 
+def guess_email_patterns(domain, first_name, last_name):
+    """Generate the 12 most common business-email patterns. Used as a free fallback.
+
+    Caller is expected to verify each via SMTP RCPT (free) and pick the first that resolves.
+    """
+    if not (domain and first_name and last_name):
+        return []
+    f = first_name.lower().strip()
+    l = last_name.lower().strip()
+    fi = f[0] if f else ''
+    li = l[0] if l else ''
+    patterns = [
+        f'{f}@{domain}',
+        f'{f}.{l}@{domain}',
+        f'{f}{l}@{domain}',
+        f'{fi}{l}@{domain}',
+        f'{fi}.{l}@{domain}',
+        f'{f}{li}@{domain}',
+        f'{f}_{l}@{domain}',
+        f'{f}-{l}@{domain}',
+        f'{l}@{domain}',
+        f'{l}.{f}@{domain}',
+        f'{fi}{li}@{domain}',
+        f'{l}{fi}@{domain}',
+    ]
+    return list(dict.fromkeys(patterns))  # dedup, preserve order
+
+def find_email_via_pattern_probing(domain, first_name, last_name):
+    """Free email finder: guess patterns + SMTP RCPT probe each. Returns first that resolves.
+
+    Quality is mediocre (~30-40% success rate) but it's free.
+    """
+    from . import email_verify
+    candidates = guess_email_patterns(domain, first_name, last_name)
+    for email in candidates:
+        result = email_verify.verify(email)
+        if result.get('verdict') == 'valid' and result.get('tier') == 'smtp':
+            return email, 65   # confidence 65 — SMTP probe accepted
+    return None, None
+
 def enrich_lead(lead, research, env):
     """Try to find an owner email if the lead doesn't have one.
 
@@ -133,6 +173,18 @@ def enrich_lead(lead, research, env):
                 'first_name': e.get('firstName'), 'last_name': e.get('lastName'),
                 'position': e.get('position'), 'source': 'snov-domain'
             })
+
+    # 4. FREE FALLBACK — guess email patterns + SMTP probe
+    if domain and owner_name and owner_name.lower() != 'unknown' and not candidates:
+        parts = owner_name.split()
+        if len(parts) >= 2:
+            email, conf = find_email_via_pattern_probing(domain, parts[0], parts[-1])
+            if email:
+                candidates.append({
+                    'email': email, 'confidence': conf,
+                    'first_name': parts[0], 'last_name': parts[-1],
+                    'position': 'owner', 'source': 'pattern-probe-free'
+                })
 
     if not candidates:
         return out

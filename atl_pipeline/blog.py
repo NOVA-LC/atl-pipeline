@@ -32,7 +32,7 @@ Format: front-matter (yaml: title, date, slug, business, demo_url) + markdown bo
 
 Return raw markdown with the front-matter at top."""
 
-def generate_post(lead, research, demo_url, model='claude-sonnet-4-6'):
+def generate_post(lead, research, demo_url, model='claude-haiku-4-5-20251001'):
     client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
     pick_reason = (research or {}).get('vibe') or 'they have great Google reviews and no website yet'
     prompt = ESSAY_PROMPT.format(

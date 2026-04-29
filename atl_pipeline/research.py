@@ -76,7 +76,7 @@ Return JSON in this exact shape:
   "sources": [url]
 }"""
 
-def research_lead(lead, model='claude-sonnet-4-6', client=None):
+def research_lead(lead, model='claude-haiku-4-5-20251001', client=None):
     """Run deep research on one lead. Returns dict matching schema, or None on failure."""
     if client is None:
         client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
@@ -116,7 +116,7 @@ def research_lead(lead, model='claude-sonnet-4-6', client=None):
     except json.JSONDecodeError:
         return {'_raw': text, '_parse_error': True}
 
-def research_batch(leads, max_workers=6, model='claude-sonnet-4-6'):
+def research_batch(leads, max_workers=6, model='claude-haiku-4-5-20251001'):
     """Parallel research. Returns dict[lead_id] -> research_payload."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
     client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])

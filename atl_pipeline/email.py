@@ -41,7 +41,7 @@ Tell them this is the last email. The demo at {demo_url} stays up. If a website 
 Constraints: under 50 words, kind tone.
 Return JSON: {{"subject": "...", "body": "..."}}"""
 
-def write_email(prompt_tpl, lead, demo_url, research, model='claude-sonnet-4-6'):
+def write_email(prompt_tpl, lead, demo_url, research, model='claude-haiku-4-5-20251001'):
     client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
     research_summary = ''
     if research:

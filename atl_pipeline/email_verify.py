@@ -53,6 +53,28 @@ def mx_check(domain, timeout=5):
     except Exception as e:
         return False, f'dns-err: {e.__class__.__name__}'
 
+def smtp_probe(email, mx_host, timeout=8, helo_domain='gonenova.com', from_addr='tyler@gonenova.com'):
+    """Free SMTP RCPT TO probe — asks the recipient mail server if the address exists.
+
+    Many servers silently accept all addresses (catch-all) or block these probes.
+    Treat positive responses (250) as 'likely valid', 5xx as 'invalid', anything else as 'unknown'.
+    """
+    import smtplib
+    try:
+        s = smtplib.SMTP(timeout=timeout)
+        s.connect(mx_host)
+        s.helo(helo_domain)
+        s.mail(from_addr)
+        code, _ = s.rcpt(email)
+        s.quit()
+        if 200 <= code < 300:
+            return 'likely-valid'
+        if 500 <= code < 600:
+            return 'invalid'
+        return 'unknown'
+    except Exception:
+        return 'unknown'
+
 def reoon_check(email, api_key):
     """Reoon Email Verifier — instant API. Returns dict or None on error.
 
@@ -95,6 +117,21 @@ def verify(email, reoon_key=None):
     is_role = local.split('+')[0] in ROLE_PREFIXES
     if is_role:
         return {'verdict': 'risky', 'reason': 'role-based', 'tier': 'mx'}
+
+    # Free SMTP probe (skip for big providers that block probes — they always answer 250)
+    BIG_PROVIDERS = {'gmail.com','yahoo.com','outlook.com','hotmail.com','icloud.com','aol.com','live.com'}
+    if domain not in BIG_PROVIDERS:
+        try:
+            mx_records = sorted(dns.resolver.resolve(domain, 'MX'), key=lambda r: r.preference)
+            if mx_records:
+                mx_host = str(mx_records[0].exchange).rstrip('.')
+                probe = smtp_probe(email, mx_host)
+                if probe == 'invalid':
+                    return {'verdict': 'invalid', 'reason': 'smtp-rejected', 'tier': 'smtp'}
+                if probe == 'likely-valid':
+                    return {'verdict': 'valid', 'reason': 'smtp-accepted', 'tier': 'smtp'}
+        except Exception:
+            pass  # fall through to other checks
 
     # Optional 3rd-party deeper check
     if reoon_key:
