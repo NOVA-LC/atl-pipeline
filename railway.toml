@@ -1,0 +1,27 @@
+# Railway build + deploy config for atl-pipeline
+#
+# This service is intended to run as a CRON service in Railway.
+# Set the cron schedule in the Railway dashboard:
+#   Service settings → Cron Schedule → "0 13 * * *"  (= daily 9am ET / 13:00 UTC)
+#
+# Required env vars (set in Railway dashboard, NOT in the repo):
+#   GITHUB_TOKEN, GITHUB_OWNER
+#   DEMOS_REPO_NAME=atlanta-website-demos
+#   DEMOS_REPO_LOCAL=/data/demos_repo            # on Railway volume so we don't re-clone every run
+#   DEMOS_REPO_VERCEL_REPO_ID=1223992190
+#   PIPELINE_DB_PATH=/data/pipeline.db           # on Railway volume so state persists
+#   VERCEL_TOKEN
+#   RESEND_API_KEY, RESEND_FROM_EMAIL, RESEND_FROM_NAME, RESEND_REPLY_TO
+#   ANTHROPIC_API_KEY, ANTHROPIC_MODEL=claude-haiku-4-5-20251001
+#   BRAVE_API_KEY
+#   OUTSCRAPER_API_KEY
+#
+# Required volume:
+#   Mount a 1GB volume at /data — this gives us persistent SQLite + demos_repo cache.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "./entrypoint.sh"
+restartPolicyType = "NEVER"

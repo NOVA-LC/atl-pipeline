@@ -1,10 +1,16 @@
-"""SQLite store for pipeline state. Idempotent + resumable."""
+"""SQLite store for pipeline state. Idempotent + resumable.
+
+DB path is configurable via PIPELINE_DB_PATH env var. On Railway we mount a
+1GB volume at /data and set PIPELINE_DB_PATH=/data/pipeline.db so state
+persists across deploys. Locally it defaults to ./atl_pipeline.db.
+"""
+import os
 import sqlite3
 import json
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path('atl_pipeline.db')
+DB_PATH = Path(os.environ.get('PIPELINE_DB_PATH', 'atl_pipeline.db'))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS leads (
@@ -61,6 +67,7 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 
 @contextmanager
 def conn(path=DB_PATH):
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(path)
     c.row_factory = sqlite3.Row
     c.execute('PRAGMA journal_mode=WAL')

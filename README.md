@@ -16,7 +16,20 @@ Outscraper export (xlsx)
                     commit to gonenova repo (auto-publishes via Lovable)
 ```
 
-## Setup
+## Deploy to Railway (recommended — runs every day autonomously)
+
+1. Create a Railway account at https://railway.app (free; $5/mo credit covers this app).
+2. New Project → Deploy from GitHub repo → pick `NOVA-LC/atl-pipeline`.
+3. Add a **Volume** to the service: mount path `/data`, size 1 GB.
+4. **Settings → Cron Schedule**: `0 13 * * *` (= 9am ET / 13:00 UTC daily).
+5. **Variables** tab: paste every key from `.env.example` (see list in `railway.toml`).
+   - Set `PIPELINE_DB_PATH=/data/pipeline.db`
+   - Set `DEMOS_REPO_LOCAL=/data/demos_repo`
+6. Click Deploy. First run clones the demos repo onto the volume, then runs the pipeline.
+
+Logs stream live in the Railway dashboard. To trigger a manual run, click "Run Now" on the service.
+
+## Local setup
 
 ```bash
 cp .env.example .env
