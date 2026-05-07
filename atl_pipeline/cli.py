@@ -1,19 +1,64 @@
 """Daily orchestrator. One command runs the whole pipeline.
 
 Usage:
-  python -m atl_pipeline.cli scrape           # autonomous: hit Outscraper for fresh leads
+  python -m atl_pipeline.cli scrape                       # autonomous: hit Outscraper for fresh leads
   python -m atl_pipeline.cli run --xlsx outscraper.xlsx   # full daily run
-  python -m atl_pipeline.cli daily            # scrape + run + send (one-command cron)
-  python -m atl_pipeline.cli send-followups   # Day-3 + Day-7 sequencing
-  python -m atl_pipeline.cli status           # see pipeline state
+  python -m atl_pipeline.cli daily                        # scrape + run + send (one-command cron)
+  python -m atl_pipeline.cli daily --dry-run              # same, but write emails to /data/dryrun.log instead of sending
+  python -m atl_pipeline.cli send-followups               # Day-3 + Day-7 sequencing
+  python -m atl_pipeline.cli check-replies                # Gmail scan: mark replied=1 on engaged threads
+  python -m atl_pipeline.cli mark-replied <email>         # manual: mark a lead as replied
+  python -m atl_pipeline.cli status                       # see pipeline state
 """
-import os, json, datetime, click
+import os, json, datetime, click, requests
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
 from . import (db, ingest as _ingest, dedup, verify, research, generate,
                deploy, email as _email, blog, enrich, email_verify, scraper, warmup)
+
+
+def _url_is_live(url, timeout=8):
+    """HEAD the URL. Returns True if 2xx or 3xx, False otherwise."""
+    if not url:
+        return False
+    try:
+        r = requests.head(url, allow_redirects=True, timeout=timeout)
+        return 200 <= r.status_code < 400
+    except Exception:
+        try:
+            # Some hosts 405 on HEAD; fall back to small GET
+            r = requests.get(url, timeout=timeout, stream=True)
+            r.close()
+            return 200 <= r.status_code < 400
+        except Exception:
+            return False
+
+
+def _research_is_personalized(research):
+    """Quality gate: only send if research found *something* useful.
+
+    Returns True if at least 2 of: owner_name, wow_facts, real_reviews, vibe.
+    Otherwise the email would be too generic to bother with.
+    """
+    if not research:
+        return False
+    score = 0
+    if research.get('owner_name') and research['owner_name'].lower() != 'unknown':
+        score += 1
+    if research.get('wow_facts') and len(research['wow_facts']) >= 1:
+        score += 1
+    if research.get('real_reviews') and len(research['real_reviews']) >= 1:
+        score += 1
+    if research.get('vibe'):
+        score += 1
+    return score >= 2
+
+
+def _dryrun_log_path():
+    base = Path(os.environ.get('PIPELINE_DB_PATH', 'atl_pipeline.db')).parent
+    return base / 'dryrun.log'
 
 @click.group()
 def cli(): pass
@@ -39,10 +84,11 @@ def scrape(queries, per_query):
 @click.option('--xlsx', required=True, type=click.Path(exists=True))
 @click.option('--max-sends', default=None, type=int, help='Override warmup cap for today')
 @click.option('--skip-blog', is_flag=True)
-def run(xlsx, max_sends, skip_blog):
+@click.option('--dry-run', is_flag=True, help='Write emails to dryrun.log instead of sending via Resend')
+def run(xlsx, max_sends, skip_blog, dry_run):
     env = dict(os.environ)
     cap = max_sends if max_sends is not None else warmup.todays_max_sends()
-    click.echo(f'Pipeline day {warmup.day_of_pipeline()} · todays send cap: {cap}')
+    click.echo(f'Pipeline day {warmup.day_of_pipeline()} · todays send cap: {cap}{" · DRY-RUN" if dry_run else ""}')
 
     # 1. INGEST
     click.echo(f'Ingesting {xlsx}...')
@@ -158,26 +204,54 @@ def run(xlsx, max_sends, skip_blog):
             click.echo(f"  ! deploy failed for {lead['slug']}: {e}")
     click.echo(f'  ✓ deployed {deployed} demos')
 
-    # 9. EMAIL — Day-1 sends, capped by warmup
-    click.echo(f'Sending Day-1 emails (cap: {cap})...')
+    # 9. EMAIL — Day-1 sends, capped by warmup, with quality gates
+    click.echo(f'Sending Day-1 emails (cap: {cap}){"  [DRY-RUN]" if dry_run else ""}...')
     with db.conn() as c:
-        pending = db.leads_pending(c, 'email1')[:cap]
+        # Pull a buffer larger than cap so quality-gates have headroom
+        pending = db.leads_pending(c, 'email1')[:cap * 3]
     sent = 0
+    skipped_url = skipped_quality = 0
     for lead_row in pending:
+        if sent >= cap:
+            break
         lead = dict(lead_row)
         r = json.loads(lead.get('research_payload') or '{}')
+
+        # GATE 1: research must have produced something personal
+        if not _research_is_personalized(r):
+            skipped_quality += 1
+            with db.conn() as c:
+                db.update_lead(c, lead['id'], notes=f"skipped: research too generic")
+            continue
+
+        # GATE 2: demo URL must actually load
+        if not _url_is_live(lead.get('vercel_url')):
+            skipped_url += 1
+            with db.conn() as c:
+                db.update_lead(c, lead['id'], notes=f"skipped: vercel_url not live")
+            click.echo(f"  ✗ skip (demo 404): {lead['business_name']} → {lead.get('vercel_url')}")
+            continue
+
         try:
-            result = _email.send_day1(lead, lead['vercel_url'], r, env)
-            if result and result.get('resend_id'):
-                with db.conn() as c:
-                    db.update_lead(c, lead['id'],
-                        email1_sent_at=datetime.datetime.utcnow().isoformat(),
-                        email1_resend_id=result['resend_id'])
+            if dry_run:
+                msg = _email.write_email(_email.EMAIL_PROMPT_DAY1, lead, lead['vercel_url'], r,
+                                         model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
+                with open(_dryrun_log_path(), 'a') as f:
+                    f.write(f"\n{'='*70}\nTO: {lead['email']}  ({lead['business_name']})\nDEMO: {lead['vercel_url']}\nSUBJECT: {msg['subject']}\n\n{msg['body']}\n")
                 sent += 1
-                click.echo(f"  ✉ {lead['email']}")
+                click.echo(f"  📝 dry-run logged: {lead['email']}")
+            else:
+                result = _email.send_day1(lead, lead['vercel_url'], r, env)
+                if result and result.get('resend_id'):
+                    with db.conn() as c:
+                        db.update_lead(c, lead['id'],
+                            email1_sent_at=datetime.datetime.utcnow().isoformat(),
+                            email1_resend_id=result['resend_id'])
+                    sent += 1
+                    click.echo(f"  ✉ {lead['email']}")
         except Exception as e:
             click.echo(f"  ! send failed for {lead['email']}: {e}")
-    click.echo(f'  sent {sent}/{cap} Day-1 emails')
+    click.echo(f'  sent {sent}/{cap} Day-1 emails (skipped {skipped_quality} for thin research, {skipped_url} for dead demo URL)')
 
     # 10. BLOG drop
     if not skip_blog and sent > 0:
@@ -203,17 +277,30 @@ def run(xlsx, max_sends, skip_blog):
 # daily — scrape + run, one command
 # ---------------------------------------------------------------------------
 @cli.command()
+@click.option('--dry-run', is_flag=True, help='Write emails to dryrun.log instead of sending')
 @click.pass_context
-def daily(ctx):
-    """Scrape fresh leads then run the full pipeline. Set this as a cron."""
+def daily(ctx, dry_run):
+    """Scrape fresh leads, mark replied threads, run the full pipeline."""
+    # 0. Mark any prospects who replied since last run, so follow-ups don't go to engaged threads.
+    try:
+        ctx.invoke(check_replies)
+    except Exception as e:
+        click.echo(f'  ! check-replies failed (non-fatal): {e}')
+
+    # 1. Scrape new leads
     ctx.invoke(scrape)
-    # find today's xlsx
+
+    # 2. Run the full pipeline on today's xlsx
     today = datetime.date.today().isoformat()
     xlsx = Path('./scrapes') / f'outscraper-{today}.xlsx'
     if not xlsx.exists():
         click.echo(f'  ! no xlsx at {xlsx} — scrape may have produced no results')
         return
-    ctx.invoke(run, xlsx=str(xlsx))
+    ctx.invoke(run, xlsx=str(xlsx), dry_run=dry_run)
+
+    # 3. Send Day-3 / Day-7 follow-ups (only to non-replied threads — leads_pending checks replied=0)
+    if not dry_run:
+        ctx.invoke(send_followups)
 
 # ---------------------------------------------------------------------------
 # send-followups — Day-3 + Day-7
@@ -245,6 +332,63 @@ def send_followups(limit):
                     click.echo(f"  ✉ {lead['email']} {field_at}")
             except Exception as e:
                 click.echo(f"  ! followup failed: {e}")
+
+@cli.command('mark-replied')
+@click.argument('email')
+def mark_replied(email):
+    """Manually mark a lead as replied so follow-ups stop. Useful when Tyler
+    sees a real reply in Gmail and wants to suppress Day-3 / Day-7."""
+    with db.conn() as c:
+        rows = c.execute('SELECT id, business_name FROM leads WHERE lower(email) = lower(?)',
+                         (email,)).fetchall()
+        if not rows:
+            click.echo(f'  ! no lead with email = {email}')
+            return
+        for row in rows:
+            db.update_lead(c, row['id'], replied=1)
+            click.echo(f'  ✓ marked replied: {row["business_name"]} ({email})')
+
+@cli.command('check-replies')
+def check_replies():
+    """Scan Resend for click events on sent emails — anyone who clicked the demo
+    link is treated as engaged and suppressed from follow-ups. Replies via Gmail
+    are detected by Tyler manually using `mark-replied`.
+
+    Resend doesn't have a free 'received-replies' API, but it does expose a per-email
+    event log. Click on the demo link is the strongest cheap proxy for interest.
+    """
+    api_key = os.environ.get('RESEND_API_KEY')
+    if not api_key:
+        click.echo('  ! RESEND_API_KEY missing'); return
+
+    with db.conn() as c:
+        rows = c.execute("""SELECT id, business_name, email, email1_resend_id
+                            FROM leads
+                            WHERE email1_resend_id IS NOT NULL
+                              AND replied = 0
+                              AND email1_sent_at > datetime('now','-14 days')""").fetchall()
+    if not rows:
+        click.echo('  no recent sends to check'); return
+
+    click.echo(f'Checking Resend events for {len(rows)} recent sends...')
+    marked = 0
+    for row in rows:
+        try:
+            r = requests.get(f'https://api.resend.com/emails/{row["email1_resend_id"]}',
+                             headers={'Authorization': f'Bearer {api_key}'},
+                             timeout=10)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            # Resend returns last_event in {sent,delivered,opened,clicked,bounced,complained}
+            if data.get('last_event') in ('clicked',):
+                with db.conn() as c:
+                    db.update_lead(c, row['id'], replied=1, notes='auto-replied: demo-click')
+                marked += 1
+                click.echo(f'  ✓ engaged (clicked demo): {row["business_name"]}')
+        except Exception:
+            continue
+    click.echo(f'  marked {marked} as engaged')
 
 @cli.command()
 @click.option('--limit', default=50)

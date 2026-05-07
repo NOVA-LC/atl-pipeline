@@ -6,39 +6,62 @@ import os, json, requests, anthropic
 
 RESEND_API = 'https://api.resend.com'
 
-EMAIL_SYSTEM = """You write short, personal-feeling cold emails for a website-design business.
-Voice: friendly, direct, lowercase-leaning, never salesy. No buzzwords. No "I hope this finds you well."
-Goal: get the prospect to reply with a phone number or click the demo link.
-Always include the demo link inline in the body."""
+EMAIL_SYSTEM = """You write short cold emails that explain — in plain English — why a small home-services business is leaving real money on the table without a website.
 
-EMAIL_PROMPT_DAY1 = """Write a Day-1 cold email to {owner_first} who runs {business} in {city}.
+Voice: friendly, direct, lowercase-leaning, never salesy. Sound like a person who's done the work, not a marketer. No "I hope this finds you well."
 
-You already built them a custom demo at {demo_url}. The email tells them: "I built this for you to see. Feel free to look. What's the best number to flesh it out into your real site?"
+The email must do three things in order:
+1. Open with one CONCRETE money-relevant reason a website prints leads for THIS kind of business — quote a stat, a customer behavior, a competitor's setup, or a missed-call scenario. Specific beats clever.
+2. Show the live demo URL inline (raw URL, never a button or 'click here').
+3. Ask one short question — usually their best number to call.
+
+Banned words: synergy, leverage, transform, elevate, unlock, "in today's digital landscape", "boost", "amazing", "exciting opportunity"."""
+
+EMAIL_PROMPT_DAY1 = """Write a Day-1 cold email to {owner_first} who runs {business} ({category}) in {city}.
+
+You already built them a working demo website at {demo_url}. They didn't ask. You did it on spec.
+
+The email must:
+1. Open with a punchy, money-relevant reason they need a real site. Pick the angle that fits a {category}. Spirit examples (do not copy verbatim — invent your own using these as the spirit):
+   - "9 out of 10 people google a {category} before calling — if you don't show up clean, your competitor does."
+   - "Right now when somebody searches '{category} {city}', three other shops have a 'request a quote' button before yours."
+   - "your google business profile is doing its job. but the click goes to a facebook page from 2019, and that's where leads die."
+   - "after-hours calls are 30% of the work for {category}s. without a contact form, those leads call the next guy on the list."
+2. Then: "i built this for you on spec — {demo_url} — no charge to look."
+3. End with a direct ask: "what's a good number to call you on to flesh it out into your real site?"
 
 Personalize using research:
 - {research_summary}
 
 Constraints:
-- 80-110 words MAX
-- subject line under 50 chars
-- one paragraph in the body, max two sentences
-- include {demo_url} inline (raw URL, not button)
-- end with a casual sign-off (e.g. "— Tyler @ Nova")
+- 90-130 words
+- subject under 50 chars, specific to {business}
+- 2-3 short paragraphs (no wall of text)
+- include {demo_url} inline as a raw URL
+- sign off with "— tyler @ nova" (lowercase)
 
 Return JSON: {{"subject": "...", "body": "..."}}"""
 
-EMAIL_PROMPT_DAY3 = """Day-3 follow-up to {owner_first} at {business} ({city}).
+EMAIL_PROMPT_DAY3 = """Day-3 follow-up to {owner_first} at {business} ({category}, {city}).
 
-They didn't reply to the Day-1 email about the custom demo at {demo_url}. Be brief, slightly self-aware, friendly. One thing they should look at on the demo. Ask what their best number is.
+They didn't reply to the Day-1 email about the demo at {demo_url}.
 
-Constraints: under 60 words, subject reuses Re: from Day-1 thread.
-Return JSON: {{"subject": "Re: <day-1-subject>", "body": "..."}}"""
+This email should:
+1. Be self-aware about cold-emails ("i know cold emails go to die" or similar — vary it)
+2. Reinforce ONE money angle by pointing at a specific feature of the demo. Spirit examples:
+   - "the demo has click-to-call at the top of every page — phones convert 5x better than forms for {category}s"
+   - "i added a quote-request form that texts you. most missed jobs are after-hours leads nobody calls back in time"
+   - "your real reviews are pulled in up top — half of {city} googlers decide on stars before reading"
+3. Ask: "what's a good number for you?"
 
-EMAIL_PROMPT_DAY7 = """Day-7 break-up email to {owner_first} at {business}.
+Constraints: under 70 words. Subject: "Re: <matches Day-1 subject>".
+Return JSON: {{"subject": "Re: ...", "body": "..."}}"""
 
-Tell them this is the last email. The demo at {demo_url} stays up. If a website ever becomes a priority, they know where to find me. No guilt.
+EMAIL_PROMPT_DAY7 = """Day-7 break-up email to {owner_first} at {business} ({category}).
 
-Constraints: under 50 words, kind tone.
+Last email. One sentence on why a site matters for {category}s, then: the demo at {demo_url} stays up free for a year, come back when ready. No guilt, no fake urgency.
+
+Constraints: under 60 words. Kind, low-key. Sign off "— tyler".
 Return JSON: {{"subject": "...", "body": "..."}}"""
 
 def write_email(prompt_tpl, lead, demo_url, research, model='claude-haiku-4-5-20251001'):
@@ -62,6 +85,7 @@ def write_email(prompt_tpl, lead, demo_url, research, model='claude-haiku-4-5-20
         owner_first=owner_first,
         business=lead['business_name'],
         city=lead.get('city') or 'town',
+        category=lead.get('category') or 'local business',
         demo_url=demo_url,
         research_summary=research_summary or 'no extra context',
     )

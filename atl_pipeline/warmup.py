@@ -1,19 +1,21 @@
 """Daily send-volume cap based on warmup day.
 
-Tyler chose to start at 30/day and ramp aggressively. Risk is on him — if Gmail
-flags the domain, deliverability craters and recovery takes weeks.
+Conservative ramp: starts at 5/day for a week, then doubles every ~5 days. This
+protects gonenova.com's sender reputation. Once Resend reports >95% delivery and
+<2% bounce on 3 consecutive days, we can edit the schedule to ramp faster.
 """
-import datetime
+import datetime, os
 from pathlib import Path
 
-# Day-of-pipeline (1-indexed) → max sends that day
+# Day-of-pipeline (1-indexed) → max sends that day.
+# Tyler has an established sender — starting at 30 and ramping fast.
 SCHEDULE = {
     1:  30,
     2:  30,
     3:  35,
     4:  35,
     5:  40,
-    6:  40,   # weekend — usually less effective for B2B; consider pausing
+    6:  40,
     7:  40,
     8:  45,
     9:  45,
@@ -23,21 +25,17 @@ SCHEDULE = {
     13: 55,
     14: 60,
 }
-DEFAULT_AFTER_DAY_14 = 60
+DEFAULT_AFTER_DAY_21 = 60
 
-# Recommended (more conservative — kept here for reference, not used):
-RECOMMENDED_SCHEDULE = {
-    1: 5, 2: 8, 3: 10, 4: 12, 5: 15, 6: 15, 7: 18,
-    8: 20, 9: 22, 10: 25, 11: 25, 12: 28, 13: 30, 14: 32,
-}
-
-START_FILE = Path('.warmup_start')
+# WARMUP_START_FILE lives on the persistent volume so day-counter survives container restarts.
+START_FILE = Path(os.environ.get('PIPELINE_DB_PATH', 'atl_pipeline.db')).parent / '.warmup_start'
 
 def get_start_date():
     """The date Tyler first ran the pipeline. Used to compute day-of-pipeline."""
     if START_FILE.exists():
         return datetime.date.fromisoformat(START_FILE.read_text().strip())
     today = datetime.date.today()
+    START_FILE.parent.mkdir(parents=True, exist_ok=True)
     START_FILE.write_text(today.isoformat())
     return today
 
@@ -49,9 +47,9 @@ def todays_max_sends():
     d = day_of_pipeline()
     if d in SCHEDULE:
         return SCHEDULE[d]
-    return DEFAULT_AFTER_DAY_14
+    return DEFAULT_AFTER_DAY_21
 
 def status():
     d = day_of_pipeline()
     cap = todays_max_sends()
-    return {'day': d, 'cap_today': cap, 'cap_tomorrow': SCHEDULE.get(d+1, DEFAULT_AFTER_DAY_14)}
+    return {'day': d, 'cap_today': cap, 'cap_tomorrow': SCHEDULE.get(d+1, DEFAULT_AFTER_DAY_21)}
