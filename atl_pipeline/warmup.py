@@ -8,24 +8,17 @@ import datetime, os
 from pathlib import Path
 
 # Day-of-pipeline (1-indexed) → max sends that day.
-# Tyler has an established sender — starting at 30 and ramping fast.
+# Tyler has an established sender — starting at 50 and holding.
 SCHEDULE = {
-    1:  30,
-    2:  30,
-    3:  35,
-    4:  35,
-    5:  40,
-    6:  40,
-    7:  40,
-    8:  45,
-    9:  45,
-    10: 50,
-    11: 50,
-    12: 55,
-    13: 55,
-    14: 60,
+    1:  50,
+    2:  50,
+    3:  50,
+    4:  50,
+    5:  50,
+    6:  50,
+    7:  50,
 }
-DEFAULT_AFTER_DAY_21 = 60
+DEFAULT_AFTER_DAY_21 = 50
 
 # WARMUP_START_FILE lives on the persistent volume so day-counter survives container restarts.
 START_FILE = Path(os.environ.get('PIPELINE_DB_PATH', 'atl_pipeline.db')).parent / '.warmup_start'
