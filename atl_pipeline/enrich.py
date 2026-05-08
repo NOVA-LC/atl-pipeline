@@ -125,14 +125,32 @@ def find_email_via_pattern_probing(domain, first_name, last_name):
             return email, 65   # confidence 65 — SMTP probe accepted
     return None, None
 
-def enrich_lead(lead, research, env):
+def enrich_lead(lead, research, env, verify_payload=None):
     """Try to find an owner email if the lead doesn't have one.
+
+    New ordering (2026-05-08):
+      0. SCRAPE the verify URL or any research-found website. Free + fast,
+         works for "likely" verify hits and any URL Brave Search returned.
+      1. Hunter domain-search (paid, accurate)
+      2. Hunter email-finder by owner name
+      3. Snov domain-search (paid alternative)
+      4. SMTP-pattern probing (free fallback, mediocre quality)
 
     Returns enrichment payload (may be empty dict if nothing found).
     """
     out = {}
     if lead.get('email'):
         return out  # already has one
+
+    # 0. FREE SCRAPE FIRST — try any URL we already know about.
+    from . import email_scraper
+    scraped = email_scraper.best_email_for_lead(verify_payload, research)
+    if scraped:
+        addr, score, source = scraped
+        out['owner_email'] = addr
+        out['owner_email_confidence'] = max(40, min(85, 50 + score))
+        out['owner_email_source'] = f'site-scrape ({source})'
+        return out
 
     domain = domain_from_research(research)
     hunter_key = env.get('HUNTER_API_KEY')

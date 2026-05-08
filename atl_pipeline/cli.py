@@ -138,12 +138,14 @@ def run(xlsx, max_sends, skip_blog, dry_run):
     for row in rows:
         lead = dict(row)
         r = json.loads(lead.get('research_payload') or '{}')
-        out = enrich.enrich_lead(lead, r, env)
+        v = json.loads(lead.get('verify_payload') or '{}')
+        out = enrich.enrich_lead(lead, r, env, verify_payload=v)
         if out.get('owner_email'):
             with db.conn() as c:
                 db.update_lead(c, lead['id'], email=out['owner_email'],
                                research_payload=json.dumps({**r, **out}))
             enriched += 1
+            click.echo(f"    + {out['owner_email']} ({out.get('owner_email_source','?')}) → {lead['business_name']}")
     click.echo(f'  found {enriched} new emails')
 
     # 6. EMAIL VERIFY — drop invalid + risky before they bounce

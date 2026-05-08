@@ -117,7 +117,12 @@ def leads_pending(c, stage):
     if stage == 'verify':
         return c.execute("SELECT * FROM leads WHERE verify_status IS NULL OR verify_status = 'pending'").fetchall()
     if stage == 'research':
-        return c.execute("SELECT * FROM leads WHERE verify_status IN ('no','unsure') AND (research_status IS NULL OR research_status = 'pending')").fetchall()
+        # Include 'likely' — those are leads with a probable-but-bad website. We
+        # still pitch (their site is worse than what we'd build), AND email_scraper
+        # can pull an owner email from their existing site.
+        return c.execute("""SELECT * FROM leads
+                            WHERE verify_status IN ('no','unsure','likely')
+                              AND (research_status IS NULL OR research_status = 'pending')""").fetchall()
     if stage == 'demo':
         return c.execute("SELECT * FROM leads WHERE research_status='done' AND demo_html IS NULL").fetchall()
     if stage == 'deploy':
