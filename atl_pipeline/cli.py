@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from . import (db, ingest as _ingest, dedup, verify, research, generate,
-               deploy, email as _email, blog, enrich, email_verify, scraper, warmup)
+               deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox)
 
 
 def _url_is_live(url, timeout=8):
@@ -276,31 +276,73 @@ def run(xlsx, max_sends, skip_blog, dry_run):
 # ---------------------------------------------------------------------------
 # daily — scrape + run, one command
 # ---------------------------------------------------------------------------
+def _alert_tyler(stage, exc):
+    """Send a Resend email to Tyler when the cron crashes mid-pipeline.
+
+    Falls through silently if Resend is the thing that's broken — last thing we
+    want is an alerting loop. Best-effort only.
+    """
+    import traceback
+    api_key = os.environ.get('RESEND_API_KEY')
+    to_email = os.environ.get('RESEND_FROM_EMAIL')
+    if not (api_key and to_email):
+        return
+    tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))[-3000:]
+    body = (f"Daily cron crashed at stage: {stage}\n"
+            f"Time: {datetime.datetime.utcnow().isoformat()} UTC\n"
+            f"Exception: {type(exc).__name__}: {exc}\n\n"
+            f"Last 3KB of traceback:\n{tb}\n")
+    try:
+        requests.post('https://api.resend.com/emails',
+                      headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+                      json={'from': f'atl-pipeline alerts <{to_email}>',
+                            'to': [to_email],
+                            'subject': f'[atl-pipeline] CRASH at stage: {stage}',
+                            'text': body},
+                      timeout=10)
+    except Exception:
+        pass
+
+
 @cli.command()
 @click.option('--dry-run', is_flag=True, help='Write emails to dryrun.log instead of sending')
 @click.pass_context
 def daily(ctx, dry_run):
-    """Scrape fresh leads, mark replied threads, run the full pipeline."""
-    # 0. Mark any prospects who replied since last run, so follow-ups don't go to engaged threads.
+    """Scrape fresh leads, mark replied threads, run the full pipeline.
+
+    Wraps each stage in error-handling so one stage's failure doesn't kill the
+    rest. On any unhandled exception, emails Tyler with the traceback.
+    """
+    stage = 'init'
     try:
-        ctx.invoke(check_replies)
+        # 0. Inbox + Resend scan: mark unsubscribes / replies before anything else.
+        stage = 'check-replies'
+        try:
+            ctx.invoke(check_replies)
+        except Exception as e:
+            click.echo(f'  ! check-replies failed (non-fatal): {e}')
+
+        # 1. Scrape new leads
+        stage = 'scrape'
+        ctx.invoke(scrape)
+
+        # 2. Run the full pipeline on today's xlsx
+        stage = 'run'
+        today = datetime.date.today().isoformat()
+        xlsx = Path('./scrapes') / f'outscraper-{today}.xlsx'
+        if not xlsx.exists():
+            click.echo(f'  ! no xlsx at {xlsx} — scrape may have produced no results')
+            return
+        ctx.invoke(run, xlsx=str(xlsx), dry_run=dry_run)
+
+        # 3. Send Day-3 / Day-7 follow-ups
+        stage = 'send-followups'
+        if not dry_run:
+            ctx.invoke(send_followups)
     except Exception as e:
-        click.echo(f'  ! check-replies failed (non-fatal): {e}')
-
-    # 1. Scrape new leads
-    ctx.invoke(scrape)
-
-    # 2. Run the full pipeline on today's xlsx
-    today = datetime.date.today().isoformat()
-    xlsx = Path('./scrapes') / f'outscraper-{today}.xlsx'
-    if not xlsx.exists():
-        click.echo(f'  ! no xlsx at {xlsx} — scrape may have produced no results')
-        return
-    ctx.invoke(run, xlsx=str(xlsx), dry_run=dry_run)
-
-    # 3. Send Day-3 / Day-7 follow-ups (only to non-replied threads — leads_pending checks replied=0)
-    if not dry_run:
-        ctx.invoke(send_followups)
+        click.echo(f'  ✗ CRASH at stage={stage}: {e}')
+        _alert_tyler(stage, e)
+        raise
 
 # ---------------------------------------------------------------------------
 # send-followups — Day-3 + Day-7
@@ -369,25 +411,34 @@ def mark_replied(email):
 
 @cli.command('check-replies')
 def check_replies():
-    """Scan Resend for click events on sent emails — anyone who clicked the demo
-    link is treated as engaged and suppressed from follow-ups. Replies via Gmail
-    are detected by Tyler manually using `mark-replied`.
+    """Scan two sources for engagement and suppress follow-ups:
 
-    Resend doesn't have a free 'received-replies' API, but it does expose a per-email
-    event log. Click on the demo link is the strongest cheap proxy for interest.
+    1. Gmail inbox (IMAP) — actual replies AND one-click unsubscribes that
+       landed at tyler+unsub-{lead_id}@gonenova.com. Requires GMAIL_APP_PASSWORD.
+    2. Resend events — clicks on the demo link (strongest cheap engagement signal).
     """
+    # 1. Gmail inbox scan (replies + unsubscribes)
+    click.echo('Scanning Gmail inbox for replies + unsubscribes...')
+    unsub, reply = inbox.scan_all()
+    if unsub is None:
+        click.echo('  ! GMAIL_APP_PASSWORD not set or IMAP failed — skipping inbox scan')
+    else:
+        click.echo(f'  ✓ inbox: {unsub} unsubscribes, {reply} replies')
+
+    # 2. Resend click-events (anyone who clicked the demo link is engaged)
     api_key = os.environ.get('RESEND_API_KEY')
     if not api_key:
-        click.echo('  ! RESEND_API_KEY missing'); return
+        click.echo('  ! RESEND_API_KEY missing — skipping click check'); return
 
     with db.conn() as c:
         rows = c.execute("""SELECT id, business_name, email, email1_resend_id
                             FROM leads
                             WHERE email1_resend_id IS NOT NULL
                               AND replied = 0
+                              AND do_not_contact = 0
                               AND email1_sent_at > datetime('now','-14 days')""").fetchall()
     if not rows:
-        click.echo('  no recent sends to check'); return
+        click.echo('  no recent sends to check for clicks'); return
 
     click.echo(f'Checking Resend events for {len(rows)} recent sends...')
     marked = 0
@@ -399,7 +450,6 @@ def check_replies():
             if r.status_code != 200:
                 continue
             data = r.json()
-            # Resend returns last_event in {sent,delivered,opened,clicked,bounced,complained}
             if data.get('last_event') in ('clicked',):
                 with db.conn() as c:
                     db.update_lead(c, row['id'], replied=1, notes='auto-replied: demo-click')
@@ -407,7 +457,7 @@ def check_replies():
                 click.echo(f'  ✓ engaged (clicked demo): {row["business_name"]}')
         except Exception:
             continue
-    click.echo(f'  marked {marked} as engaged')
+    click.echo(f'  marked {marked} as engaged via demo click')
 
 @cli.command()
 @click.option('--limit', default=50)

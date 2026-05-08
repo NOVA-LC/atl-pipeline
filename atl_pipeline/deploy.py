@@ -2,9 +2,21 @@
 import os, subprocess, json, time
 from pathlib import Path
 import requests
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 GITHUB_API = 'https://api.github.com'
 VERCEL_API = 'https://api.vercel.com'
+
+# Retry transient API errors (5xx, network blips). Don't retry 4xx — those are bugs.
+class TransientVercelError(Exception):
+    pass
+
+_retry = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=2, min=2, max=10),
+    retry=retry_if_exception_type((TransientVercelError, requests.RequestException)),
+    reraise=True,
+)
 
 def write_demo(repo_path, slug, html):
     folder = Path(repo_path) / slug
@@ -22,8 +34,12 @@ def git_commit_and_push(repo_path, message, slugs):
     subprocess.check_call(['git', '-C', repo_path, 'push', 'origin', 'main'])
     return True
 
+@_retry
 def vercel_create_project(token, name, repo_full, root_dir, team_id=None):
-    """Create a Vercel project linked to a GitHub repo subfolder."""
+    """Create a Vercel project linked to a GitHub repo subfolder.
+
+    Retries on 5xx / network errors. 4xx (incl. 409 already-exists) returns normally.
+    """
     url = f'{VERCEL_API}/v11/projects'
     if team_id:
         url += f'?teamId={team_id}'
@@ -33,9 +49,13 @@ def vercel_create_project(token, name, repo_full, root_dir, team_id=None):
         'rootDirectory': root_dir,
         'framework': None,
     }
-    r = requests.post(url, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}, json=body)
+    r = requests.post(url, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+                      json=body, timeout=30)
+    if r.status_code >= 500:
+        raise TransientVercelError(f'create_project {r.status_code}: {r.text[:200]}')
     return r.status_code, r.json()
 
+@_retry
 def vercel_trigger_deploy(token, project_name, repo_id, ref='main', team_id=None):
     url = f'{VERCEL_API}/v13/deployments?forceNew=1'
     if team_id:
@@ -44,7 +64,10 @@ def vercel_trigger_deploy(token, project_name, repo_id, ref='main', team_id=None
         'name': project_name, 'project': project_name, 'target': 'production',
         'gitSource': {'type': 'github', 'repoId': repo_id, 'ref': ref},
     }
-    r = requests.post(url, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}, json=body)
+    r = requests.post(url, headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+                      json=body, timeout=30)
+    if r.status_code >= 500:
+        raise TransientVercelError(f'trigger_deploy {r.status_code}: {r.text[:200]}')
     return r.status_code, r.json()
 
 def vercel_production_alias(token, project_name, team_id=None):
