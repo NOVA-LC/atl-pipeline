@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS leads (
     email3_sent_at  TIMESTAMP,
     email3_resend_id TEXT,
     replied         INTEGER DEFAULT 0,
+    do_not_contact  INTEGER DEFAULT 0,           -- set when prospect unsubscribes; never email again
     notes           TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS leads (
 CREATE INDEX IF NOT EXISTS idx_verify ON leads(verify_status);
 CREATE INDEX IF NOT EXISTS idx_research ON leads(research_status);
 CREATE INDEX IF NOT EXISTS idx_email1 ON leads(email1_sent_at);
+CREATE INDEX IF NOT EXISTS idx_dnc ON leads(do_not_contact);
 
 CREATE TABLE IF NOT EXISTS blog_posts (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +67,13 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 );
 """
 
+def _migrate(c):
+    """Idempotent column adds for existing DBs that predate new fields."""
+    cols = {row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()}
+    if 'do_not_contact' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN do_not_contact INTEGER DEFAULT 0')
+
+
 @contextmanager
 def conn(path=DB_PATH):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +81,7 @@ def conn(path=DB_PATH):
     c.row_factory = sqlite3.Row
     c.execute('PRAGMA journal_mode=WAL')
     c.executescript(SCHEMA)
+    _migrate(c)
     try:
         yield c
         c.commit()
@@ -113,9 +123,12 @@ def leads_pending(c, stage):
     if stage == 'deploy':
         return c.execute("SELECT * FROM leads WHERE demo_html IS NOT NULL AND vercel_url IS NULL").fetchall()
     if stage == 'email1':
-        return c.execute("SELECT * FROM leads WHERE vercel_url IS NOT NULL AND email IS NOT NULL AND email != '' AND email1_sent_at IS NULL").fetchall()
+        return c.execute("""SELECT * FROM leads WHERE vercel_url IS NOT NULL AND email IS NOT NULL AND email != ''
+                            AND email1_sent_at IS NULL AND do_not_contact = 0""").fetchall()
     if stage == 'email2':
-        return c.execute("SELECT * FROM leads WHERE email1_sent_at < datetime('now','-3 days') AND email2_sent_at IS NULL AND replied = 0").fetchall()
+        return c.execute("""SELECT * FROM leads WHERE email1_sent_at < datetime('now','-3 days')
+                            AND email2_sent_at IS NULL AND replied = 0 AND do_not_contact = 0""").fetchall()
     if stage == 'email3':
-        return c.execute("SELECT * FROM leads WHERE email2_sent_at < datetime('now','-4 days') AND email3_sent_at IS NULL AND replied = 0").fetchall()
+        return c.execute("""SELECT * FROM leads WHERE email2_sent_at < datetime('now','-4 days')
+                            AND email3_sent_at IS NULL AND replied = 0 AND do_not_contact = 0""").fetchall()
     raise ValueError(f'unknown stage: {stage}')

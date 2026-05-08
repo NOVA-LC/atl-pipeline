@@ -324,7 +324,8 @@ def send_followups(limit):
                 msg = _email.write_email(prompt_tpl, lead, lead['vercel_url'], r)
                 status, resp = _email.send_via_resend(
                     env['RESEND_API_KEY'], env.get('RESEND_FROM_EMAIL'), env.get('RESEND_FROM_NAME','Tyler · Nova'),
-                    lead['email'], msg['subject'], msg['body'], reply_to=env.get('RESEND_REPLY_TO')
+                    lead['email'], msg['subject'], msg['body'], reply_to=env.get('RESEND_REPLY_TO'),
+                    lead_id=lead['id'],
                 )
                 if status == 200 and resp.get('id'):
                     with db.conn() as c:
@@ -332,6 +333,24 @@ def send_followups(limit):
                     click.echo(f"  ✉ {lead['email']} {field_at}")
             except Exception as e:
                 click.echo(f"  ! followup failed: {e}")
+
+@cli.command('mark-unsubscribed')
+@click.argument('email')
+def mark_unsubscribed(email):
+    """Permanently mark a lead as do-not-contact. Use when someone replies STOP
+    or hits the one-click unsubscribe link. Required for CAN-SPAM compliance —
+    the law requires honoring opt-outs within 10 business days."""
+    with db.conn() as c:
+        rows = c.execute('SELECT id, business_name FROM leads WHERE lower(email) = lower(?)',
+                         (email,)).fetchall()
+        if not rows:
+            click.echo(f'  ! no lead with email = {email}')
+            return
+        for row in rows:
+            db.update_lead(c, row['id'], do_not_contact=1, replied=1,
+                           notes='unsubscribed — do-not-contact')
+            click.echo(f'  ✓ unsubscribed: {row["business_name"]} ({email})')
+
 
 @cli.command('mark-replied')
 @click.argument('email')

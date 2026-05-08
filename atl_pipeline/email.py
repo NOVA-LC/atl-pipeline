@@ -11,9 +11,14 @@ EMAIL_SYSTEM = """You write short cold emails that explain — in plain English 
 Voice: friendly, direct, lowercase-leaning, never salesy. Sound like a person who's done the work, not a marketer. No "I hope this finds you well."
 
 The email must do three things in order:
-1. Open with one CONCRETE money-relevant reason a website prints leads for THIS kind of business — quote a stat, a customer behavior, a competitor's setup, or a missed-call scenario. Specific beats clever.
+1. Open with one CONCRETE money-relevant reason a website prints leads for THIS kind of business — a customer behavior, a missed-call scenario, or a generic stat. Specific beats clever.
 2. Show the live demo URL inline (raw URL, never a button or 'click here').
 3. Ask one short question — usually their best number to call.
+
+CRITICAL — never invent specifics:
+- Do NOT name competitors by name (you don't know which competitors actually rank).
+- Do NOT cite specific stats with sources you didn't see ("according to Google data" etc.) unless the stat is general industry knowledge a 50-year-old contractor would already accept.
+- Do NOT claim you saw their reviews / their Facebook / their listing unless the research_summary explicitly mentions it.
 
 Banned words: synergy, leverage, transform, elevate, unlock, "in today's digital landscape", "boost", "amazing", "exciting opportunity"."""
 
@@ -22,11 +27,14 @@ EMAIL_PROMPT_DAY1 = """Write a Day-1 cold email to {owner_first} who runs {busin
 You already built them a working demo website at {demo_url}. They didn't ask. You did it on spec.
 
 The email must:
-1. Open with a punchy, money-relevant reason they need a real site. Pick the angle that fits a {category}. Spirit examples (do not copy verbatim — invent your own using these as the spirit):
-   - "9 out of 10 people google a {category} before calling — if you don't show up clean, your competitor does."
-   - "Right now when somebody searches '{category} {city}', three other shops have a 'request a quote' button before yours."
-   - "your google business profile is doing its job. but the click goes to a facebook page from 2019, and that's where leads die."
-   - "after-hours calls are 30% of the work for {category}s. without a contact form, those leads call the next guy on the list."
+1. Open with a punchy, money-relevant reason they need a real site. Pick the angle that fits a {category}. Spirit examples (DO NOT copy verbatim — invent your own line using the spirit):
+   - "most folks google before they call. if your business doesn't show up with a real site, the call goes to whoever does."
+   - "without a real site, after-hours leads go to voicemail and rarely call back. a quote form catches them while you sleep."
+   - "directory listings convert at 1-2%. a clean home-services site converts at 8-15%. that's 4-7x more calls from the same eyeballs."
+   - "people decide who to call in about 5 seconds of clicking. a facebook page or a yelp tile rarely wins that 5 seconds."
+
+   IMPORTANT: do not name specific competitors. Do not say "three other shops" or list company names. Use generic phrasing like "competitors" or "the next guy on the list".
+
 2. Then: "i built this for you on spec — {demo_url} — no charge to look."
 3. End with a direct ask: "what's a good number to call you on to flesh it out into your real site?"
 
@@ -98,17 +106,58 @@ def write_email(prompt_tpl, lead, demo_url, research, model='claude-haiku-4-5-20
         text = text.split('\n', 1)[1].rsplit('```', 1)[0]
     return json.loads(text)
 
-def send_via_resend(api_key, from_email, from_name, to_email, subject, body_text, reply_to=None, headers=None):
+def _can_spam_footer():
+    """Build the CAN-SPAM-compliant footer.
+
+    Required by US law for commercial email:
+    1. Physical mailing address (NOVA_MAILING_ADDRESS env var)
+    2. Clear opt-out mechanism
+
+    Tyler must set NOVA_MAILING_ADDRESS in env or this raises — sending without
+    a real address is illegal and the FTC fine is up to $51K per email.
+    """
+    address = os.environ.get('NOVA_MAILING_ADDRESS', '').strip()
+    if not address:
+        # Fall back to a placeholder so the pipeline doesn't crash, but log loudly.
+        # Tyler MUST set this in production.
+        address = '(set NOVA_MAILING_ADDRESS env var — required for CAN-SPAM)'
+    from_email = os.environ.get('RESEND_FROM_EMAIL', 'tyler@gonenova.com')
+    return (
+        f"\n\n—\n"
+        f"{address}\n"
+        f"reply STOP to opt out, or email {from_email} with 'unsubscribe' in the subject."
+    )
+
+
+def send_via_resend(api_key, from_email, from_name, to_email, subject, body_text,
+                    reply_to=None, headers=None, lead_id=None):
+    """Send via Resend with CAN-SPAM footer + List-Unsubscribe headers.
+
+    List-Unsubscribe header: lets Gmail/Outlook show a one-click 'Unsubscribe'
+    button. The mailto sends to tyler+unsub-{lead_id}@gonenova.com which lands
+    in Tyler's inbox — `process-unsubscribes` CLI command can scan and mark.
+    """
+    body_with_footer = body_text + _can_spam_footer()
+
+    # One-click unsubscribe via mailto
+    unsub_email = (os.environ.get('RESEND_FROM_EMAIL', 'tyler@gonenova.com')
+                   .replace('@', f'+unsub-{lead_id or "x"}@'))
+    unsub_headers = {
+        'List-Unsubscribe': f'<mailto:{unsub_email}?subject=unsubscribe>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    }
+    if headers:
+        unsub_headers.update(headers)
+
     payload = {
         'from': f'{from_name} <{from_email}>',
         'to': [to_email],
         'subject': subject,
-        'text': body_text,
+        'text': body_with_footer,
+        'headers': unsub_headers,
     }
     if reply_to:
         payload['reply_to'] = reply_to
-    if headers:
-        payload['headers'] = headers
     r = requests.post(f'{RESEND_API}/emails',
                       headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
                       json=payload)
@@ -117,7 +166,8 @@ def send_via_resend(api_key, from_email, from_name, to_email, subject, body_text
 def send_day1(lead, demo_url, research, env):
     if not lead.get('email'):
         return None
-    msg = write_email(EMAIL_PROMPT_DAY1, lead, demo_url, research, model=env.get('ANTHROPIC_MODEL', 'claude-sonnet-4-6'))
+    msg = write_email(EMAIL_PROMPT_DAY1, lead, demo_url, research,
+                      model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
     status, resp = send_via_resend(
         env['RESEND_API_KEY'],
         env.get('RESEND_FROM_EMAIL', 'tyler@gonenova.com'),
@@ -125,5 +175,6 @@ def send_day1(lead, demo_url, research, env):
         lead['email'],
         msg['subject'], msg['body'],
         reply_to=env.get('RESEND_REPLY_TO'),
+        lead_id=lead.get('id'),
     )
     return {'subject': msg['subject'], 'body': msg['body'], 'status': status, 'resend_id': resp.get('id'), 'response': resp}
