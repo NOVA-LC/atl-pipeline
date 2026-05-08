@@ -19,21 +19,31 @@ from . import (db, ingest as _ingest, dedup, verify, research, generate,
                deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox)
 
 
-def _url_is_live(url, timeout=8):
-    """HEAD the URL. Returns True if 2xx or 3xx, False otherwise."""
+def _url_is_live(url, timeout=8, max_attempts=5, wait_seconds=20):
+    """HEAD the URL with retry-and-wait. Vercel deploys often take 30-90s after
+    trigger to actually serve, so a single check returns false-positive 404.
+
+    Returns True if any attempt 2xx/3xx within max_attempts * wait_seconds.
+    """
     if not url:
         return False
-    try:
-        r = requests.head(url, allow_redirects=True, timeout=timeout)
-        return 200 <= r.status_code < 400
-    except Exception:
+    import time
+    for attempt in range(max_attempts):
         try:
-            # Some hosts 405 on HEAD; fall back to small GET
-            r = requests.get(url, timeout=timeout, stream=True)
-            r.close()
-            return 200 <= r.status_code < 400
+            r = requests.head(url, allow_redirects=True, timeout=timeout)
+            if 200 <= r.status_code < 400:
+                return True
         except Exception:
-            return False
+            try:
+                r = requests.get(url, timeout=timeout, stream=True)
+                r.close()
+                if 200 <= r.status_code < 400:
+                    return True
+            except Exception:
+                pass
+        if attempt < max_attempts - 1:
+            time.sleep(wait_seconds)
+    return False
 
 
 def _research_is_personalized(research):

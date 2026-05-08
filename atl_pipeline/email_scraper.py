@@ -73,28 +73,38 @@ def _emails_from_html(html):
 
 
 def _score(addr, expected_domain=None):
-    """Higher score = better candidate. -1000 means reject."""
+    """Higher score = better candidate. -1000 means reject.
+
+    We REJECT role-based addresses (info@, contact@, sales@, etc.) outright.
+    Tyler's pitch is to the owner — info@ inboxes go unread, often hit spam
+    filters, and email_verify will mark them 'risky' and blank them out anyway.
+    Better to return nothing than a guaranteed-skip.
+    """
     local, _, domain = addr.partition('@')
     if not domain:
         return -1000
     if any(skip in domain for skip in SKIP_DOMAINS):
         return -1000
+    # Hard reject role-based — sending to info@ is a waste
+    if local.split('+')[0] in ROLE_PREFIXES:
+        return -1000
+    # Hard reject noreply variants
+    if 'noreply' in local or 'no-reply' in local or 'donotreply' in local:
+        return -1000
     score = 0
     # Bonus if email is on the same domain as the website we scraped
     if expected_domain and expected_domain in domain:
         score += 50
-    # Penalty for role-based addresses
-    if local.split('+')[0] in ROLE_PREFIXES:
-        score -= 30
-    # Penalty for "noreply" / "donotreply"
-    if 'noreply' in local or 'no-reply' in local or 'donotreply' in local:
-        score -= 100
-    # Bonus for first.last patterns
-    if '.' in local and '@' not in local:
-        score += 10
+    # Bonus for first.last patterns (the pattern most likely to be the owner)
+    if '.' in local:
+        score += 15
     # Penalty for very long local-parts (often hash-like)
     if len(local) > 30:
         score -= 20
+    # Penalty for digit-heavy local-parts (often automated / non-personal)
+    digit_ratio = sum(c.isdigit() for c in local) / max(1, len(local))
+    if digit_ratio > 0.3:
+        score -= 15
     return score
 
 
