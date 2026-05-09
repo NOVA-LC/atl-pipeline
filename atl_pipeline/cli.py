@@ -182,7 +182,30 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             click.echo(f"  ! deploy failed for {lead['slug']}: {e}")
     click.echo(f'  ✓ deployed {deployed} demos')
 
-    # 9. SMS Day-1 — text every lead with a phone + deployed demo, capped by warmup
+    # 9a. CALL SHEET (moved BEFORE SMS so Tyler gets it even if SMS stage stalls)
+    try:
+        with db.conn() as c:
+            todays = c.execute("""SELECT * FROM leads
+                                  WHERE date(updated_at) = date('now')
+                                    AND vercel_url IS NOT NULL
+                                  ORDER BY rating DESC, reviews DESC""").fetchall()
+        if todays:
+            md = call_sheet.render_call_sheet([dict(r) for r in todays])
+            if not dry_run:
+                cs_status, cs_resp = call_sheet.email_call_sheet(md, env, subject_suffix=f'{len(todays)} leads')
+                click.echo(f"  📋 call sheet emailed (status={cs_status}, {len(todays)} leads)")
+            else:
+                with open(_dryrun_log_path(), 'a') as f:
+                    f.write(f"\n{'='*70}\nCALL SHEET ({len(todays)} leads):\n{md}\n")
+                click.echo(f"  📋 call sheet dry-run logged ({len(todays)} leads)")
+    except Exception as e:
+        click.echo(f'  ! call-sheet failed (non-fatal): {e}')
+
+    # 9. SMS Day-1 — skip entirely if Twilio not fully configured
+    if not (env.get('TWILIO_ACCOUNT_SID') and env.get('TWILIO_AUTH_TOKEN') and env.get('TWILIO_FROM_NUMBER')):
+        click.echo('SMS Day-1 SKIPPED: Twilio not fully configured (need ACCOUNT_SID + AUTH_TOKEN + FROM_NUMBER).')
+        click.echo('Done.')
+        return
     click.echo(f'Sending Day-1 SMS (cap: {cap}){"  [DRY-RUN]" if dry_run else ""}...')
     with db.conn() as c:
         pending = db.leads_pending(c, 'sms1')[:cap * 2]
@@ -233,26 +256,7 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             click.echo(f"  ! send failed for {lead.get('phone')}: {e}")
     click.echo(f'  sent {sent}/{cap} Day-1 SMS (skipped {skipped_quality} thin research, {skipped_url} dead demo URL)')
 
-    # 10. CALL SHEET — email Tyler the daily list of demos + phones for context
-    try:
-        with db.conn() as c:
-            todays = c.execute("""SELECT * FROM leads
-                                  WHERE date(updated_at) = date('now')
-                                    AND vercel_url IS NOT NULL
-                                  ORDER BY rating DESC, reviews DESC""").fetchall()
-        if todays:
-            md = call_sheet.render_call_sheet([dict(r) for r in todays])
-            if not dry_run:
-                cs_status, cs_resp = call_sheet.email_call_sheet(md, env, subject_suffix=f'{len(todays)} leads')
-                click.echo(f"  📋 call sheet emailed (status={cs_status}, {len(todays)} leads)")
-            else:
-                with open(_dryrun_log_path(), 'a') as f:
-                    f.write(f"\n{'='*70}\nCALL SHEET ({len(todays)} leads):\n{md}\n")
-                click.echo(f"  📋 call sheet dry-run logged ({len(todays)} leads)")
-    except Exception as e:
-        click.echo(f'  ! call-sheet failed (non-fatal): {e}')
-
-    # 11. BLOG drop
+    # 10. BLOG drop
     if not skip_blog and sent > 0:
         click.echo('Blog drop to gonenova...')
         with db.conn() as c:
