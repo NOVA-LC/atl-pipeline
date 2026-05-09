@@ -142,9 +142,10 @@ def enrich_lead(lead, research, env, verify_payload=None):
     if lead.get('email'):
         return out  # already has one
 
-    # 0. FREE SCRAPE FIRST — try any URL we already know about.
+    # 0. FREE SCRAPE FIRST — try any URL we already know about, then escalate
+    # to Brave Search if nothing found (Tier 4 inside best_email_for_lead).
     from . import email_scraper
-    scraped = email_scraper.best_email_for_lead(verify_payload, research)
+    scraped = email_scraper.best_email_for_lead(verify_payload, research, lead=lead)
     if scraped:
         addr, score, source = scraped
         out['owner_email'] = addr

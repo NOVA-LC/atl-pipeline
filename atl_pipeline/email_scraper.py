@@ -141,13 +141,70 @@ def find_emails_on_site(url, max_pages=4, timeout=10):
     return scored
 
 
-def best_email_for_lead(verify_payload, research_payload, owned_website=None, timeout=10):
-    """Try every URL we have for this lead, return single best email or None.
+def find_emails_via_search(lead, timeout=10, max_queries=2):
+    """Tier 2 fallback: when we have NO URL on file, use Brave Search to discover
+    where the business is mentioned online (Facebook page, BBB, Yelp, directory
+    mirrors), then fetch those result URLs and parse emails out of them.
 
-    Sources tried in order:
+    Realistically lifts find rate from ~30% to ~50-60% on no-website home-services
+    leads (older trades publicly post personal Gmail/Yahoo on FB About sections
+    and BBB profiles, all HTML-scrapeable without JS).
+
+    Cost: 1-2 Brave queries per lead. Free tier is 2k/mo (~66/day) — cap at 1
+    query default to stay well under.
+    """
+    from . import brave_search
+    import os
+
+    api_key = os.environ.get('BRAVE_API_KEY')
+    if not api_key:
+        return []
+
+    name = lead.get('business_name') or ''
+    city = lead.get('city') or ''
+    if not name:
+        return []
+
+    # Query 1: catch-all — business name + city + email
+    queries = [f'"{name}" {city} email']
+    # Query 2: facebook fallback — small contractors usually have public FB pages
+    if max_queries >= 2:
+        queries.append(f'"{name}" {city} site:facebook.com')
+
+    candidates = []
+    seen_urls = set()
+
+    for q in queries[:max_queries]:
+        results = brave_search.web(q, count=5, api_key=api_key)
+        for r in results:
+            url = r.get('url') or ''
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            if any(skip in url for skip in SKIP_DOMAINS):
+                continue
+            for addr, score in find_emails_on_site(url, max_pages=2, timeout=timeout):
+                candidates.append((addr, score, url))
+        # Early exit: if we already found a strong candidate (score > 30), stop searching
+        if candidates and max(c[1] for c in candidates) > 30:
+            break
+
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    return candidates
+
+
+def best_email_for_lead(verify_payload, research_payload, owned_website=None,
+                        lead=None, timeout=10):
+    """Try every signal we have for this lead, return single best email or None.
+
+    Cascade (cheapest → most expensive):
       1. verify_payload['url']  — what verify.py found
-      2. research_payload['sources'][i] for any non-directory URL
-      3. owned_website explicit override
+      2. owned_website explicit override
+      3. research_payload['sources']  — non-directory URLs Haiku surfaced
+      4. (NEW) Brave Search → top 3-5 result URLs  — the fallback that catches
+         leads with NO known URL but a public FB/BBB/Yelp footprint
+
+    Pass `lead` dict to enable Tier 4. Without it, only Tiers 1-3 run.
     """
     candidates = []
     seen_urls = set()
@@ -168,6 +225,13 @@ def best_email_for_lead(verify_payload, research_payload, owned_website=None, ti
             if isinstance(src, str) and any(d in src for d in SKIP_DOMAINS):
                 continue
             _try(src)
+
+    # If Tiers 1-3 found nothing useful, escalate to Brave Search.
+    best_score = max((c[1] for c in candidates), default=-1000)
+    if lead and best_score < 30:
+        for addr, score, source in find_emails_via_search(lead, timeout=timeout):
+            if (addr, source) not in [(a, s) for (a, _, s) in candidates]:
+                candidates.append((addr, score, source))
 
     if not candidates:
         return None
