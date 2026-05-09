@@ -153,3 +153,74 @@ def scan_all():
             M.logout()
         except Exception:
             pass
+
+
+def scan_twilio_replies():
+    """Scan Twilio for inbound SMS messages. Anyone who replied to a Day-1 SMS
+    gets replied=1 (suppresses Day-3 voicemail). STOP/UNSUBSCRIBE replies also
+    set do_not_contact=1.
+
+    Returns (reply_count, optout_count) or (None, None) if Twilio not configured.
+    """
+    import os, requests, re
+    sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    token = os.environ.get('TWILIO_AUTH_TOKEN')
+    from_num = os.environ.get('TWILIO_FROM_NUMBER')
+    if not (sid and token and from_num):
+        return (None, None)
+
+    # List inbound SMS from the last 14 days
+    since = (datetime.utcnow() - timedelta(days=14)).strftime('%Y-%m-%d')
+    url = f'https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json'
+    try:
+        r = requests.get(url, auth=(sid, token),
+                         params={'To': from_num, 'DateSent>': since, 'PageSize': 200},
+                         timeout=15)
+        if r.status_code != 200:
+            return (0, 0)
+        messages = r.json().get('messages', [])
+    except Exception:
+        return (0, 0)
+
+    if not messages:
+        return (0, 0)
+
+    # Build a phone-digit -> lead_id lookup once
+    with db.conn() as c:
+        rows = c.execute("""SELECT id, phone, business_name FROM leads
+                            WHERE sms1_sent_at IS NOT NULL
+                              AND replied = 0
+                              AND do_not_contact = 0
+                              AND sms1_sent_at > datetime('now', '-21 days')""").fetchall()
+    digit_map = {}
+    for row in rows:
+        d = ''.join(c for c in (row['phone'] or '') if c.isdigit())
+        if len(d) == 11 and d.startswith('1'):
+            d = d[1:]
+        if len(d) == 10:
+            digit_map[d] = (row['id'], row['business_name'])
+
+    replied_count = optout_count = 0
+    OPTOUT_RE = re.compile(r'\b(stop|unsubscribe|quit|cancel|end|opt\s*out|remove)\b', re.IGNORECASE)
+
+    for msg in messages:
+        from_num_raw = msg.get('from') or ''
+        body = (msg.get('body') or '').strip()
+        from_digits = ''.join(c for c in from_num_raw if c.isdigit())
+        if len(from_digits) == 11 and from_digits.startswith('1'):
+            from_digits = from_digits[1:]
+        if from_digits not in digit_map:
+            continue
+        lead_id, biz_name = digit_map[from_digits]
+        is_optout = bool(OPTOUT_RE.search(body))
+        with db.conn() as c:
+            if is_optout:
+                db.update_lead(c, lead_id, replied=1, do_not_contact=1,
+                               notes=f'sms-optout: {body[:200]}')
+                optout_count += 1
+                print(f'  ✓ SMS opt-out: {biz_name} ({from_num_raw})')
+            else:
+                db.update_lead(c, lead_id, replied=1, notes=f'sms-reply: {body[:200]}')
+                replied_count += 1
+                print(f'  ✓ SMS reply: {biz_name} ({from_num_raw}): "{body[:80]}"')
+    return (replied_count, optout_count)

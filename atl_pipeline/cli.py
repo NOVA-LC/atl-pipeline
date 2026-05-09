@@ -16,7 +16,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from . import (db, ingest as _ingest, dedup, verify, research, generate,
-               deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox)
+               deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox,
+               sms as _sms, vm as _vm, call_sheet)
 
 
 def _url_is_live(url, timeout=8, max_attempts=5, wait_seconds=20):
@@ -77,8 +78,8 @@ def cli(): pass
 # scrape — autonomous Outscraper job
 # ---------------------------------------------------------------------------
 @cli.command()
-@click.option('--queries', default=5, help='Number of queries to rotate through today')
-@click.option('--per-query', default=25, help='Results per query')
+@click.option('--queries', default=8, help='Number of queries to rotate through today')
+@click.option('--per-query', default=20, help='Results per query (8x20=160 raw → ~50-70 valid after dedup+verify)')
 def scrape(queries, per_query):
     api = os.environ.get('OUTSCRAPER_API_KEY')
     if not api:
@@ -139,44 +140,9 @@ def run(xlsx, max_sends, skip_blog, dry_run):
                 status = 'failed' if '_error' in r or '_parse_error' in r else 'done'
                 db.update_lead(c, lid, research_status=status, research_payload=json.dumps(r))
 
-    # 5. ENRICH — find owner email for leads without one
-    click.echo('Enriching emails (Hunter / Snov)...')
-    with db.conn() as c:
-        rows = c.execute("""SELECT * FROM leads WHERE research_status='done'
-                            AND (email IS NULL OR email = '')""").fetchall()
-    enriched = 0
-    for row in rows:
-        lead = dict(row)
-        r = json.loads(lead.get('research_payload') or '{}')
-        v = json.loads(lead.get('verify_payload') or '{}')
-        out = enrich.enrich_lead(lead, r, env, verify_payload=v)
-        if out.get('owner_email'):
-            with db.conn() as c:
-                db.update_lead(c, lead['id'], email=out['owner_email'],
-                               research_payload=json.dumps({**r, **out}))
-            enriched += 1
-            click.echo(f"    + {out['owner_email']} ({out.get('owner_email_source','?')}) → {lead['business_name']}")
-    click.echo(f'  found {enriched} new emails')
-
-    # 6. EMAIL VERIFY — drop invalid + risky before they bounce
-    click.echo('Verifying emails (MX + syntax + Reoon)...')
-    with db.conn() as c:
-        rows = c.execute("""SELECT id, email FROM leads
-                            WHERE email IS NOT NULL AND email != ''
-                            AND (verify_email_payload IS NULL)""").fetchall()
-    if rows:
-        try:
-            email_results = email_verify.verify_batch([r['email'] for r in rows], reoon_key=env.get('REOON_API_KEY'))
-            with db.conn() as c:
-                for r in rows:
-                    res = email_results.get(r['email'], {'verdict':'unknown'})
-                    db.update_lead(c, r['id'], verify_email_payload=json.dumps(res))
-                    if res['verdict'] in ('invalid', 'risky'):
-                        # blank out the email so we never send to it
-                        db.update_lead(c, r['id'], email='', notes=f"email-{res['verdict']}: {res.get('reason')}")
-            click.echo(f'  verified {len(rows)} emails')
-        except Exception as e:
-            click.echo(f'  ! email-verify error: {e}')
+    # 5. (SKIPPED in phone-outreach mode) — used to enrich emails. Kept here as
+    #    a noop comment so future readers see the intentional skip. Phones cover
+    #    100% of leads from Outscraper; emails covered <15%, so we pivoted.
 
     # 7. GENERATE demo HTML
     click.echo('Generating demo HTML...')
@@ -216,11 +182,10 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             click.echo(f"  ! deploy failed for {lead['slug']}: {e}")
     click.echo(f'  ✓ deployed {deployed} demos')
 
-    # 9. EMAIL — Day-1 sends, capped by warmup, with quality gates
-    click.echo(f'Sending Day-1 emails (cap: {cap}){"  [DRY-RUN]" if dry_run else ""}...')
+    # 9. SMS Day-1 — text every lead with a phone + deployed demo, capped by warmup
+    click.echo(f'Sending Day-1 SMS (cap: {cap}){"  [DRY-RUN]" if dry_run else ""}...')
     with db.conn() as c:
-        # Pull a buffer larger than cap so quality-gates have headroom
-        pending = db.leads_pending(c, 'email1')[:cap * 3]
+        pending = db.leads_pending(c, 'sms1')[:cap * 2]
     sent = 0
     skipped_url = skipped_quality = 0
     for lead_row in pending:
@@ -229,14 +194,14 @@ def run(xlsx, max_sends, skip_blog, dry_run):
         lead = dict(lead_row)
         r = json.loads(lead.get('research_payload') or '{}')
 
-        # GATE 1: research must have produced something personal
+        # GATE 1: research must have produced something personal (so the SMS isn't generic)
         if not _research_is_personalized(r):
             skipped_quality += 1
             with db.conn() as c:
                 db.update_lead(c, lead['id'], notes=f"skipped: research too generic")
             continue
 
-        # GATE 2: demo URL must actually load
+        # GATE 2: demo URL must actually load (Vercel deploy may still be in flight)
         if not _url_is_live(lead.get('vercel_url')):
             skipped_url += 1
             with db.conn() as c:
@@ -246,26 +211,48 @@ def run(xlsx, max_sends, skip_blog, dry_run):
 
         try:
             if dry_run:
-                msg = _email.write_email(_email.EMAIL_PROMPT_DAY1, lead, lead['vercel_url'], r,
-                                         model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
+                msg = _sms.write_sms(lead, lead['vercel_url'], r,
+                                     model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
                 with open(_dryrun_log_path(), 'a') as f:
-                    f.write(f"\n{'='*70}\nTO: {lead['email']}  ({lead['business_name']})\nDEMO: {lead['vercel_url']}\nSUBJECT: {msg['subject']}\n\n{msg['body']}\n")
+                    f.write(f"\n{'='*70}\nTO: {lead['phone']}  ({lead['business_name']})\nDEMO: {lead['vercel_url']}\n\n{msg['body']}\n")
                 sent += 1
-                click.echo(f"  📝 dry-run logged: {lead['email']}")
+                click.echo(f"  📝 dry-run logged: {lead['phone']}")
             else:
-                result = _email.send_day1(lead, lead['vercel_url'], r, env)
-                if result and result.get('resend_id'):
+                result = _sms.send_day1_sms(lead, lead['vercel_url'], r, env)
+                if result and result.get('sid'):
                     with db.conn() as c:
                         db.update_lead(c, lead['id'],
-                            email1_sent_at=datetime.datetime.utcnow().isoformat(),
-                            email1_resend_id=result['resend_id'])
+                            sms1_sent_at=datetime.datetime.utcnow().isoformat(),
+                            sms1_sid=result['sid'],
+                            sms1_body=result.get('body'))
                     sent += 1
-                    click.echo(f"  ✉ {lead['email']}")
+                    click.echo(f"  ✉ {lead['phone']}  ({lead['business_name']})")
+                elif result:
+                    click.echo(f"  ! SMS failed for {lead.get('phone')}: status={result.get('status')} resp={result.get('response')}")
         except Exception as e:
-            click.echo(f"  ! send failed for {lead['email']}: {e}")
-    click.echo(f'  sent {sent}/{cap} Day-1 emails (skipped {skipped_quality} for thin research, {skipped_url} for dead demo URL)')
+            click.echo(f"  ! send failed for {lead.get('phone')}: {e}")
+    click.echo(f'  sent {sent}/{cap} Day-1 SMS (skipped {skipped_quality} thin research, {skipped_url} dead demo URL)')
 
-    # 10. BLOG drop
+    # 10. CALL SHEET — email Tyler the daily list of demos + phones for context
+    try:
+        with db.conn() as c:
+            todays = c.execute("""SELECT * FROM leads
+                                  WHERE date(updated_at) = date('now')
+                                    AND vercel_url IS NOT NULL
+                                  ORDER BY rating DESC, reviews DESC""").fetchall()
+        if todays:
+            md = call_sheet.render_call_sheet([dict(r) for r in todays])
+            if not dry_run:
+                cs_status, cs_resp = call_sheet.email_call_sheet(md, env, subject_suffix=f'{len(todays)} leads')
+                click.echo(f"  📋 call sheet emailed (status={cs_status}, {len(todays)} leads)")
+            else:
+                with open(_dryrun_log_path(), 'a') as f:
+                    f.write(f"\n{'='*70}\nCALL SHEET ({len(todays)} leads):\n{md}\n")
+                click.echo(f"  📋 call sheet dry-run logged ({len(todays)} leads)")
+    except Exception as e:
+        click.echo(f'  ! call-sheet failed (non-fatal): {e}')
+
+    # 11. BLOG drop
     if not skip_blog and sent > 0:
         click.echo('Blog drop to gonenova...')
         with db.conn() as c:
@@ -357,16 +344,42 @@ def daily(ctx, dry_run):
         raise
 
 # ---------------------------------------------------------------------------
-# send-followups — Day-3 + Day-7
+# send-followups — Day-3 ringless voicemail to non-responders
 # ---------------------------------------------------------------------------
 @cli.command()
 @click.option('--limit', default=50)
 def send_followups(limit):
+    """Day-3 ringless voicemail drop via Slybroadcast for any prospect who got
+    SMS Day-1 but hasn't replied. Old email-followup logic kept below as a
+    fallback if anyone's still in the email pipeline (won't fire normally)."""
     env = dict(os.environ)
+
+    # ---- Day-3 ringless voicemail drop ----
+    with db.conn() as c:
+        vm_pending = db.leads_pending(c, 'vm1')[:limit]
+    if vm_pending:
+        click.echo(f'Day-3 voicemail drop: {len(vm_pending)} non-responders...')
+        phones = [r['phone'] for r in vm_pending if r['phone']]
+        result = _vm.send_voicemail_drop(phones, env)
+        if result is None:
+            click.echo('  ! Slybroadcast not configured (set SLYBROADCAST_USER/PASS/AUDIO_URL/CALLER_ID env)')
+        else:
+            session = result.get('session_id')
+            click.echo(f"  ✓ dropped to {len(phones)} numbers · status={result['status']} session={session}")
+            with db.conn() as c:
+                for r in vm_pending:
+                    db.update_lead(c, r['id'],
+                        vm1_sent_at=datetime.datetime.utcnow().isoformat(),
+                        vm1_id=session)
+    else:
+        click.echo('Day-3 voicemail drop: 0 pending')
+
+    # ---- Legacy email follow-ups (only fires for any leads still on email-mode) ----
     with db.conn() as c:
         d3 = db.leads_pending(c, 'email2')[:limit]
         d7 = db.leads_pending(c, 'email3')[:limit]
-    click.echo(f'Day-3: {len(d3)}, Day-7: {len(d7)}')
+    if d3 or d7:
+        click.echo(f'(legacy) Day-3 email: {len(d3)}, Day-7 email: {len(d7)}')
     for batch, prompt_tpl, field_at, field_id in [
         (d3, _email.EMAIL_PROMPT_DAY3, 'email2_sent_at', 'email2_resend_id'),
         (d7, _email.EMAIL_PROMPT_DAY7, 'email3_sent_at', 'email3_resend_id'),
@@ -429,13 +442,22 @@ def check_replies():
        landed at tyler+unsub-{lead_id}@gonenova.com. Requires GMAIL_APP_PASSWORD.
     2. Resend events — clicks on the demo link (strongest cheap engagement signal).
     """
-    # 1. Gmail inbox scan (replies + unsubscribes)
+    # 1. Gmail inbox scan (email replies + email unsubscribes — for any leads
+    #    still on the email pipeline; harmless no-op for phone-only mode)
     click.echo('Scanning Gmail inbox for replies + unsubscribes...')
     unsub, reply = inbox.scan_all()
     if unsub is None:
         click.echo('  ! GMAIL_APP_PASSWORD not set or IMAP failed — skipping inbox scan')
     else:
         click.echo(f'  ✓ inbox: {unsub} unsubscribes, {reply} replies')
+
+    # 2. Twilio inbound SMS scan (Day-1 SMS replies + STOP opt-outs)
+    click.echo('Scanning Twilio for SMS replies...')
+    sms_reply, sms_optout = inbox.scan_twilio_replies()
+    if sms_reply is None:
+        click.echo('  ! Twilio creds missing — skipping SMS inbox scan')
+    else:
+        click.echo(f'  ✓ SMS: {sms_reply} replies, {sms_optout} opt-outs')
 
     # 2. Resend click-events (anyone who clicked the demo link is engaged)
     api_key = os.environ.get('RESEND_API_KEY')

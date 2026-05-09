@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS leads (
     email2_resend_id TEXT,
     email3_sent_at  TIMESTAMP,
     email3_resend_id TEXT,
+    -- SMS + voicemail (phone-outreach mode, replaces email-send pipeline)
+    sms1_sent_at    TIMESTAMP,
+    sms1_sid        TEXT,                        -- twilio message SID
+    sms1_body       TEXT,
+    vm1_sent_at     TIMESTAMP,                   -- Day-3 ringless voicemail drop
+    vm1_id          TEXT,                        -- slybroadcast campaign ID
     replied         INTEGER DEFAULT 0,
     do_not_contact  INTEGER DEFAULT 0,           -- set when prospect unsubscribes; never email again
     notes           TEXT,
@@ -72,6 +78,17 @@ def _migrate(c):
     cols = {row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()}
     if 'do_not_contact' not in cols:
         c.execute('ALTER TABLE leads ADD COLUMN do_not_contact INTEGER DEFAULT 0')
+    # SMS + voicemail columns (phone-outreach mode)
+    if 'sms1_sent_at' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN sms1_sent_at TIMESTAMP')
+    if 'sms1_sid' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN sms1_sid TEXT')
+    if 'sms1_body' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN sms1_body TEXT')
+    if 'vm1_sent_at' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN vm1_sent_at TIMESTAMP')
+    if 'vm1_id' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN vm1_id TEXT')
 
 
 @contextmanager
@@ -136,4 +153,19 @@ def leads_pending(c, stage):
     if stage == 'email3':
         return c.execute("""SELECT * FROM leads WHERE email2_sent_at < datetime('now','-4 days')
                             AND email3_sent_at IS NULL AND replied = 0 AND do_not_contact = 0""").fetchall()
+    # PHONE-OUTREACH STAGES
+    if stage == 'sms1':
+        # Day-1 SMS: every lead with phone + deployed demo, not yet texted
+        return c.execute("""SELECT * FROM leads
+                            WHERE vercel_url IS NOT NULL
+                              AND phone IS NOT NULL AND phone != ''
+                              AND sms1_sent_at IS NULL
+                              AND do_not_contact = 0""").fetchall()
+    if stage == 'vm1':
+        # Day-3 ringless voicemail: leads texted 3+ days ago, no reply, no VM yet
+        return c.execute("""SELECT * FROM leads
+                            WHERE sms1_sent_at < datetime('now','-3 days')
+                              AND vm1_sent_at IS NULL
+                              AND replied = 0
+                              AND do_not_contact = 0""").fetchall()
     raise ValueError(f'unknown stage: {stage}')
