@@ -20,6 +20,27 @@ echo ">> [entrypoint] demos repo target: $DEMOS_REPO_LOCAL"
 # Ensure parent dir exists (volume mount may need it)
 mkdir -p "$(dirname "$DEMOS_REPO_LOCAL")"
 
+# One-time cleanup: pre-fix vercel_urls in DB all 404 (alias never assigned).
+# Clear them so the deploy stage re-runs against the fixed code path. Marker file
+# on the persistent volume gates this to fire exactly once. Python one-liner so
+# we don't depend on the sqlite3 CLI being in the Nixpacks image.
+DB_PATH="${PIPELINE_DB_PATH:-/data/pipeline.db}"
+MARKER="$(dirname "$DB_PATH")/.cleanup_stale_urls_v1.done"
+if [ ! -f "$MARKER" ] && [ -f "$DB_PATH" ]; then
+    echo ">> [entrypoint] one-time cleanup: clearing pre-fix vercel_urls"
+    python -c "
+import sqlite3, os
+db = os.environ.get('PIPELINE_DB_PATH', '/data/pipeline.db')
+con = sqlite3.connect(db)
+before = con.execute('SELECT COUNT(*) FROM leads WHERE vercel_url IS NOT NULL').fetchone()[0]
+con.execute(\"UPDATE leads SET vercel_url = NULL WHERE vercel_url IS NOT NULL AND updated_at < '2026-05-08 22:00'\")
+con.commit()
+after = con.execute('SELECT COUNT(*) FROM leads WHERE vercel_url IS NOT NULL').fetchone()[0]
+print(f'>> [entrypoint] cleared {before - after} stale URLs ({before} -> {after})')
+con.close()
+" && touch "$MARKER"
+fi
+
 # Clone or pull the demos repo
 if [ ! -d "$DEMOS_REPO_LOCAL/.git" ]; then
     echo ">> [entrypoint] cloning demos repo (first run)"
