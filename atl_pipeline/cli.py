@@ -184,22 +184,39 @@ def run(xlsx, max_sends, skip_blog, dry_run):
 
     # 9a. CALL SHEET (moved BEFORE SMS so Tyler gets it even if SMS stage stalls)
     try:
+        # Look back 7 days so the sheet always has SOMETHING (today's batch + recent)
         with db.conn() as c:
             todays = c.execute("""SELECT * FROM leads
-                                  WHERE date(updated_at) = date('now')
+                                  WHERE updated_at > datetime('now', '-7 days')
                                     AND vercel_url IS NOT NULL
-                                  ORDER BY rating DESC, reviews DESC""").fetchall()
+                                    AND phone IS NOT NULL AND phone != ''
+                                  ORDER BY rating DESC, reviews DESC
+                                  LIMIT 100""").fetchall()
         if todays:
             md = call_sheet.render_call_sheet([dict(r) for r in todays])
+            # Always write to volume so Tyler can pull from /data even if email fails
+            try:
+                sheet_path = Path(os.environ.get('PIPELINE_DB_PATH', 'atl_pipeline.db')).parent / f'call_sheet_{datetime.date.today().isoformat()}.md'
+                sheet_path.parent.mkdir(parents=True, exist_ok=True)
+                sheet_path.write_text(md)
+                click.echo(f'  📁 call sheet written to {sheet_path}')
+            except Exception as e:
+                click.echo(f'  ! file write failed (non-fatal): {e}')
+            # Always print full content to stdout so it's in Railway logs
+            click.echo('=== CALL SHEET START ===')
+            click.echo(md)
+            click.echo('=== CALL SHEET END ===')
+            # Try email send (may fail with bad Resend key — non-fatal)
             if not dry_run:
-                cs_status, cs_resp = call_sheet.email_call_sheet(md, env, subject_suffix=f'{len(todays)} leads')
-                click.echo(f"  📋 call sheet emailed (status={cs_status}, {len(todays)} leads)")
-            else:
-                with open(_dryrun_log_path(), 'a') as f:
-                    f.write(f"\n{'='*70}\nCALL SHEET ({len(todays)} leads):\n{md}\n")
-                click.echo(f"  📋 call sheet dry-run logged ({len(todays)} leads)")
+                try:
+                    cs_status, cs_resp = call_sheet.email_call_sheet(md, env, subject_suffix=f'{len(todays)} leads')
+                    click.echo(f"  📋 call sheet emailed (status={cs_status}, {len(todays)} leads)")
+                    if cs_status != 200:
+                        click.echo(f'    ! Resend response: {cs_resp}')
+                except Exception as e:
+                    click.echo(f'  ! email send failed (non-fatal — content above): {e}')
     except Exception as e:
-        click.echo(f'  ! call-sheet failed (non-fatal): {e}')
+        click.echo(f'  ! call-sheet failed: {e}')
 
     # 9. SMS Day-1 — skip entirely if Twilio not fully configured
     if not (env.get('TWILIO_ACCOUNT_SID') and env.get('TWILIO_AUTH_TOKEN') and env.get('TWILIO_FROM_NUMBER')):
