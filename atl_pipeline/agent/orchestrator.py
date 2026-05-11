@@ -341,6 +341,31 @@ def build_for_lead(
         warnings.append(f'write_demo failed: {e!r}')
         html_path = ''
 
+    # 6b. Awwwards-vs-template classifier — runs after publish, never gates.
+    # Captures a tier verdict in the agent_log for visibility. Tyler can use
+    # this to decide whether to actually send the demo to the prospect, or
+    # whether to re-roll. Non-blocking by design — quality signal, not
+    # publish gate (yet).
+    try:
+        from . import awwwards
+        if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
+            verdict = awwwards.classify(composed, final['fingerprint_inputs'], html, tracker, client=client)
+            log.append({
+                'ts': _now_iso(), 'stage': 'awwwards',
+                'tier': verdict.get('tier'),
+                'score': verdict.get('score'),
+                'one_liner': verdict.get('one_line_verdict'),
+                'must_fixes': verdict.get('must_fixes', [])[:3],
+                'cost_cents': verdict.get('cost_cents', 0),
+            })
+            if verdict.get('errors'):
+                warnings.extend([f'awwwards: {e}' for e in verdict['errors']])
+        else:
+            log.append({'ts': _now_iso(), 'stage': 'awwwards', 'tier': 'skipped',
+                        'reason': 'per-lead cost cap reached before classifier'})
+    except Exception as e:
+        warnings.append(f'awwwards classifier crashed: {e!r}')
+
     # 7. Save DB row updates
     fp = assemble.fingerprint(final['fingerprint_inputs'])
     cost_cents = int(tracker.per_lead_spent_cents)
