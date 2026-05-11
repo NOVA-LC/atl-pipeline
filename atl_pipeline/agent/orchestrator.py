@@ -130,6 +130,35 @@ def build_for_lead(
                 'source': voice_card.get('_source', 'unknown'),
                 'owner_voice_words': voice_card.get('_owner_voice_word_count', 0)})
 
+    # 2b. PTC-lite design candidate generation (Tier 4) — runs Haiku 4.5
+    # N times with temperature spread to enumerate (palette, type_pair,
+    # sections) candidates, scores them for anti-clone + vertical fit +
+    # doctrine compliance, picks the winner. Compose then runs once with
+    # the design pinned, focusing its budget on copy.
+    # Non-blocking: failures fall through to compose's own design picks.
+    if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
+        try:
+            from . import design_ptc
+            ptc_result = design_ptc.pick_design(
+                lead, voice_card, neighbor_fps, tracker,
+                full_catalog=full_catalog, client=client,
+            )
+            if ptc_result.get('design_hint'):
+                research_brief = dict(research_brief or {})
+                research_brief['_design_hint'] = ptc_result['design_hint']
+                log.append({
+                    'ts': _now_iso(), 'stage': 'design-ptc',
+                    'winner_palette': ptc_result['design_hint'].get('palette'),
+                    'winner_type_pair': ptc_result['design_hint'].get('type_pair'),
+                    'winner_score': ptc_result['winner_score'],
+                    'n_rejected': len(ptc_result['rejected_candidates']),
+                    'cost_cents': ptc_result['cost_cents'],
+                })
+            elif ptc_result.get('errors'):
+                warnings.extend([f'design-ptc: {e}' for e in ptc_result['errors']])
+        except Exception as e:
+            warnings.append(f'design-ptc crashed: {e!r}')
+
     # 3. Composition sub-agent — may run twice (revise once)
     composed: dict = {}
     if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:

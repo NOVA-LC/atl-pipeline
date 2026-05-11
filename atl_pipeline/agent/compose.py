@@ -364,6 +364,20 @@ def compose_page(
 
     system = _build_system(full_catalog, voice_card_summary=voice_summary)
 
+    # PTC may have already picked the design — if so, pin it so compose
+    # spends its budget on copy, not on re-rolling design choices.
+    design_hint = (research_brief or {}).get('_design_hint') or {}
+    design_pin_block = ''
+    if design_hint:
+        design_pin_block = (
+            "\n\nDESIGN PINNED BY UPSTREAM PTC (use these exact values — do NOT override):\n"
+            f"  palette: {design_hint.get('palette')!r}\n"
+            f"  type_pair: {design_hint.get('type_pair')!r}\n"
+            f"  sections: {json.dumps(design_hint.get('sections', {}))}\n"
+            f"  PTC rationale: {design_hint.get('rationale', '')[:200]}\n"
+            "Your job is to write the copy + pick motion presets. The design is decided."
+        )
+
     user = (
         f"BUSINESS:\n"
         f"  name: {lead.get('business_name')}\n"
@@ -371,7 +385,8 @@ def compose_page(
         f"  city: {lead.get('city')}, {lead.get('state')}\n"
         f"  phone: {lead.get('phone')}\n"
         f"  rating: {lead.get('rating')}★ across {lead.get('reviews')} Google reviews\n"
-        f"\nRESEARCH BRIEF:\n{json.dumps(research_brief, indent=2)[:6000]}\n"
+        f"\nRESEARCH BRIEF:\n{json.dumps({k: v for k, v in (research_brief or {}).items() if not k.startswith('_')}, indent=2)[:6000]}"
+        f"{design_pin_block}\n"
         f"\nCompose the JSON now. Be specific to this business, never generic."
     )
 
