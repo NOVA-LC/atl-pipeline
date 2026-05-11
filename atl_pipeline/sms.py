@@ -72,10 +72,14 @@ def write_sms(lead, demo_url, research, model='claude-haiku-4-5-20251001'):
     return json.loads(text)
 
 
-def send_sms_via_twilio(account_sid, auth_token, from_number, to_number, body):
+def send_sms_via_twilio(account_sid, auth_token, from_number, to_number, body, media_url=None):
     """Send via Twilio REST API. Returns (status_code, response_json).
 
     Doesn't import twilio SDK to keep deps minimal — just uses the REST API directly.
+
+    If `media_url` is provided, sends as MMS (Twilio auto-upgrades the message
+    type when MediaUrl is set). MMS is ~1.5x the cost of SMS but the preview
+    image lands in the prospect's text thread and dramatically lifts click-through.
     """
     import requests
     if not (account_sid and auth_token and from_number and to_number):
@@ -90,26 +94,42 @@ def send_sms_via_twilio(account_sid, auth_token, from_number, to_number, body):
     # else assume already formatted
 
     url = f'https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json'
-    r = requests.post(
-        url,
-        auth=(account_sid, auth_token),
-        data={'From': from_number, 'To': to, 'Body': body},
-        timeout=15,
-    )
+    data = {'From': from_number, 'To': to, 'Body': body}
+    if media_url:
+        data['MediaUrl'] = media_url
+    r = requests.post(url, auth=(account_sid, auth_token), data=data, timeout=15)
     return r.status_code, r.json()
 
 
-def send_day1_sms(lead, demo_url, research, env):
-    """Generate body via Haiku and send via Twilio. Returns dict or None on failure."""
+def send_day1_sms(lead, demo_url, research, env, media_url=None):
+    """Generate body via Haiku and send via Twilio. Returns dict or None on failure.
+
+    If `media_url` is provided (the preview PNG hosted on Vercel), the message
+    is sent as MMS with the image attached. We HEAD-check the media URL first
+    so a 404'd image doesn't break the send — Twilio will reject MMS if the
+    URL isn't reachable.
+    """
     if not lead.get('phone'):
         return None
 
     msg = write_sms(lead, demo_url, research,
-                    model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
+                    model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5'))
     body = msg['body'].strip()
     # Hard cap to keep cost low (3+ segments cost more)
     if len(body) > 320:
         body = body[:317] + '...'
+
+    # Verify the media URL is reachable before asking Twilio to fetch it.
+    # If the preview hasn't propagated through Vercel yet, fall back to plain SMS.
+    mms_url = None
+    if media_url:
+        try:
+            import requests as _rq
+            head = _rq.head(media_url, timeout=4, allow_redirects=True)
+            if 200 <= head.status_code < 400:
+                mms_url = media_url
+        except Exception:
+            pass
 
     status, resp = send_sms_via_twilio(
         env.get('TWILIO_ACCOUNT_SID'),
@@ -117,10 +137,13 @@ def send_day1_sms(lead, demo_url, research, env):
         env.get('TWILIO_FROM_NUMBER'),
         lead['phone'],
         body,
+        media_url=mms_url,
     )
     return {
         'body': body,
         'status': status,
         'sid': resp.get('sid') if isinstance(resp, dict) else None,
+        'mms_url': mms_url,
+        'mms_attached': mms_url is not None,
         'response': resp,
     }

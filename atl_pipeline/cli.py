@@ -145,23 +145,49 @@ def run(xlsx, max_sends, skip_blog, dry_run):
     #    a noop comment so future readers see the intentional skip. Phones cover
     #    100% of leads from Outscraper; emails covered <15%, so we pivoted.
 
-    # 7. GENERATE demo HTML
-    click.echo('Generating demo HTML...')
+    # 7. GENERATE demo HTML + per-lead preview PNG for MMS outreach
+    click.echo('Generating demo HTML + preview images...')
     with db.conn() as c:
         pending = db.leads_pending(c, 'demo')[:cap]
     repo_path = os.environ.get('DEMOS_REPO_LOCAL', './demos_repo')
     slugs = []
+    extra_paths = []
     for lead_row in pending:
         lead = dict(lead_row)
         r = json.loads(lead.get('research_payload') or '{}')
         html = generate.render_demo(lead, r)
         deploy.write_demo(repo_path, lead['slug'], html)
-        with db.conn() as c:
-            db.update_lead(c, lead['id'], demo_html=html)
+        # Storefront preview PNG for MMS — never blocks demo publish on failure
+        try:
+            from . import outreach_image as _img
+            preview = _img.write_preview_for_lead(lead, repo_path)
+            if preview.get('ok'):
+                extra_paths.append(f'static/preview/{lead["slug"]}.png')
+                with db.conn() as c:
+                    db.update_lead(c, lead['id'], demo_html=html)
+            else:
+                with db.conn() as c:
+                    db.update_lead(c, lead['id'], demo_html=html)
+                click.echo(f"  ! preview failed for {lead['slug']}: {preview.get('reason', 'unknown')}")
+        except Exception as e:
+            with db.conn() as c:
+                db.update_lead(c, lead['id'], demo_html=html)
+            click.echo(f"  ! preview crashed for {lead['slug']}: {e}")
         slugs.append(lead['slug'])
     if slugs:
-        click.echo(f'  committing + pushing {len(slugs)} demos...')
-        deploy.git_commit_and_push(repo_path, f'demos: {datetime.date.today().isoformat()} batch of {len(slugs)}', slugs)
+        # Ensure vercel.json + api/track.js are up to date in the demos repo
+        # before pushing — so every batch ships the latest infra.
+        infra_changed = deploy.ensure_infra(repo_path)
+        if infra_changed:
+            extra_paths.extend(infra_changed)
+            click.echo(f'  ↻ updated infra in demos repo: {infra_changed}')
+        click.echo(f'  committing + pushing {len(slugs)} demos + {len(extra_paths)} aux files...')
+        deploy.git_commit_and_push(
+            repo_path,
+            f'demos: {datetime.date.today().isoformat()} batch of {len(slugs)}',
+            slugs,
+            extra_paths=extra_paths,
+        )
 
     # 8. DEPLOY — Vercel project per slug
     click.echo('Deploying to Vercel...')
@@ -250,16 +276,20 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             click.echo(f"  ✗ skip (demo 404): {lead['business_name']} → {lead.get('vercel_url')}")
             continue
 
+        # Attach the preview PNG as MMS if it was generated + is reachable
+        from . import outreach_image as _img
+        preview_media_url = _img.preview_url(lead['slug']) if lead.get('slug') else None
+
         try:
             if dry_run:
                 msg = _sms.write_sms(lead, lead['vercel_url'], r,
-                                     model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'))
+                                     model=env.get('ANTHROPIC_MODEL', 'claude-haiku-4-5'))
                 with open(_dryrun_log_path(), 'a') as f:
-                    f.write(f"\n{'='*70}\nTO: {lead['phone']}  ({lead['business_name']})\nDEMO: {lead['vercel_url']}\n\n{msg['body']}\n")
+                    f.write(f"\n{'='*70}\nTO: {lead['phone']}  ({lead['business_name']})\nDEMO: {lead['vercel_url']}\nMMS: {preview_media_url}\n\n{msg['body']}\n")
                 sent += 1
                 click.echo(f"  📝 dry-run logged: {lead['phone']}")
             else:
-                result = _sms.send_day1_sms(lead, lead['vercel_url'], r, env)
+                result = _sms.send_day1_sms(lead, lead['vercel_url'], r, env, media_url=preview_media_url)
                 if result and result.get('sid'):
                     with db.conn() as c:
                         db.update_lead(c, lead['id'],
@@ -267,7 +297,8 @@ def run(xlsx, max_sends, skip_blog, dry_run):
                             sms1_sid=result['sid'],
                             sms1_body=result.get('body'))
                     sent += 1
-                    click.echo(f"  ✉ {lead['phone']}  ({lead['business_name']})")
+                    mms_tag = ' [MMS]' if result.get('mms_attached') else ''
+                    click.echo(f"  ✉ {lead['phone']}  ({lead['business_name']}){mms_tag}")
                 elif result:
                     click.echo(f"  ! SMS failed for {lead.get('phone')}: status={result.get('status')} resp={result.get('response')}")
         except Exception as e:

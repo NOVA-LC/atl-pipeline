@@ -69,5 +69,51 @@ section{position:relative}
 
 <div class="demo-tag">{{ business.name }}</div>
 
+{% raw %}<script>
+(function(){
+  try {
+    var slug = location.pathname.split('/').filter(Boolean)[0] || location.hostname.split('.')[0];
+    var origin = location.origin;
+    var fired = { view: false, engaged: false };
+    function send(event, extra) {
+      if (fired[event]) return;
+      fired[event] = true;
+      var url = origin + '/api/track?slug=' + encodeURIComponent(slug) + '&event=' + event + (extra || '');
+      try {
+        if (navigator.sendBeacon) { navigator.sendBeacon(url); }
+        else { var img = new Image(); img.src = url; }
+      } catch (_) {}
+    }
+    send('view');
+    var start = Date.now();
+    var maxScrollPct = 0;
+    function onScroll() {
+      var docH = document.documentElement.scrollHeight - window.innerHeight;
+      if (docH <= 0) return;
+      var pct = Math.min(100, Math.round((window.scrollY / docH) * 100));
+      if (pct > maxScrollPct) maxScrollPct = pct;
+      maybeFire();
+    }
+    function maybeFire() {
+      if (fired.engaged) return;
+      var dwell = Date.now() - start;
+      if (dwell >= 30000 && maxScrollPct >= 50) {
+        send('engaged', '&dwell_ms=' + dwell + '&scroll_pct=' + maxScrollPct);
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    setInterval(maybeFire, 5000);
+    window.addEventListener('beforeunload', function(){
+      if (!fired.engaged) {
+        var dwell = Date.now() - start;
+        if (dwell >= 20000 && maxScrollPct >= 30) {
+          send('engaged', '&dwell_ms=' + dwell + '&scroll_pct=' + maxScrollPct);
+        }
+      }
+    });
+  } catch (_) {}
+})();
+</script>{% endraw %}
+
 </body>
 </html>
