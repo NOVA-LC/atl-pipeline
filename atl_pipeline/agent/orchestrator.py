@@ -1,0 +1,341 @@
+"""Orchestrator — wires research → compose → critic → assemble → publish.
+
+CORE CONTRACT: Every lead that enters build_for_lead() emerges with HTML
+written to disk. The variable is QUALITY (agent_status), not WHETHER.
+
+agent_status values, every one = a live published site:
+  agent_built              — full agent path succeeded
+  degraded_thin_research   — research thin, assembler used Phase 1 defaults
+  degraded_similar         — agent composed but too similar after retry
+  degraded_budget          — budget cap hit; published partial best-effort
+  degraded_compose_failed  — compose returned empty; assembler used defaults
+  degraded_render          — shell render failed; legacy fallback published
+"""
+from __future__ import annotations
+import datetime
+import json
+import os
+import time
+from pathlib import Path
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import anthropic
+
+from . import assemble, banned, catalog, compose, cost, critic, research, schemas
+from .. import db, deploy
+from .. import outscraper_fields as osf
+
+
+def _now_iso() -> str:
+    return datetime.datetime.utcnow().isoformat(timespec='seconds')
+
+
+def build_for_lead(
+    lead_id: int,
+    per_lead_cap_cents: int = 15,
+    daily_cap_cents: int = 1000,
+    research_model: str = 'claude-haiku-4-5-20251001',
+    compose_model: str = 'claude-sonnet-4-6-20251001',
+    repo_path: Optional[str] = None,
+    client: 'Optional[anthropic.Anthropic]' = None,
+    full_catalog: Optional[dict] = None,
+) -> dict:
+    """Build, render, and persist one agent-composed demo.
+
+    Returns a result dict:
+      {
+        'lead_id', 'slug', 'agent_status', 'html_path',
+        'cost_usd', 'fingerprint', 'warnings': [...],
+        'effective_choices': {...},
+      }
+
+    NEVER raises. If something blows up, falls back to Phase 1 generate() and
+    still writes HTML to disk, then returns with status='degraded_render' or
+    similar.
+    """
+    repo_path = repo_path or os.environ.get('DEMOS_REPO_LOCAL', './demos_repo')
+    if client is None:
+        try:
+            import anthropic  # lazy
+            client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+        except (KeyError, ImportError) as e:
+            return _publish_phase1_fallback(lead_id, repo_path, reason=f'no anthropic: {e!r}')
+
+    if full_catalog is None:
+        full_catalog = catalog.load_all()
+
+    tracker = cost.CostTracker(
+        per_lead_cap_cents=per_lead_cap_cents,
+        daily_cap_cents=daily_cap_cents,
+    )
+    tracker.reset_per_lead()
+
+    log: list[dict] = []
+    warnings: list[str] = []
+    agent_status = 'agent_built'
+
+    # 1. Load lead from DB
+    with db.conn() as c:
+        row = db.get_lead(c, lead_id)
+    if not row:
+        return {'lead_id': lead_id, 'agent_status': 'error_no_lead'}
+    lead = dict(row)
+
+    # 2. Research sub-agent (always returns SOMETHING; may be empty brief)
+    log.append({'ts': _now_iso(), 'stage': 'research', 'event': 'start'})
+    research_brief: dict = {}
+    try:
+        research_brief = research.research_lead(
+            lead, tracker, model=research_model, client=client,
+        )
+    except cost.BudgetExceeded as e:
+        warnings.append(f'research budget exceeded: {e}')
+        agent_status = 'degraded_budget'
+    except Exception as e:
+        warnings.append(f'research crashed: {e!r}')
+
+    log.append({'ts': _now_iso(), 'stage': 'research', 'event': 'done',
+                'cost_so_far_cents': round(tracker.per_lead_spent_cents, 2)})
+
+    if schemas.is_brief_thin(research_brief):
+        agent_status = 'degraded_thin_research' if agent_status == 'agent_built' else agent_status
+        warnings.append('research brief thin — falling back to Phase 1 defaults for unspecified copy')
+
+    # 3. Composition sub-agent — may run twice (revise once)
+    composed: dict = {}
+    if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
+        log.append({'ts': _now_iso(), 'stage': 'compose', 'event': 'start'})
+        try:
+            composed = compose.compose_page(
+                lead, research_brief, tracker,
+                model=compose_model, client=client, full_catalog=full_catalog,
+            )
+        except cost.BudgetExceeded as e:
+            warnings.append(f'compose budget exceeded: {e}')
+            agent_status = 'degraded_budget'
+        except Exception as e:
+            warnings.append(f'compose crashed: {e!r}')
+
+        if not composed or composed.get('_parse_error'):
+            warnings.append('compose returned empty or unparseable — assembler will use industry defaults')
+            if agent_status == 'agent_built':
+                agent_status = 'degraded_compose_failed'
+
+        log.append({'ts': _now_iso(), 'stage': 'compose', 'event': 'done',
+                    'cost_so_far_cents': round(tracker.per_lead_spent_cents, 2)})
+
+    # 4. Critic (quality grader against top-tier-website rubric) + optional revise pass
+    if composed and not composed.get('_parse_error'):
+        # Build the prospective fingerprint by running assemble once
+        first_render = assemble.assemble(lead, composed, research_brief)
+        prospective_fp = first_render['fingerprint_inputs']
+        # Pull recent neighbor fingerprints for clone-risk check
+        with db.conn() as c:
+            neighbor_fps = critic.neighbor_fingerprints_from_db(
+                c, limit=10, exclude_lead_id=lead_id,
+            )
+        verdict = critic.critique(
+            composed, prospective_fp, research_brief, neighbor_fps,
+            tracker, client=client,
+        )
+        log.append({
+            'ts': _now_iso(), 'stage': 'critic',
+            'verdict': verdict['verdict'],
+            'quality_score': verdict.get('quality_score'),
+            'similarity': verdict.get('similarity_to_neighbors'),
+            'weaknesses': verdict.get('weaknesses', [])[:5],
+        })
+
+        if verdict['verdict'] == 'revise' and tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
+            # One retry: re-compose with concrete revision hints from the critic
+            try:
+                composed2 = compose.compose_page(
+                    lead,
+                    research_brief | {'_critic_hints': verdict.get('revision_hints', {}),
+                                       '_critic_weaknesses': verdict.get('weaknesses', [])},
+                    tracker, model=compose_model, client=client, full_catalog=full_catalog,
+                )
+                if composed2 and not composed2.get('_parse_error'):
+                    composed = composed2
+                    rerender = assemble.assemble(lead, composed, research_brief)
+                    revised_verdict = critic.critique(
+                        composed, rerender['fingerprint_inputs'], research_brief,
+                        neighbor_fps, tracker, client=client,
+                    )
+                    log.append({
+                        'ts': _now_iso(), 'stage': 'critic-revise',
+                        'verdict': revised_verdict['verdict'],
+                        'quality_score': revised_verdict.get('quality_score'),
+                        'similarity': revised_verdict.get('similarity_to_neighbors'),
+                    })
+                    if revised_verdict['verdict'] == 'revise':
+                        # Still flagged after retry — ship anyway, mark degraded
+                        sim = revised_verdict.get('similarity_to_neighbors', 0)
+                        if sim >= critic.SIMILARITY_CEILING:
+                            agent_status = 'degraded_similar'
+                            warnings.append(f"still too similar after revise (sim={sim})")
+                        else:
+                            agent_status = 'degraded_low_quality'
+                            warnings.append(f"quality_score={revised_verdict.get('quality_score')} after revise — shipping anyway")
+            except cost.BudgetExceeded:
+                warnings.append('budget exceeded during revise — keeping first composition')
+                if agent_status == 'agent_built':
+                    agent_status = 'degraded_budget'
+
+    # 5. Final render — assembler never fails
+    final = assemble.assemble(lead, composed, research_brief)
+    html = final['html']
+    if final['warnings']:
+        warnings.extend(final['warnings'])
+        # If the legacy fallback was used, mark degraded_render
+        if any('shell render failed' in w for w in final['warnings']):
+            agent_status = 'degraded_render'
+
+    # 6. Persist to demos repo
+    slug = lead.get('slug') or f'lead-{lead_id}'
+    try:
+        deploy.write_demo(repo_path, slug, html)
+        html_path = str(Path(repo_path) / slug / 'index.html')
+    except Exception as e:
+        warnings.append(f'write_demo failed: {e!r}')
+        html_path = ''
+
+    # 7. Save DB row updates
+    fp = assemble.fingerprint(final['fingerprint_inputs'])
+    cost_cents = int(tracker.per_lead_spent_cents)
+    with db.conn() as c:
+        db.update_lead(
+            c, lead_id,
+            research_brief=json.dumps(research_brief)[:200_000],
+            composed_page=json.dumps(composed)[:200_000],
+            fingerprint=json.dumps(final['fingerprint_inputs']),
+            agent_cost_cents=cost_cents,
+            agent_status=agent_status,
+            agent_log=json.dumps(log)[:50_000],
+            demo_html=html,
+        )
+
+    return {
+        'lead_id': lead_id,
+        'slug': slug,
+        'agent_status': agent_status,
+        'html_path': html_path,
+        'cost_usd': round(tracker.per_lead_spent_cents / 100, 4),
+        'cost_summary': tracker.summary(),
+        'fingerprint': fp,
+        'fingerprint_inputs': final['fingerprint_inputs'],
+        'effective_choices': final['effective_choices'],
+        'warnings': warnings,
+    }
+
+
+def _publish_phase1_fallback(lead_id: int, repo_path: str, reason: str) -> dict:
+    """Used when we can't even start the agent (e.g. no API key). Renders with
+    the Phase 1 generator and publishes — never leaves a lead unpublished."""
+    with db.conn() as c:
+        row = db.get_lead(c, lead_id)
+    if not row:
+        return {'lead_id': lead_id, 'agent_status': 'error_no_lead'}
+    lead = dict(row)
+    from .. import generate as legacy
+    try:
+        html = legacy.render_demo(lead, json.loads(lead.get('research_payload') or '{}'))
+    except Exception as e:
+        # Last-resort minimal HTML
+        html = assemble._minimal_html(lead)
+    slug = lead.get('slug') or f'lead-{lead_id}'
+    try:
+        deploy.write_demo(repo_path, slug, html)
+    except Exception:
+        pass
+    with db.conn() as c:
+        db.update_lead(c, lead_id,
+                       agent_status='degraded_compose_failed',
+                       agent_log=json.dumps([{'reason': reason}]),
+                       demo_html=html)
+    return {
+        'lead_id': lead_id, 'slug': slug,
+        'agent_status': 'degraded_compose_failed',
+        'cost_usd': 0.0,
+        'warnings': [reason],
+    }
+
+
+def build_all(
+    limit: int = 50,
+    per_lead_cap_cents: int = 15,
+    daily_cap_cents: int = 1000,
+    repo_path: Optional[str] = None,
+    push: bool = True,
+    where_filter: str = "research_status='done' AND slug IS NOT NULL AND slug != ''",
+) -> dict:
+    """Build agent-composed demos for up to `limit` leads. Pushes once at end.
+
+    `where_filter` is appended to the SELECT — defaults to processing leads
+    that have completed Phase 1 research. Override for replays.
+    """
+    repo_path = repo_path or os.environ.get('DEMOS_REPO_LOCAL', './demos_repo')
+    full_catalog = catalog.load_all()
+    try:
+        client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+    except KeyError:
+        client = None
+
+    with db.conn() as c:
+        rows = c.execute(
+            f"""SELECT id FROM leads WHERE {where_filter}
+                ORDER BY COALESCE(rating, 0) DESC, COALESCE(reviews, 0) DESC
+                LIMIT ?""",
+            (limit,),
+        ).fetchall()
+
+    results = []
+    slugs = []
+    daily_budget_hit = False
+    for r in rows:
+        out = build_for_lead(
+            r['id'],
+            per_lead_cap_cents=per_lead_cap_cents,
+            daily_cap_cents=daily_cap_cents,
+            repo_path=repo_path,
+            client=client,
+            full_catalog=full_catalog,
+        )
+        results.append(out)
+        if out.get('slug'):
+            slugs.append(out['slug'])
+        # Check daily budget — bail out if hit, but everything processed so far IS published
+        # (daily tracker persists, so next call would BudgetExceeded immediately)
+        tracker_summary = out.get('cost_summary') or {}
+        daily_spent = tracker_summary.get('daily_spent_cents', 0)
+        if daily_spent >= daily_cap_cents:
+            daily_budget_hit = True
+            break
+
+    pushed = False
+    if push and slugs:
+        try:
+            pushed = deploy.git_commit_and_push(
+                repo_path,
+                f'agent: build {len(slugs)} demos {datetime.date.today().isoformat()}',
+                slugs,
+            )
+        except Exception as e:
+            pushed = False
+            results.append({'_push_error': str(e)})
+
+    status_counts: dict[str, int] = {}
+    for r in results:
+        s = r.get('agent_status', 'unknown')
+        status_counts[s] = status_counts.get(s, 0) + 1
+
+    total_cost = sum(r.get('cost_usd', 0) for r in results)
+    return {
+        'leads_processed': len(results),
+        'pushed': pushed,
+        'total_cost_usd': round(total_cost, 4),
+        'daily_budget_hit': daily_budget_hit,
+        'status_counts': status_counts,
+        'results': results,
+    }

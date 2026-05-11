@@ -18,6 +18,7 @@ load_dotenv()
 from . import (db, ingest as _ingest, dedup, verify, research, generate,
                deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox,
                sms as _sms, vm as _vm, call_sheet)
+from .agent import orchestrator as _agent
 
 
 def _url_is_live(url, timeout=8, max_attempts=5, wait_seconds=20):
@@ -513,6 +514,52 @@ def check_replies():
         except Exception:
             continue
     click.echo(f'  marked {marked} as engaged via demo click')
+
+@cli.command('agent-build')
+@click.option('--lead-id', type=int, required=True, help='DB lead id to build for')
+@click.option('--budget-cents', type=int, default=15, help='Per-lead budget cap in cents (default 15 = $0.15)')
+@click.option('--daily-cap-cents', type=int, default=1000, help='Pipeline-wide daily cap in cents')
+def agent_build(lead_id, budget_cents, daily_cap_cents):
+    """Build ONE agent-composed demo. Smoke-test command — use agent-build-all for batches."""
+    out = _agent.build_for_lead(
+        lead_id,
+        per_lead_cap_cents=budget_cents,
+        daily_cap_cents=daily_cap_cents,
+    )
+    click.echo(json.dumps({
+        'lead_id': out['lead_id'], 'slug': out.get('slug'),
+        'agent_status': out['agent_status'],
+        'cost_usd': out.get('cost_usd'),
+        'effective_choices': out.get('effective_choices'),
+        'warnings': out.get('warnings', [])[:10],
+    }, indent=2))
+
+
+@cli.command('agent-build-all')
+@click.option('--limit', default=50, help='Max leads to process this run')
+@click.option('--budget-cents', type=int, default=15, help='Per-lead cap in cents (default 15 = $0.15)')
+@click.option('--daily-cap-cents', type=int, default=1000, help='Pipeline-wide daily cap in cents (default 1000 = $10)')
+@click.option('--no-push', is_flag=True, help='Render + persist to DB, skip git push')
+@click.option('--where', default=None, help='Override the SELECT WHERE filter')
+def agent_build_all(limit, budget_cents, daily_cap_cents, no_push, where):
+    """Build agent-composed demos for up to N leads. Pushes once at end."""
+    kwargs = dict(
+        limit=limit,
+        per_lead_cap_cents=budget_cents,
+        daily_cap_cents=daily_cap_cents,
+        push=not no_push,
+    )
+    if where:
+        kwargs['where_filter'] = where
+    out = _agent.build_all(**kwargs)
+    click.echo(f"processed: {out['leads_processed']}")
+    click.echo(f"pushed: {out['pushed']}")
+    click.echo(f"total cost: ${out['total_cost_usd']}")
+    click.echo(f"daily budget hit: {out['daily_budget_hit']}")
+    click.echo('status counts:')
+    for status, n in sorted(out['status_counts'].items(), key=lambda kv: -kv[1]):
+        click.echo(f"  {status}: {n}")
+
 
 @cli.command('regenerate-demos')
 @click.option('--limit', default=200, help='Max demos to regenerate')
