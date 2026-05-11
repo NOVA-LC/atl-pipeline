@@ -207,6 +207,52 @@ def build_for_lead(
         except Exception as e:
             warnings.append(f'design-ptc crashed: {e!r}')
 
+    # 2c. Brand-photo generation (Tier 4 / Phase 5) — when the lead has
+    # fewer than TRIGGER_THRESHOLD real GBP photos, generate documentary-
+    # style photoreal imagery via FLUX schnell on Replicate, palette-graded
+    # to whatever PTC picked. This is the structural answer to the "stock
+    # photo padding makes the page look AI" problem.
+    # Skips cleanly when REPLICATE_API_TOKEN is unset.
+    try:
+        from . import image_gen
+        if _real_photo_count < image_gen.TRIGGER_THRESHOLD and os.environ.get('REPLICATE_API_TOKEN'):
+            slug = lead.get('slug') or f'lead-{lead_id}'
+            out_dir = Path(repo_path or '.') / 'demos' / slug / 'assets'
+            palette_name = (research_brief or {}).get('_design_hint', {}).get('palette') \
+                or assemble.DEFAULT_PALETTE_BY_INDUSTRY.get(
+                    pl.industry_for(lead.get('category')), 'clean-trade-blue')
+            log.append({'ts': _now_iso(), 'stage': 'image-gen', 'event': 'start',
+                        'palette': palette_name,
+                        'real_photo_count': _real_photo_count})
+            gen = image_gen.generate_brand_photos(
+                industry=pl.industry_for(lead.get('category')),
+                palette_name=palette_name,
+                palette_dict={},  # FLUX prompt encodes the grade verbally
+                business=lead,
+                out_dir=out_dir,
+                tracker=tracker,
+                want_hero=True,
+                want_gallery=5,
+            )
+            # Thread generated paths into research_brief so compose + assemble
+            # see them. Compose may quote them in copy; assemble will route them
+            # into composed.images.{hero, gallery} during render.
+            research_brief = dict(research_brief or {})
+            research_brief['_generated_photos'] = {
+                'hero': gen.get('hero'),
+                'gallery': gen.get('gallery') or [],
+                'asset_dir': str(out_dir),
+            }
+            log.append({'ts': _now_iso(), 'stage': 'image-gen', 'event': 'done',
+                        'hero': bool(gen.get('hero')),
+                        'gallery_count': len(gen.get('gallery') or []),
+                        'cost_cents': round(gen.get('cost_cents', 0), 2),
+                        'errors': gen.get('errors') or []})
+            if gen.get('errors'):
+                warnings.extend([f'image-gen: {e}' for e in gen['errors']])
+    except Exception as e:
+        warnings.append(f'image-gen crashed: {e!r}')
+
     # 3. Composition sub-agent — may run twice (revise once)
     composed: dict = {}
     if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:

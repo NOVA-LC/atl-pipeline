@@ -181,7 +181,8 @@ def _coerce_image_list(value) -> list:
 
 def _resolve_images(composed: dict, lead: dict, osf_data: dict, industry: str,
                     sections: dict | None = None,
-                    full_catalog: dict | None = None) -> dict:
+                    full_catalog: dict | None = None,
+                    research_brief: dict | None = None) -> dict:
     """Build the images.{hero, gallery} dict.
 
     Photo strategy (the #1 "looks AI" axis):
@@ -206,23 +207,33 @@ def _resolve_images(composed: dict, lead: dict, osf_data: dict, industry: str,
     real_photos = [u for u in raw_photos
                    if isinstance(u, str) and any(h in u for h in _TRUSTED)]
 
-    # Hero: prefer compose's pick, else real_photos[0], else leave empty.
+    # Generated photos from image_gen take priority when real GBP photos
+    # are absent. They're palette-graded to the PTC winner and read as
+    # documentary photojournalism, not stock.
+    gen_photos = (research_brief or {}).get('_generated_photos') or {}
+
+    # Hero priority: composed.images.hero (if not hallucinated Unsplash) →
+    # real_photos[0] → generated hero → empty (template's solid-palette branch)
     hero = images.get('hero')
     if hero and not any(h in hero for h in _TRUSTED) and 'unsplash.com' in hero:
         hero = None  # Compose hallucinated an unsplash URL; drop it.
     if not hero and real_photos:
         hero = real_photos[0]
-    # No Unsplash fallback: empty hero forces template's solid-palette branch.
+    if not hero and gen_photos.get('hero'):
+        hero = gen_photos['hero']  # relative path to /assets/gen-hero-*.jpg
 
-    # Gallery: only real photos. Never pad with stock — the "32 years of
-    # actual work" frame is the most fragile thing on a trade page; mixing
-    # stock destroys it.
+    # Gallery: real photos → generated photos → empty (assembler swaps to
+    # by-the-numbers stats gallery). Never pad with Unsplash stock — the
+    # "32 years of actual work" frame is the most fragile thing on a trade
+    # page; mixing stock destroys it.
     gallery = _coerce_image_list(images.get('gallery'))
     gallery = [g for g in gallery if not (
         isinstance(g.get('url'), str) and 'unsplash.com' in g['url']
         and not any(h in g['url'] for h in _TRUSTED))]
     if not gallery and real_photos:
         gallery = [{'url': u, 'caption': ''} for u in real_photos[1:7]]
+    if not gallery and gen_photos.get('gallery'):
+        gallery = [{'url': p, 'caption': ''} for p in gen_photos['gallery']]
     # Cap to whatever real material exists; assembler/template will suppress
     # the gallery section if the count is too low for the chosen variant.
     gallery = gallery[:6]
@@ -506,7 +517,8 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
 
     # Build template context
     business = _build_business_ctx(lead, osf_data, research_brief)
-    images = _resolve_images(composed, lead, osf_data, industry)
+    images = _resolve_images(composed, lead, osf_data, industry,
+                              research_brief=research_brief)
     copy = _resolve_copy(composed, lead, osf_data, industry, research_brief)
     if copy.get('_banned_phrases_removed'):
         warnings.append(f"scrubbed banned phrases: {copy['_banned_phrases_removed']}")
