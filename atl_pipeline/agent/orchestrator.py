@@ -258,6 +258,71 @@ def build_for_lead(
                 if agent_status == 'agent_built':
                     agent_status = 'degraded_budget'
 
+    # 4b. Photo color-grading — pull every real photo through the palette
+    # tint pipeline before final render. Always-publish: failed gradings
+    # fall back to the original URL transparently.
+    slug = lead.get('slug') or f'lead-{lead_id}'
+    try:
+        from . import photo_grade
+        # Pull palette dict via the catalog using the composed_page's palette
+        # name (after fallback resolution). Falls back to industry default.
+        from . import catalog as _cat
+        _full = full_catalog or _cat.load_all()
+        palette_name = composed.get('palette') if composed else None
+        if not palette_name or palette_name not in _full['available']['palettes']:
+            palette_name = assemble.DEFAULT_PALETTE_BY_INDUSTRY.get(
+                pl.industry_for(lead.get('category')), 'clean-trade-blue')
+        palette_dict = _full['palettes'].get(palette_name) or {}
+        # Source URLs: prefer composed.images, else raw_outscraper photos
+        composed_images = (composed or {}).get('images') or {}
+        photo_urls = []
+        if composed_images.get('hero'):
+            photo_urls.append(composed_images['hero'])
+        if composed_images.get('gallery'):
+            photo_urls.extend([
+                p.get('url') if isinstance(p, dict) else p
+                for p in (composed_images['gallery'] or [])
+            ])
+        # Dedup preserving order
+        seen = set(); photo_urls_dedup = []
+        for u in photo_urls:
+            if u and u.startswith(('http://', 'https://')) and 'lh3.googleusercontent.com' in u and u not in seen:
+                seen.add(u)
+                photo_urls_dedup.append(u)
+        if photo_urls_dedup:
+            grade_results = photo_grade.grade_all_for_lead(
+                photo_urls_dedup, palette_dict, slug, repo_path,
+            )
+            # Build url→graded_url map for successful gradings
+            url_to_graded = {
+                r['original_url']: r['graded_url']
+                for r in grade_results
+                if r.get('ok') and r.get('graded_url')
+            }
+            # Rewrite composed.images to point at graded URLs
+            if url_to_graded and composed and isinstance(composed.get('images'), dict):
+                if composed['images'].get('hero') in url_to_graded:
+                    composed['images']['hero'] = url_to_graded[composed['images']['hero']]
+                new_gallery = []
+                for p in composed['images'].get('gallery') or []:
+                    if isinstance(p, dict) and p.get('url') in url_to_graded:
+                        p = dict(p)
+                        p['url'] = url_to_graded[p['url']]
+                    elif isinstance(p, str) and p in url_to_graded:
+                        p = url_to_graded[p]
+                    new_gallery.append(p)
+                composed['images']['gallery'] = new_gallery
+            n_ok = sum(1 for r in grade_results if r.get('ok'))
+            n_cached = sum(1 for r in grade_results if r.get('from_cache'))
+            log.append({'ts': _now_iso(), 'stage': 'photo-grade',
+                        'urls_in': len(photo_urls_dedup),
+                        'graded_ok': n_ok, 'cached': n_cached,
+                        'palette': palette_name})
+        else:
+            log.append({'ts': _now_iso(), 'stage': 'photo-grade', 'urls_in': 0})
+    except Exception as e:
+        warnings.append(f'photo grading crashed (using original urls): {e!r}')
+
     # 5. Final render — assembler never fails
     final = assemble.assemble(lead, composed, research_brief)
     html = final['html']
@@ -268,7 +333,7 @@ def build_for_lead(
             agent_status = 'degraded_render'
 
     # 6. Persist to demos repo
-    slug = lead.get('slug') or f'lead-{lead_id}'
+    # slug was assigned in 4b (photo grading); reuse here
     try:
         deploy.write_demo(repo_path, slug, html)
         html_path = str(Path(repo_path) / slug / 'index.html')
