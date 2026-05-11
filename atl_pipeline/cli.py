@@ -514,6 +514,57 @@ def check_replies():
             continue
     click.echo(f'  marked {marked} as engaged via demo click')
 
+@cli.command('regenerate-demos')
+@click.option('--limit', default=200, help='Max demos to regenerate')
+@click.option('--dry-run', is_flag=True, help='Render but skip git push (preview only)')
+def regenerate_demos(limit, dry_run):
+    """Re-render HTML for every lead with research_status='done' using the latest
+    generate.py code. Use this after template/personalization changes so existing
+    demos pick up the new look without waiting for a fresh scrape.
+
+    Writes to the demos repo, then a single git push at the end.
+    """
+    repo_path = os.environ.get('DEMOS_REPO_LOCAL', './demos_repo')
+    with db.conn() as c:
+        rows = c.execute(
+            """SELECT * FROM leads
+               WHERE research_status='done'
+                 AND slug IS NOT NULL AND slug != ''
+               ORDER BY COALESCE(rating,0) DESC, COALESCE(reviews,0) DESC
+               LIMIT ?""",
+            (limit,)
+        ).fetchall()
+    click.echo(f'Regenerating {len(rows)} demos with current code...')
+    slugs = []
+    for row in rows:
+        lead = dict(row)
+        try:
+            r = json.loads(lead.get('research_payload') or '{}')
+        except Exception:
+            r = {}
+        try:
+            html = generate.render_demo(lead, r)
+        except Exception as e:
+            click.echo(f"  ! render failed for {lead.get('slug')}: {e}")
+            continue
+        deploy.write_demo(repo_path, lead['slug'], html)
+        with db.conn() as c:
+            db.update_lead(c, lead['id'], demo_html=html)
+        slugs.append(lead['slug'])
+    click.echo(f'  rendered {len(slugs)} demos')
+    if not slugs:
+        return
+    if dry_run:
+        click.echo('  --dry-run: skipping git commit + push')
+        return
+    try:
+        msg = f'demos: regenerate {len(slugs)} with latest template/data'
+        pushed = deploy.git_commit_and_push(repo_path, msg, slugs)
+        click.echo(f'  ✓ pushed: {pushed}')
+    except Exception as e:
+        click.echo(f'  ! push failed: {e}')
+
+
 @cli.command()
 @click.option('--limit', default=50)
 def status(limit):
