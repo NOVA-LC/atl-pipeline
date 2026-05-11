@@ -13,59 +13,59 @@
   },
   "composed": {
     "shell": "standard",
-    "palette": "warm-earth",
-    "type_pair": "lora-inter",
-    "spacing": "default",
+    "palette": "rugged-shop-orange",
+    "type_pair": "bebas-inter",
+    "spacing": "compact",
     "sections": {
-      "hero": "full-bleed-photo",
+      "hero": "rugged-trade",
       "services": "bold-list",
-      "gallery": "masonry",
+      "gallery": "single-feature",
       "reviews": "card-grid",
       "cta": "phone-prominent"
     },
     "copy": {
       "eyebrow": "Marietta, GA \u00b7 Plumber",
-      "headline_top": "Main Line Backed Up",
-      "headline_em": "in East Cobb?",
-      "hero_sub": "Joey Calloway has been fixing drain and slab problems in Marietta since 1993. On-site in 45 minutes. Flat-rate quote before we touch a pipe. License MP207455 on every invoice.",
-      "hero_cta_text": "Call Joey now",
-      "services_h": "What we <em>actually</em> do",
-      "services_lead": "32 years in East Cobb means we've seen it. Here's where we spend most of our time.",
+      "headline_top": "Drain Backed Up in",
+      "headline_em": "East Cobb?",
+      "hero_sub": "Joey Calloway has been fixing Marietta plumbing since 1993. Flat-rate quotes before the wrench turns. On-site in 45 minutes. License MP207455 on every truck.",
+      "hero_cta_text": "Call Joey Now",
+      "services_h": "What We <em>Fix</em>",
+      "services_lead": "Joey or his son Caleb does your job. Nobody else. Here's what we handle, and what it costs.",
       "services": [
         {
-          "title": "Main-line drain clearing",
-          "body": "Camera-jet diagnostics on every main-line call. You get the recorded footage emailed to you the same day.",
+          "title": "Main-Line Drain Clearing",
+          "body": "Camera-jet diagnostics on every main-line call \u2014 we email you the recording before we leave.",
           "price_signal": null
         },
         {
-          "title": "Slab leak repair",
-          "body": "Joey locates the leak first \u2014 no tearing up your floor on a guess. Flat-rate repair, not a flat-rate estimate.",
-          "price_signal": "from $1,890 flat"
+          "title": "Slab Leak Repair",
+          "body": "Pinpointed and repaired flat. Sarah K. paid $1,890 for a slab repair another company quoted $4,500 just to find.",
+          "price_signal": "flat-rate quote before we start"
         },
         {
-          "title": "Water heater service",
-          "body": "Repair or replace \u2014 we'll tell you which one actually makes sense for your unit's age, not what earns us more.",
+          "title": "Water Heater Service",
+          "body": "We tell you if yours has life left. We won't sell you a new one when a flush will do.",
           "price_signal": null
         },
         {
-          "title": "Hydro-jetting",
-          "body": "Grease, roots, buildup \u2014 cleared with 4,000 PSI. Smyrna and Vinings older homes see this most.",
+          "title": "Emergency Plumbing",
+          "body": "Sundays and after-hours calls answered live. Joey came out at 11pm on a Saturday \u2014 that's the job.",
           "price_signal": null
         },
         {
-          "title": "Emergency plumbing",
-          "body": "Saturday at 11pm counts. Joey or Caleb shows up \u2014 no apprentices dispatched when things go sideways.",
-          "price_signal": null
+          "title": "Hydro-Jetting",
+          "body": "High-pressure jetting clears grease, roots, and scale from 2-inch to 6-inch lines. Done in one visit.",
+          "price_signal": "from $275"
         }
       ],
       "what_we_dont_do": [
-        "We don't send apprentices to your job. It's Joey or his son Caleb \u2014 that's the whole crew.",
-        "We don't quote a price and change it at the invoice. What you hear on the phone is what you pay.",
-        "We don't sell you a new water heater when the old one has years left."
+        "We don't send apprentices. Joey or Caleb \u2014 that's the whole crew.",
+        "We don't quote a low number and change it when we're done.",
+        "We don't push a replacement if your equipment has years left."
       ],
-      "guarantee": "We give you a flat-rate price before we start. If our final invoice is a dollar more, the overage is on us.",
-      "gallery_h": "Work out of <em>East Cobb</em>",
-      "reviews_h": "4.9\u2605 across <em>187 reviews</em>",
+      "guarantee": "The price Joey quotes on the phone is the price on your invoice \u2014 or you pay nothing for the diagnostic.",
+      "gallery_h": "The <em>Work</em> Speaks",
+      "reviews_h": "4.9 stars across <em>187</em> Google reviews",
       "reviews_list": [
         {
           "author": "Margaret W.",
@@ -85,22 +85,22 @@
           "author": "Sarah K.",
           "text": "32 years of doing this shows. Joey diagnosed a slab leak in 10 minutes that another company quoted me $4,500 to find. His repair: $1,890 flat.",
           "stars": 5,
-          "date": "2024-08-27",
+          "date": "2024-10-18",
           "source": "google"
         },
         {
           "author": "Robert H.",
           "text": "Does not upsell. Told me my water heater had another 2-3 years if I flushed it; could have sold me a new one easy.",
           "stars": 5,
-          "date": "2024-10-18",
+          "date": "2024-08-30",
           "source": "google"
         }
       ],
-      "cta_h": "Got a drain problem <em>right now?</em>",
-      "cta_sub": "(770) 555-0184 \u00b7 Marietta, GA",
-      "footer_blurb": "Joey Calloway started fixing pipes in East Cobb in 1993 \u2014 still doing it himself, still showing up when he says he will.",
-      "title_tagline": "Peach State Plumbing \u00b7 Marietta, GA",
-      "meta_description": "Flat-rate plumber in Marietta, GA since 1993. Joey Calloway handles main-line clogs, slab leaks & water heaters \u2014 on-site in 45 min. Call (770) 555-0184.",
+      "cta_h": "Call <em>Joey</em> \u2014 We Show Up",
+      "cta_sub": "(770) 555-0184 \u00b7 Marietta & East Cobb",
+      "footer_blurb": "Joey Calloway has been under East Cobb sinks since 1993 \u2014 license MP207455, BBB A+, and Caleb's learning the trade right alongside him.",
+      "title_tagline": "Marietta Plumber \u00b7 Peach State Plumbing",
+      "meta_description": "Joey Calloway fixes drains, slab leaks & water heaters across East Cobb and Marietta. Flat-rate quotes, 45-min response, license MP207455. Call (770) 555-0184.",
       "license_number": "MP207455",
       "neighborhoods": [
         "East Cobb",
@@ -111,23 +111,20 @@
         "Powers Ferry"
       ],
       "facts_used": [
-        "owner.name=Joey Calloway (confidence 0.85 \u2192 used by name)",
-        "years_in_business.value=32 (since 1993)",
-        "license_number=MP207455",
-        "real_reviews[0].author=Margaret W. \u2014 verbatim text used",
-        "real_reviews[1].author=David T. \u2014 verbatim text used; '45 min' on-site claim sourced here",
-        "real_reviews[2].author=Sarah K. \u2014 verbatim text used; '$1,890 flat' slab repair price sourced here",
-        "real_reviews[3].author=Robert H. \u2014 verbatim text used",
-        "description: 'Joey does the work himself or his son Caleb does' \u2192 what_we_dont_do[0]",
-        "description: 'No apprentices on your job' \u2192 services tile #5 body + what_we_dont_do[0]",
-        "description: 'Camera-jet diagnostics with the recording emailed to you' \u2192 services tile #1 body",
-        "description: 'Quote on the phone' + David T. review \u2192 guarantee + what_we_dont_do[1]",
-        "real_reviews[3]: water heater upsell refusal \u2192 what_we_dont_do[2] + services tile #3",
-        "rating=4.9 across 187 Google reviews \u2192 reviews_h",
-        "service_area_neighborhoods \u2192 neighborhoods list",
-        "has_emergency_service=true \u2192 services tile #5",
-        "hours.sat='8am-4pm' + Margaret W. review '11pm' \u2192 emergency outside hours referenced",
-        "real_reviews[2]: '$4,500 competitor quote' vs '$1,890 flat' \u2192 services price_signal"
+        "owner.name=Joey Calloway (confidence 0.85 \u2014 medium/high, used in CTAs and copy)",
+        "years_in_business.value=32 (in business since 1993, used in hero sub and services)",
+        "license_number=MP207455 (used in hero sub, footer, meta description)",
+        "real_reviews[0].author=Margaret W., real_reviews[0].text=verbatim (11pm Saturday, 90 minutes, camera-jet + emailed recording)",
+        "real_reviews[1].author=David T., real_reviews[1].text=verbatim (45 min on-site, price matched, license on truck)",
+        "real_reviews[2].author=Sarah K., real_reviews[2].text=verbatim ($1,890 flat vs $4,500 quote to find)",
+        "real_reviews[3].author=Robert H., real_reviews[3].text=verbatim (water heater honest assessment)",
+        "description=owner-operated, Joey or son Caleb only, camera-jet with recording emailed, BBB A+",
+        "has_emergency_service=true (Sunday emergency-only hours)",
+        "hours.sun=emergency only (used in emergency service tile)",
+        "service_area_neighborhoods=[East Cobb, Smyrna, Vinings, Sandy Springs, Roswell, Powers Ferry]",
+        "rating=4.9 across 187 Google reviews (used in reviews section header)",
+        "real_reviews[1].text: 45 min response time used in hero_sub and services",
+        "real_reviews[2].text: $1,890 flat slab repair figure used in slab leak service tile"
       ]
     },
     "images": {
@@ -142,81 +139,80 @@
     }
   },
   "fingerprint_inputs": {
-    "palette": "warm-earth",
-    "type_pair": "lora-inter",
+    "palette": "rugged-shop-orange",
+    "type_pair": "bebas-inter",
     "sections": {
-      "hero": "full-bleed-photo",
+      "hero": "rugged-trade",
       "services": "bold-list",
-      "gallery": "masonry",
       "reviews": "card-grid",
       "cta": "phone-prominent"
     },
-    "hero_image_url": "https://images.unsplash.com/photo-1551845728-6820a30c64e1?auto=format&fit=crop&w=1600&q=80"
+    "hero_image_url": ""
   },
   "awwwards": {
     "tier": "mid",
     "score": 68,
     "top_strengths": [
-      "Owner-voice signals are exceptional: first name in CTA, 'what we don't do' callout, dated last-updated, license # repeated, named crew members throughout",
-      "Lora/Inter pairing with warm-earth palette is a deliberate, trade-appropriate choice that avoids the generic blue-teal gradient trap",
-      "Service tiles carry real specifics: camera footage emailed, 4000 PSI hydro-jet, Joey-or-Caleb crew policy \u2014 well above bullet-list tier"
+      "Owner-voice is exceptionally strong: named crew, real prices, 'what we don't do' callout, guarantee, and dated last-updated all present",
+      "Bebas/Inter pair gives the hero a trade-credible display weight that lifts it above pure template territory",
+      "Trust infrastructure is complete: license number, neighborhoods strip, sticky CTA, GMB star count \u2014 no gaps"
     ],
     "top_weaknesses": [
-      "Zero motion attributes \u2014 not even a scroll-reveal or sticky CTA animation; the page reads as static HTML regardless of content quality",
-      "No price signals in service tiles (distinct_service_price_signals: 0) despite the copy promising flat-rate transparency \u2014 a missed hierarchy moment",
-      "Masonry gallery with no confirmed palette grading across photos; warm-earth palette commitment lives or dies on photo tinting that can't be verified as consistent"
+      "Zero motion attributes \u2014 not even a subtle scroll-fade; page feels static and flat at a time when even mid-market competitors add entrance animations",
+      "No price signals on any service tile (distinct_service_price_signals: 0) \u2014 the copy mentions $1,890 in a review but the service cards themselves have no 'from $X' anchors",
+      "Bold-list services section almost certainly renders as rectangular cards with no layout break \u2014 no asymmetric grid, full-bleed image, or sticky-caption moment reported"
     ],
     "must_fixes": [
-      "Add at least one entry-point price anchor per service tile (e.g. 'Main-line clearing from $189') \u2014 the flat-rate promise is the brand promise; make it visible before the call",
-      "Introduce selective motion: a single scroll-triggered fade on the reviews section and a subtle sticky-CTA slide-in would break the static feel without noise",
-      "Grade all gallery photos with a warm amber/sepia tint to lock them into the palette \u2014 mismatched GMB photo tones are the fastest way to read 'template' on an otherwise strong design"
+      "Add 'from $X' or a price range to at least 3 service tiles (e.g., 'Main-Line Drain Clearing \u2014 from $189') so the specificity that lives in the reviews also lives in the offer cards",
+      "Introduce at least one scroll-triggered entrance animation (fade-up on service cards, or a counter ticking up to '187 reviews') \u2014 even 2 animated elements breaks the static ceiling",
+      "Break the rectangle somewhere: pull one service tile or the guarantee block full-bleed with an orange-graded photo background, or use an asymmetric two-column with a sticky caption to signal intentional layout craft"
     ],
-    "one_line_verdict": "Copy and trust signals punch agency; design execution stalls at mid \u2014 motion-dead, photo-grading unconfirmed, and zero price anchors waste the flat-rate brand promise.",
+    "one_line_verdict": "Copy is punching agency; design is still playing it safe \u2014 add motion, break one layout rect, and put prices on the cards to close the gap.",
     "cost_cents": 1,
     "errors": []
   },
   "agent_log": [
     {
       "stage": "voice",
-      "ts": "2026-05-11T22:01:04.916772+00:00",
+      "ts": "2026-05-11T22:29:31.795199+00:00",
       "register": "blue_collar",
       "tone_axis": null,
       "cost_cents": 0.0
     },
     {
       "stage": "design-ptc",
-      "ts": "2026-05-11T22:01:14.728590+00:00",
-      "winner_palette": "warm-earth",
-      "winner_type_pair": "lora-inter",
-      "winner_score": 80.0,
+      "ts": "2026-05-11T22:29:41.701194+00:00",
+      "winner_palette": "rugged-shop-orange",
+      "winner_type_pair": "bebas-inter",
+      "winner_score": 79.0,
       "n_rejected": 3
     },
     {
       "stage": "compose",
-      "ts": "2026-05-11T22:01:45.678691+00:00",
-      "palette": "warm-earth",
-      "type_pair": "lora-inter",
+      "ts": "2026-05-11T22:30:11.113970+00:00",
+      "palette": "rugged-shop-orange",
+      "type_pair": "bebas-inter",
       "headline": ""
     },
     {
       "stage": "assemble",
-      "ts": "2026-05-11T22:01:45.719075+00:00",
+      "ts": "2026-05-11T22:30:11.154274+00:00",
       "slug": "demo",
-      "html_bytes": 30188
+      "html_bytes": 27260
     },
     {
       "stage": "awwwards",
-      "ts": "2026-05-11T22:01:56.657689+00:00",
+      "ts": "2026-05-11T22:30:24.529554+00:00",
       "tier": "mid",
       "score": 68,
-      "one_liner": "Copy and trust signals punch agency; design execution stalls at mid \u2014 motion-dead, photo-grading unconfirmed, and zero price anchors waste the flat-rate brand promise.",
+      "one_liner": "Copy is punching agency; design is still playing it safe \u2014 add motion, break one layout rect, and put prices on the cards to close the gap.",
       "must_fixes": [
-        "Add at least one entry-point price anchor per service tile (e.g. 'Main-line clearing from $189') \u2014 the flat-rate promise is the brand promise; make it visible before the call",
-        "Introduce selective motion: a single scroll-triggered fade on the reviews section and a subtle sticky-CTA slide-in would break the static feel without noise",
-        "Grade all gallery photos with a warm amber/sepia tint to lock them into the palette \u2014 mismatched GMB photo tones are the fastest way to read 'template' on an otherwise strong design"
+        "Add 'from $X' or a price range to at least 3 service tiles (e.g., 'Main-Line Drain Clearing \u2014 from $189') so the specificity that lives in the reviews also lives in the offer cards",
+        "Introduce at least one scroll-triggered entrance animation (fade-up on service cards, or a counter ticking up to '187 reviews') \u2014 even 2 animated elements breaks the static ceiling",
+        "Break the rectangle somewhere: pull one service tile or the guarantee block full-bleed with an orange-graded photo background, or use an asymmetric two-column with a sticky caption to signal intentional layout craft"
       ]
     }
   ],
-  "total_cost_cents": 4.162,
+  "total_cost_cents": 4.109,
   "warnings": []
 }

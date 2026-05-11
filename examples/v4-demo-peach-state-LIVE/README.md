@@ -1,63 +1,94 @@
-# v4 pipeline — LIVE end-to-end run (real LLM calls)
+# v4 pipeline — LIVE end-to-end run (real LLM calls, photo-honest)
 
 Real output from running the new pipeline end-to-end against a synthetic
-"Peach State Plumbing & Drain" lead on 2026-05-11, with all 4 Tier 4
-stages firing against the real Anthropic API.
+"Peach State Plumbing & Drain" lead on 2026-05-11, with **zero stock-photo
+padding**. PTC now refuses to pick photo-heavy hero/gallery variants when
+the lead has no real GBP photos, and the assembler refuses to fill
+photo-required sections with Unsplash.
 
-## Open the rendered HTML
+This is the WORST-CASE rendering: a real business with zero photos to
+work from. Production runs against real Atlanta leads will have actual
+Google Business Profile photos flowing through `photo_grade.py` (palette
+color-grading) into the hero + gallery slots.
 
-- **htmlpreview**: https://htmlpreview.github.io/?https://github.com/NOVA-LC/atl-pipeline/blob/claude/atl-pipeline-setup-hdYeK/examples/v4-demo-peach-state-LIVE/index.html
-- **raw.githack** (faster): https://raw.githack.com/NOVA-LC/atl-pipeline/claude/atl-pipeline-setup-hdYeK/examples/v4-demo-peach-state-LIVE/index.html
+## Open the rendered demo
+
+- **raw.githack**: https://raw.githack.com/NOVA-LC/atl-pipeline/claude/atl-pipeline-setup-hdYeK/examples/v4-demo-peach-state-LIVE/index.html
+
+## What you're looking at
+
+- Hero: `rugged-trade` with solid `rugged-shop-orange` palette background
+  (no photo, because there are no real photos to use)
+- Services: bold-list, 5 service tiles, owner-voice copy
+- "What we don't do" band + guarantee pull-quote
+- Reviews: 3 real review quotes with dates
+- Gallery: **suppressed entirely** (no real photos → no section, no stock)
+- CTA + footer with license #, neighborhoods, last-updated
 
 ## Awwwards verdict
 
 > **TIER: MID (score 68/100)**
-> "Copy and trust signals punch agency; design execution stalls at mid — motion-dead, photo-grading unconfirmed, and zero price anchors waste the flat-rate brand promise."
+> "Copy is punching agency; design is still playing it safe — add motion,
+> break one layout rect, and put prices on the cards to close the gap."
 
-**Strengths:**
-- Owner-voice signals are **exceptional**: first name in CTA, "what we don't do" callout, dated last-updated, license # repeated, named crew members throughout
-- Lora/Inter pairing with warm-earth palette is a deliberate, trade-appropriate choice that avoids the generic blue-teal gradient trap
-- Service tiles carry real specifics: camera footage emailed, 4000 PSI hydro-jet, Joey-or-Caleb crew policy — well above bullet-list tier
+The score went MID → AGENCY (83) → MID (68) across three runs as we
+fixed real bugs. Run 2 was 83 because it was lying (stock-photo padding
+the page felt richer). Run 3 is 68 because the page is now honest about
+having no photos. **Both numbers are useful — they bracket the gap that
+real GBP photos (production) or AI-generated brand imagery (next phase)
+have to fill.**
 
-**Must-fixes (per Awwwards):**
-1. Add at least one entry-point price anchor per service tile (currently only slab leak has one — `from $1,890 flat`)
-2. Introduce selective motion: scroll-triggered fade on reviews, sticky-CTA slide-in
-3. Grade all gallery photos with a warm amber/sepia tint to lock them into the palette
+## Cost: $0.04/lead
 
-## Pipeline stages — actual data
+- Voice fingerprint: ~$0 (archetype path)
+- Design PTC (4 candidates, Haiku): ~$0.001
+- Compose (Sonnet): $0.031
+- Assemble: $0
+- Awwwards (Sonnet): $0.010
+- **Total: $0.042** — way under $0.15 per-lead cap
 
-| Stage | Outcome | Cost |
-|-------|---------|------|
-| Voice fingerprint | `register=blue_collar` | ~$0 (archetype path) |
-| Design PTC (4 candidates) | Winner: `warm-earth + lora-inter + full-bleed-photo` score 80 | ~$0.001 |
-| Compose (Sonnet) | Full copy w/ license#, neighborhoods, what-we-dont-do, guarantee, 5 services | $0.032 |
-| Assemble | 30,327-byte HTML, Lora display (17×), warm-earth palette, sticky-cta (7×), trust-strip (8×) | $0 |
-| Awwwards classifier | Tier MID, score 68 | $0.010 |
-| **Total** | **TIER: MID 68/100** | **$0.042** |
+## Bugs fixed this run
 
-Under the $0.15 per-lead budget cap, well under the $0.25 ceiling we'd want for production.
+1. **PTC was photo-blind.** `_score_candidate` had zero awareness of the
+   `requires.min_real_photos` field on hero/gallery variants. It happily
+   picked `full-bleed-photo` for a lead with zero real photos, then the
+   assembler padded with Unsplash. **Fix:** PTC now takes a
+   `real_photo_count` arg, penalizes -35 for hero variants that need
+   more photos than available, scales gallery penalty by the gap, and
+   rewards type-forward heroes (+6) when imagery is thin. PTC also
+   tells the LLM designer the photo count in the user message so it
+   routes intentionally.
 
-## Signals that landed (live grep on the rendered HTML)
+2. **Assembler force-padded with Unsplash.** `_resolve_images` always
+   filled `images.hero` (industry stock) and padded `gallery` to 4 with
+   stock. **Fix:** zero stock-photo padding. Hero is empty when no real
+   photos exist (template renders solid-palette background). Gallery is
+   only real photos.
 
-- License # rendered 2× (incl. footer)
-- `MP207455` 3×
-- `East Cobb` 5× · `Joey` 9× · `Caleb` 2×
-- `Main Line Backed Up` / `in East Cobb?` (hero headline)
-- `Last updated`, `What we don't`, `guarantee` — all rendered
-- `data-motion` 2×, `sticky-cta` 7×, `trust-strip` 8×
-- GSAP 23× · Lenis 7× (motion lib wired)
-- `Lora` 17× (Tier 3 type pair applied)
-- Price anchors: `$1,890 flat`, `$4,500` (one tile + one review citation)
+3. **Gallery section rendered regardless of photo count.** Even when
+   a gallery variant required 5+ photos and the lead had 0, the section
+   rendered with stock fill. **Fix:** assembler now drops the `gallery`
+   key from `sections` and `section_names` when the chosen variant's
+   `min_photos` exceeds what's actually available. The shell template
+   skips the missing section gracefully.
 
-## Bugs found + fixed during this run
+## What's still unsolved (the honest gap)
 
-1. **Compose returned empty** because `thinking={'type':'adaptive'}` + `output_config={'effort':'medium'}` had Sonnet burning 100% of max_tokens budget on thinking with zero text output. Fixed by removing those experimental params and bumping max_tokens to 8000.
+Awwwards' three persistent must-fixes:
+1. Zero motion attributes — GSAP/ScrollTrigger are loaded but no
+   sections emit `data-motion`. Templates need to opt in.
+2. Zero price anchors on service tiles — compose has the data but
+   isn't surfacing it onto tile JSON.
+3. No rectangle-break layout — every section is centered stacked rects.
+   Need one full-bleed, sticky-caption, or asymmetric grid moment.
 
-2. **PTC design hint wasn't reaching assemble** because compose's new design-pin prompt told Sonnet "design is decided, just write copy" — so compose legitimately omitted `palette`/`type_pair`/`sections` from its JSON. Fixed by backfilling those fields in the orchestrator from the PTC hint AFTER compose returns.
-
-3. **Compose had no diagnostic on parse failures** — when it returned `{'_parse_error': True, '_last_text': ''}`, there was no way to tell apart "model returned prose" from "no text block produced". Added `_blocks` (block-type breakdown) + `_stop_reason` so future failures can be triaged in one log line.
+And the bigger one:
+4. **Photo strategy when no real photos exist.** The GitHub-research
+   agent confirmed no OSS has solved this end-to-end. Replicate FLUX
+   schnell or similar for brand-tuned hero/gallery generation is the
+   open frontier. Worth ~$0.003-0.01 per image; well within budget.
 
 ## Files
 
-- `index.html` — rendered demo (30KB)
-- `agent_log.json` — composed dict + fingerprint + Awwwards verdict + cost breakdown
+- `index.html` — rendered demo (27KB, no `<img>` tags, zero stock)
+- `agent_log.json` — composed dict + Awwwards verdict + cost breakdown

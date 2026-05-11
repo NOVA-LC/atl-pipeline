@@ -35,6 +35,47 @@ def _now_iso() -> str:
     return datetime.datetime.utcnow().isoformat(timespec='seconds')
 
 
+# Photo hosts that imply a REAL business-source pull (Google Business Profile
+# via Outscraper, or a business's own site). Anything else (unsplash, picsum,
+# placeholder.com) counts as zero — those will render as stock-photo "looks
+# AI" tells and must not influence design selection.
+_TRUSTED_PHOTO_HOSTS = (
+    'lh3.googleusercontent.com',
+    'lh4.googleusercontent.com',
+    'lh5.googleusercontent.com',
+    'lh6.googleusercontent.com',
+    'streetviewpixels-pa.googleapis.com',
+    'maps.googleapis.com',
+)
+
+
+def _count_trusted_photos(research_brief: dict | None, lead: dict) -> int:
+    """Count photos that come from a REAL business source (GBP / Outscraper).
+
+    Used by PTC to gate photo-heavy hero/gallery variants. Stock or
+    placeholder URLs return zero regardless of how many were listed.
+    """
+    urls: list[str] = []
+    rb = research_brief or {}
+    for p in (rb.get('photos') or []):
+        u = p.get('url') if isinstance(p, dict) else p
+        if isinstance(u, str):
+            urls.append(u)
+    # Also accept photos pre-extracted onto the lead dict (some callers stage
+    # raw_outscraper.photos there).
+    for u in (lead.get('photos') or []):
+        if isinstance(u, str):
+            urls.append(u)
+    seen, count = set(), 0
+    for u in urls:
+        if u in seen:
+            continue
+        seen.add(u)
+        if any(h in u for h in _TRUSTED_PHOTO_HOSTS):
+            count += 1
+    return count
+
+
 def build_for_lead(
     lead_id: int,
     per_lead_cap_cents: int = 15,
@@ -139,9 +180,16 @@ def build_for_lead(
     if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
         try:
             from . import design_ptc
+            # Count REAL business-source photos (GBP / Outscraper). PTC uses
+            # this to avoid picking photo-heavy variants when imagery is thin —
+            # the #1 "looks AI" tell on the rendered page. Unsplash placeholder
+            # URLs in synthetic test leads don't count; only host-allowlisted
+            # CDNs that imply a real business pull do.
+            _real_photo_count = _count_trusted_photos(research_brief, lead)
             ptc_result = design_ptc.pick_design(
                 lead, voice_card, neighbor_fps, tracker,
                 full_catalog=full_catalog, client=client,
+                real_photo_count=_real_photo_count,
             )
             if ptc_result.get('design_hint'):
                 research_brief = dict(research_brief or {})

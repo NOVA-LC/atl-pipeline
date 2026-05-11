@@ -118,7 +118,8 @@ def _build_system_prompt(cat: dict) -> str:
     )
 
 
-def _build_user_msg(lead: dict, voice_card: dict, neighbor_fps: list[dict]) -> str:
+def _build_user_msg(lead: dict, voice_card: dict, neighbor_fps: list[dict],
+                    real_photo_count: int = 0) -> str:
     vertical = (lead.get('category') or '').lower()
     rating = lead.get('rating')
     reviews = lead.get('reviews')
@@ -140,11 +141,37 @@ def _build_user_msg(lead: dict, voice_card: dict, neighbor_fps: list[dict]) -> s
             "\nNEIGHBOR DEMOS already in this batch (you MUST differ from these):\n"
             + '\n'.join(n_summaries)
         )
+
+    # Photo-availability is the #1 "looks AI" tell. Tell the designer
+    # explicitly so they can route to a type-forward hero/no-gallery design
+    # instead of picking a photo-heavy variant that will fall back to stock.
+    if real_photo_count >= 6:
+        photo_guidance = (
+            f"REAL PHOTOS AVAILABLE: {real_photo_count} (strong). "
+            f"Photo-forward heroes (full-bleed-photo, split-photo-copy, stats-band) "
+            f"and 3-col-grid/masonry galleries are all fair game."
+        )
+    elif real_photo_count >= 3:
+        photo_guidance = (
+            f"REAL PHOTOS AVAILABLE: {real_photo_count} (mid). "
+            f"Prefer split-photo-copy or single-feature gallery — don't pick "
+            f"variants that need 5+ photos or you'll get stock padding."
+        )
+    else:
+        photo_guidance = (
+            f"REAL PHOTOS AVAILABLE: {real_photo_count} (NONE / weak). "
+            f"You MUST pick a type-forward hero (minimal-type or rugged-trade — "
+            f"NEVER full-bleed-photo / split-photo-copy / stats-band) and "
+            f"single-feature gallery only if photos exist. Photo-heavy variants "
+            f"will fall back to Unsplash stock which screams 'AI-generated'."
+        )
+
     return (
         f"BUSINESS: {lead.get('business_name')} ({vertical or 'unknown vertical'}) "
         f"in {lead.get('city', '')}.\n"
         f"Rating: {rating} stars across {reviews} reviews.\n"
         f"Voice: {voice_summary or 'no voice card'}.\n"
+        f"{photo_guidance}\n"
         f"{neighbor_section}\n\n"
         "Pick the design tuple per the schema."
     )
@@ -156,8 +183,19 @@ def _jaccard(a: set, b: set) -> float:
     return len(a & b) / max(len(a | b), 1)
 
 
-def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: dict) -> tuple[float, list[str]]:
-    """Score 0-100. Higher is better. Returns (score, reasons)."""
+def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: dict,
+                     real_photo_count: int = 0,
+                     rating: float | None = None,
+                     reviews: int | None = None) -> tuple[float, list[str]]:
+    """Score 0-100. Higher is better. Returns (score, reasons).
+
+    real_photo_count is the number of trusted business-source photos available
+    for this lead (Google Business Profile / Outscraper). Picking a hero or
+    gallery variant whose `requires.min_real_photos` exceeds this count means
+    the assembler will fall back to stock Unsplash, which is THE biggest
+    "looks AI" tell. We penalize those candidates hard so PTC routes the lead
+    to a type-forward / no-photo design when the business has weak imagery.
+    """
     reasons = []
     score = 50
 
@@ -206,6 +244,52 @@ def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: d
     if type_pair not in (cat.get('type_pairs') or {}):
         score -= 50; reasons.append(f'invalid type_pair {type_pair!r}')
 
+    # === Photo-availability gating (the #1 "looks AI" axis) ===
+    # If the variant requires real photos and the lead doesn't have them, the
+    # assembler will pad with stock Unsplash. That's the failure mode. Penalize
+    # hard so PTC picks a type-forward design instead.
+    def _req(section_kind: str, variant_name: str) -> dict:
+        sect = (cat.get('sections') or {}).get(section_kind) or {}
+        entry = sect.get(variant_name) or {}
+        return (entry.get('metadata') or {}).get('requires') or {}
+
+    hero_variant = sections.get('hero')
+    hero_req = _req('hero', hero_variant) if hero_variant else {}
+    min_hero_photos = int(hero_req.get('min_real_photos') or 0)
+    if min_hero_photos > 0 and real_photo_count < min_hero_photos:
+        # Hard penalty: this candidate WILL render stock photos in the hero.
+        score -= 35
+        reasons.append(
+            f'hero {hero_variant!r} requires {min_hero_photos} real photo(s); '
+            f'lead has {real_photo_count} — would fall back to stock')
+    elif min_hero_photos == 0:
+        # Mild bonus for picking a no-photo-required hero when imagery is thin.
+        if real_photo_count < 4:
+            score += 6
+            reasons.append(f'hero {hero_variant!r} is type-forward (no photos needed)')
+
+    # stats-band hero requires rating + review thresholds, not photos.
+    if hero_variant == 'stats-band':
+        min_rating = float(hero_req.get('min_rating') or 0)
+        min_reviews = int(hero_req.get('min_reviews') or 0)
+        if (rating is None) or (rating < min_rating) or (reviews is None) or (reviews < min_reviews):
+            score -= 25
+            reasons.append(
+                f'hero stats-band requires rating>={min_rating} and reviews>={min_reviews}; '
+                f'lead has rating={rating} reviews={reviews}')
+
+    gallery_variant = sections.get('gallery')
+    gallery_req = _req('gallery', gallery_variant) if gallery_variant else {}
+    min_gallery_photos = int(gallery_req.get('min_photos') or 0)
+    if min_gallery_photos > 0 and real_photo_count < min_gallery_photos:
+        # The gallery slot will pad with stock. Penalty scales with the gap.
+        gap = min_gallery_photos - real_photo_count
+        penalty = min(20, 4 + gap * 3)
+        score -= penalty
+        reasons.append(
+            f'gallery {gallery_variant!r} requires {min_gallery_photos} photos; '
+            f'lead has {real_photo_count} — assembler will pad with stock')
+
     return float(max(0, min(100, score))), reasons
 
 
@@ -226,6 +310,7 @@ def pick_design(
     n: int = DEFAULT_N,
     model: str = DEFAULT_MODEL,
     client: 'Optional[object]' = None,
+    real_photo_count: int = 0,
 ) -> dict:
     """Generate N design candidates, score, return winner with rationale.
 
@@ -251,7 +336,7 @@ def pick_design(
 
     system_prompt = _build_system_prompt(full_catalog)
     neighbor_list = list(neighbor_fps)[:6]
-    user_msg = _build_user_msg(lead, voice_card or {}, neighbor_list)
+    user_msg = _build_user_msg(lead, voice_card or {}, neighbor_list, real_photo_count)
     vertical = (lead.get('category') or '').lower()
     # Normalize vertical to match fits_verticals tags
     for v in ('plumber', 'hvac', 'radiator', 'landscape', 'septic', 'auto'):
@@ -292,7 +377,12 @@ def pick_design(
             out['errors'].append(f'candidate {i} parse failed')
             continue
 
-        score, reasons = _score_candidate(cand, vertical, neighbor_list, full_catalog)
+        score, reasons = _score_candidate(
+            cand, vertical, neighbor_list, full_catalog,
+            real_photo_count=real_photo_count,
+            rating=lead.get('rating'),
+            reviews=lead.get('reviews'),
+        )
         candidates.append((score, cand, reasons))
 
     if hasattr(tracker, 'add_cents'):

@@ -179,36 +179,55 @@ def _coerce_image_list(value) -> list:
     return out
 
 
-def _resolve_images(composed: dict, lead: dict, osf_data: dict, industry: str) -> dict:
-    """Build the images.{hero, gallery} dict with strict fallbacks.
+def _resolve_images(composed: dict, lead: dict, osf_data: dict, industry: str,
+                    sections: dict | None = None,
+                    full_catalog: dict | None = None) -> dict:
+    """Build the images.{hero, gallery} dict.
 
-    Priority for hero:
-      composed.images.hero → real_photos[0] → industry Unsplash stock
-    Priority for gallery:
-      composed.images.gallery → real_photos[1:] → industry stock
+    Photo strategy (the #1 "looks AI" axis):
+      - If real GBP photos exist, use them — graded by photo_grade upstream.
+      - If they don't, NEVER pad with Unsplash. Instead, leave images.hero
+        empty so type-forward heroes render their solid-palette background,
+        and emit only the real-photo gallery items (templates suppress
+        gallery sections gracefully when the list is empty).
+      - Photo-required variants (full-bleed-photo / split-photo-copy /
+        stats-band / 3-col-grid / masonry) should never have been picked
+        by PTC when real_photos was thin. If they were anyway, we fall
+        through to the safest behavior: empty hero, real-photos-only gallery.
     """
     images = composed.get('images') or {}
-    real_photos = osf_data.get('photos') or []
 
+    # Count only TRUSTED real photos (Google CDN). Synthetic/Unsplash URLs
+    # in test leads count as zero so behavior matches production.
+    _TRUSTED = ('lh3.googleusercontent.com', 'lh4.googleusercontent.com',
+                'lh5.googleusercontent.com', 'lh6.googleusercontent.com',
+                'streetviewpixels-pa.googleapis.com', 'maps.googleapis.com')
+    raw_photos = osf_data.get('photos') or []
+    real_photos = [u for u in raw_photos
+                   if isinstance(u, str) and any(h in u for h in _TRUSTED)]
+
+    # Hero: prefer compose's pick, else real_photos[0], else leave empty.
     hero = images.get('hero')
+    if hero and not any(h in hero for h in _TRUSTED) and 'unsplash.com' in hero:
+        hero = None  # Compose hallucinated an unsplash URL; drop it.
     if not hero and real_photos:
         hero = real_photos[0]
-    if not hero:
-        hero = f'https://images.unsplash.com/photo-{pl.HEROES[industry]}?auto=format&fit=crop&w=1600&q=80'
+    # No Unsplash fallback: empty hero forces template's solid-palette branch.
 
+    # Gallery: only real photos. Never pad with stock — the "32 years of
+    # actual work" frame is the most fragile thing on a trade page; mixing
+    # stock destroys it.
     gallery = _coerce_image_list(images.get('gallery'))
+    gallery = [g for g in gallery if not (
+        isinstance(g.get('url'), str) and 'unsplash.com' in g['url']
+        and not any(h in g['url'] for h in _TRUSTED))]
     if not gallery and real_photos:
         gallery = [{'url': u, 'caption': ''} for u in real_photos[1:7]]
-    if len(gallery) < 4:
-        # pad with industry stock, skipping any already-present urls
-        present = {g['url'] for g in gallery}
-        stock = [{'url': pl.img_url(pid), 'caption': cap}
-                 for pid, cap in pl.PHOTOS[industry]
-                 if pl.img_url(pid) not in present]
-        gallery.extend(stock)
-        gallery = gallery[:6]
+    # Cap to whatever real material exists; assembler/template will suppress
+    # the gallery section if the count is too low for the chosen variant.
+    gallery = gallery[:6]
 
-    return {'hero': hero, 'gallery': gallery}
+    return {'hero': hero or '', 'gallery': gallery}
 
 
 def _default_services_copy(osf_data: dict, lead: dict, industry: str) -> list:
@@ -456,6 +475,31 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
     copy = _resolve_copy(composed, lead, osf_data, industry, research_brief)
     if copy.get('_banned_phrases_removed'):
         warnings.append(f"scrubbed banned phrases: {copy['_banned_phrases_removed']}")
+
+    # Photo-availability gating: SUPPRESS the gallery section if we don't have
+    # enough real photos for the chosen variant. Padding with Unsplash stock
+    # destroys the "32 years of actual work" frame and is the #1 "looks AI"
+    # tell on the rendered page. Better to drop the section than to lie.
+    gallery_variant = section_names.get('gallery')
+    gallery_meta = (
+        (full_catalog.get('sections') or {}).get('gallery', {})
+        .get(gallery_variant, {}).get('metadata') or {}
+    )
+    min_gallery_photos = int((gallery_meta.get('requires') or {}).get('min_photos') or 0)
+    real_gallery_count = len(images.get('gallery') or [])
+    if min_gallery_photos > 0 and real_gallery_count < min_gallery_photos:
+        # Remove the gallery section entirely. Sections dict is keyed by kind;
+        # the shell template tolerates a missing 'gallery' key gracefully.
+        if 'gallery' in sections:
+            sections.pop('gallery', None)
+        if 'gallery' in section_names:
+            section_names.pop('gallery', None)
+        warnings.append(
+            f"gallery variant '{gallery_variant}' needs {min_gallery_photos} real "
+            f"photos; lead has {real_gallery_count} — section suppressed (no stock fallback)"
+        )
+        # Also clear images.gallery so the shell doesn't pick it up another way.
+        images['gallery'] = []
 
     ctx = {
         'business': business,
