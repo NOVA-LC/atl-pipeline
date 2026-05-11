@@ -2,7 +2,7 @@
 <section class="hero hero-stats" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:{% if images.hero %}linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.7)),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.bg }}{% endif %};color:{{ tokens.palette.ink }}">
   <div class="wrap" style="max-width:1180px">
     <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">{{ copy.eyebrow }}</div>
-    <h1 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1.05;margin-bottom:36px;max-width:1000px">
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1.05;margin-bottom:36px;max-width:1000px">
       {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</em>{% endif %}
     </h1>
     <p style="font-size:21px;max-width:640px;color:{{ tokens.palette.muted }};margin-bottom:48px;font-weight:300">{{ copy.hero_sub }}</p>

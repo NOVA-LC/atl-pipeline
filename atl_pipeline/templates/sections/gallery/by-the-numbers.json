@@ -1,0 +1,11 @@
+{
+  "name": "by-the-numbers",
+  "kind": "gallery",
+  "vibe_tags": ["editorial", "stats-forward", "no-photo", "type-driven"],
+  "requires": {
+    "min_photos": 0,
+    "min_stats": 3
+  },
+  "best_for": "businesses with strong trust signals (years in business, review count, license #, neighborhoods served, on-time guarantee) but weak or zero Google photos. Visual rhythm break without faking imagery.",
+  "avoid_when": "lead has 5+ strong real photos — use 3-col-grid or masonry instead"
+}

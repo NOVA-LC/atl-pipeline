@@ -153,7 +153,7 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
 
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call" aria-label="Call {{ business.name }}">📞 Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there')|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
 </div>
 
 <footer><div class="wrap">

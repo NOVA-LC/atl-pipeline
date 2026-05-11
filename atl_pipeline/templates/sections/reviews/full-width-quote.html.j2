@@ -3,7 +3,7 @@
 <section id="reviews" style="padding:{{ tokens.spacing.section_y_lg }} 0;background:{{ tokens.palette.ink }};color:#fff">
   <div class="wrap" style="max-width:920px;text-align:center">
     <div style="color:{{ tokens.palette.accent }};font-size:18px;letter-spacing:4px;margin-bottom:32px">★★★★★</div>
-    <blockquote style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,4vw,44px);font-weight:{{ tokens.type.display_weight }};line-height:1.25;margin:0 0 32px;font-style:italic;color:#fff">&ldquo;{{ r.text }}&rdquo;</blockquote>
+    <blockquote data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,4vw,44px);font-weight:{{ tokens.type.display_weight }};line-height:1.25;margin:0 0 32px;font-style:italic;color:#fff">&ldquo;{{ r.text }}&rdquo;</blockquote>
     <div style="font-size:15px;color:rgba(255,255,255,.7);letter-spacing:.05em">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}{% if r.source %} · {{ r.source }}{% endif %}</div>
     {% if business.rating and business.reviews %}
     <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(255,255,255,.15);font-size:14px;color:rgba(255,255,255,.6);letter-spacing:.05em">{{ business.rating }}★ across {{ business.reviews }} Google reviews</div>

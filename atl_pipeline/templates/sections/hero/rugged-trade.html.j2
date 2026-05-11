@@ -2,7 +2,7 @@
 <section class="hero hero-rugged" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:{% if images.hero %}linear-gradient(rgba(15,20,30,.78),rgba(15,20,30,.85)),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.ink }}{% endif %};color:#fff">
   <div class="wrap" style="max-width:1180px">
     <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:28px">▌ {{ copy.eyebrow }}</div>
-    <h1 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1;margin-bottom:32px;text-transform:{{ tokens.type.display_text_transform|default('none') }}">
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1;margin-bottom:32px;text-transform:{{ tokens.type.display_text_transform|default('none') }}">
       {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</span>{% endif %}
     </h1>
     <p style="font-size:20px;max-width:640px;color:rgba(255,255,255,.85);margin-bottom:40px;font-weight:400">{{ copy.hero_sub }}</p>

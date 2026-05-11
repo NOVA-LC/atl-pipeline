@@ -3,7 +3,7 @@
   <div class="wrap">
     <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">— Real reviews</div>
     <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.05;margin-bottom:40px;max-width:880px">{{ copy.reviews_h|safe }}</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
       {% for r in copy.reviews_list %}
       <div style="background:{{ tokens.palette.bg }};padding:32px;border-radius:14px;border:1px solid {{ tokens.palette.border }}">
         <div style="color:#FBBF24;font-size:16px;letter-spacing:2px;margin-bottom:14px">{{ '★' * r.stars }}</div>

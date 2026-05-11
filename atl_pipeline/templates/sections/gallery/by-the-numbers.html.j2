@@ -1,0 +1,19 @@
+{# Gallery alternative: by-the-numbers stats band. Renders when no real
+   photos exist but we still want a visual rhythm break between services
+   and reviews. Uses business signals (years, reviews, license, area
+   count, response time) as oversized numerals — gallery-like visual
+   weight without faking imagery. #}
+<section id="gallery" class="gallery-stats" data-motion="reveal-up" style="padding:{{ tokens.spacing.section_y }} 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }}">
+  <div class="wrap">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:36px">— By the numbers</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:48px 32px">
+      {% for stat in copy.stats %}
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:clamp(48px,6vw,84px);font-weight:{{ tokens.type.display_weight }};line-height:.95;color:{{ tokens.palette.accent }};letter-spacing:-0.02em;margin-bottom:8px">{{ stat.value }}</div>
+        <div style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:{{ tokens.palette.muted }}">{{ stat.label }}</div>
+        {% if stat.detail %}<div style="font-size:14px;color:{{ tokens.palette.ink }};margin-top:6px;line-height:1.4">{{ stat.detail }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>

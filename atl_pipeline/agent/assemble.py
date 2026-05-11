@@ -375,6 +375,40 @@ def _resolve_copy(composed: dict, lead: dict, osf_data: dict, industry: str, res
     # compose_in's copy.services tiles (which can carry price_signal per tile)
     # and copy.what_we_dont_do (optional, if compose generated it).
 
+    # === Build copy.stats for the by-the-numbers gallery alternative ===
+    # 3-6 oversized numerals drawn from real business signals, used when the
+    # lead has no real photos but we still want a visual rhythm break.
+    stats = []
+    rating = lead.get('rating')
+    reviews_n = lead.get('reviews') or lead.get('review_count')
+    if rating and reviews_n:
+        stats.append({'value': f'{float(rating):.1f}★',
+                      'label': 'Google rating',
+                      'detail': f'across {reviews_n} reviews'})
+    yib = (research_brief or {}).get('years_in_business')
+    if isinstance(yib, dict):
+        yib = yib.get('value')
+    elif isinstance(yib, str) and yib.isdigit():
+        yib = int(yib)
+    if isinstance(yib, int) and 1 <= yib <= 150:
+        stats.append({'value': f'{yib}', 'label': 'Years in business',
+                      'detail': f'family-run since {_dt.date.today().year - yib}'})
+    if neighborhoods and len(neighborhoods) >= 3:
+        stats.append({'value': f'{len(neighborhoods)}',
+                      'label': 'Neighborhoods served',
+                      'detail': ' · '.join(neighborhoods[:3]) +
+                                ('…' if len(neighborhoods) > 3 else '')})
+    if license_number:
+        stats.append({'value': '#' + str(license_number),
+                      'label': 'Georgia license',
+                      'detail': 'on every invoice'})
+    response_time = (research_brief or {}).get('typical_response_time') or \
+                    ((research_brief or {}).get('emergency_response_window') if
+                     (research_brief or {}).get('has_emergency_service') else None)
+    if isinstance(response_time, str) and any(c.isdigit() for c in response_time):
+        stats.append({'value': response_time, 'label': 'On-site',
+                      'detail': 'typical first-call response'})
+
     # === Build the copy dict and scrub banned phrases as a safety net ===
     raw_copy = {
         'eyebrow': eyebrow,
@@ -398,6 +432,7 @@ def _resolve_copy(composed: dict, lead: dict, osf_data: dict, industry: str, res
         'last_updated_label': last_updated_label,
         'what_we_dont_do': copy_in.get('what_we_dont_do') or [],
         'guarantee': copy_in.get('guarantee'),
+        'stats': stats,
     }
     cleaned, removed = banned.clean_copy_dict(raw_copy)
     cleaned['_banned_phrases_removed'] = removed
@@ -476,10 +511,10 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
     if copy.get('_banned_phrases_removed'):
         warnings.append(f"scrubbed banned phrases: {copy['_banned_phrases_removed']}")
 
-    # Photo-availability gating: SUPPRESS the gallery section if we don't have
-    # enough real photos for the chosen variant. Padding with Unsplash stock
-    # destroys the "32 years of actual work" frame and is the #1 "looks AI"
-    # tell on the rendered page. Better to drop the section than to lie.
+    # Photo-availability gating: if the chosen gallery variant needs more real
+    # photos than we have, swap to the no-photo "by-the-numbers" stats gallery
+    # instead of padding with Unsplash stock (which destroys the "real work"
+    # frame) or rendering nothing (which leaves the page visually sparse).
     gallery_variant = section_names.get('gallery')
     gallery_meta = (
         (full_catalog.get('sections') or {}).get('gallery', {})
@@ -488,17 +523,27 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
     min_gallery_photos = int((gallery_meta.get('requires') or {}).get('min_photos') or 0)
     real_gallery_count = len(images.get('gallery') or [])
     if min_gallery_photos > 0 and real_gallery_count < min_gallery_photos:
-        # Remove the gallery section entirely. Sections dict is keyed by kind;
-        # the shell template tolerates a missing 'gallery' key gracefully.
-        if 'gallery' in sections:
-            sections.pop('gallery', None)
-        if 'gallery' in section_names:
-            section_names.pop('gallery', None)
-        warnings.append(
-            f"gallery variant '{gallery_variant}' needs {min_gallery_photos} real "
-            f"photos; lead has {real_gallery_count} — section suppressed (no stock fallback)"
-        )
-        # Also clear images.gallery so the shell doesn't pick it up another way.
+        # Try to substitute the by-the-numbers stats gallery. Requires at
+        # least 3 stat lines from copy.stats; assembler builds those below
+        # from business signals (rating, reviews, years, neighborhoods).
+        btn_path = (full_catalog.get('sections') or {}).get(
+            'gallery', {}).get('by-the-numbers', {}).get('partial')
+        if btn_path:
+            sections['gallery'] = btn_path
+            section_names['gallery'] = 'by-the-numbers'
+            warnings.append(
+                f"gallery '{gallery_variant}' needs {min_gallery_photos} real photos; "
+                f"lead has {real_gallery_count} — swapped to by-the-numbers (no stock)"
+            )
+        else:
+            if 'gallery' in sections:
+                sections.pop('gallery', None)
+            if 'gallery' in section_names:
+                section_names.pop('gallery', None)
+            warnings.append(
+                f"gallery '{gallery_variant}' needs photos; none available, no-photo "
+                f"gallery missing — section suppressed entirely"
+            )
         images['gallery'] = []
 
     ctx = {

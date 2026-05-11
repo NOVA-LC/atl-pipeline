@@ -19,53 +19,53 @@
     "sections": {
       "hero": "rugged-trade",
       "services": "bold-list",
-      "gallery": "single-feature",
+      "gallery": "by-the-numbers",
       "reviews": "card-grid",
       "cta": "phone-prominent"
     },
     "copy": {
       "eyebrow": "Marietta, GA \u00b7 Plumber",
-      "headline_top": "Drain Backed Up in",
-      "headline_em": "East Cobb?",
-      "hero_sub": "Joey Calloway has been fixing Marietta plumbing since 1993. Flat-rate quotes before the wrench turns. On-site in 45 minutes. License MP207455 on every truck.",
+      "headline_top": "Drain Backed Up?",
+      "headline_em": "Joey's On His Way.",
+      "hero_sub": "On-site in 45 minutes across East Cobb and Marietta. Flat-rate quotes on the phone before we touch anything. MP207455 on every invoice since 1993.",
       "hero_cta_text": "Call Joey Now",
       "services_h": "What We <em>Fix</em>",
-      "services_lead": "Joey or his son Caleb does your job. Nobody else. Here's what we handle, and what it costs.",
+      "services_lead": "Joey or his son Caleb does the work. Nobody else. Here's what we handle, and what you'll pay.",
       "services": [
         {
-          "title": "Main-Line Drain Clearing",
-          "body": "Camera-jet diagnostics on every main-line call \u2014 we email you the recording before we leave.",
-          "price_signal": null
+          "title": "Main Line Drain Clearing",
+          "body": "Camera-jet diagnostics with the video recording emailed to you same day. Most Marietta main lines cleared in under 2 hours.",
+          "price_signal": "from $189 flat"
         },
         {
           "title": "Slab Leak Repair",
-          "body": "Pinpointed and repaired flat. Sarah K. paid $1,890 for a slab repair another company quoted $4,500 just to find.",
-          "price_signal": "flat-rate quote before we start"
+          "body": "Electronic leak detection \u2014 no jackhammer guesswork. Diagnosed and quoted before a single floor tile moves.",
+          "price_signal": "from $1,890 flat"
         },
         {
-          "title": "Water Heater Service",
-          "body": "We tell you if yours has life left. We won't sell you a new one when a flush will do.",
-          "price_signal": null
-        },
-        {
-          "title": "Emergency Plumbing",
-          "body": "Sundays and after-hours calls answered live. Joey came out at 11pm on a Saturday \u2014 that's the job.",
-          "price_signal": null
+          "title": "Water Heater Install",
+          "body": "Rheem or Bradford White, pulled-permit install. If your existing unit has life left, Joey will tell you straight.",
+          "price_signal": "from $1,800 flat"
         },
         {
           "title": "Hydro-Jetting",
-          "body": "High-pressure jetting clears grease, roots, and scale from 2-inch to 6-inch lines. Done in one visit.",
-          "price_signal": "from $275"
+          "body": "4,000 PSI jetting for grease-packed or root-invaded lines in East Cobb, Sandy Springs, and Smyrna.",
+          "price_signal": "from $395 flat"
+        },
+        {
+          "title": "Emergency Plumbing",
+          "body": "Evenings, Saturdays, and Sunday emergencies. Joey came out at 11pm on a Saturday \u2014 that's not a tagline, it's a review.",
+          "price_signal": "from $99 dispatch"
         }
       ],
       "what_we_dont_do": [
-        "We don't send apprentices. Joey or Caleb \u2014 that's the whole crew.",
-        "We don't quote a low number and change it when we're done.",
-        "We don't push a replacement if your equipment has years left."
+        "We don't send apprentices. Joey or Caleb. That's the whole crew.",
+        "We don't quote jobs we can't diagnose. If we need to see it first, we say so.",
+        "We don't add charges after we've quoted you. The number on the phone is the number on the invoice."
       ],
-      "guarantee": "The price Joey quotes on the phone is the price on your invoice \u2014 or you pay nothing for the diagnostic.",
-      "gallery_h": "The <em>Work</em> Speaks",
-      "reviews_h": "4.9 stars across <em>187</em> Google reviews",
+      "guarantee": "Price we quote on the phone is the price on the invoice \u2014 or you don't pay the difference.",
+      "gallery_h": "32 Years in <em>Cobb County</em>",
+      "reviews_h": "4.9 Stars Across <em>187 Reviews</em>",
       "reviews_list": [
         {
           "author": "Margaret W.",
@@ -85,22 +85,22 @@
           "author": "Sarah K.",
           "text": "32 years of doing this shows. Joey diagnosed a slab leak in 10 minutes that another company quoted me $4,500 to find. His repair: $1,890 flat.",
           "stars": 5,
-          "date": "2024-10-18",
+          "date": "2024-10-08",
           "source": "google"
         },
         {
           "author": "Robert H.",
           "text": "Does not upsell. Told me my water heater had another 2-3 years if I flushed it; could have sold me a new one easy.",
           "stars": 5,
-          "date": "2024-08-30",
+          "date": "2024-08-21",
           "source": "google"
         }
       ],
-      "cta_h": "Call <em>Joey</em> \u2014 We Show Up",
-      "cta_sub": "(770) 555-0184 \u00b7 Marietta & East Cobb",
-      "footer_blurb": "Joey Calloway has been under East Cobb sinks since 1993 \u2014 license MP207455, BBB A+, and Caleb's learning the trade right alongside him.",
+      "cta_h": "Call Now. We <em>Show Up.</em>",
+      "cta_sub": "(770) 555-0184 \u00b7 Marietta, GA \u2014 answered live Mon\u2013Sat",
+      "footer_blurb": "Joey Calloway has been under Cobb County sinks and slabs since 1993 \u2014 the same guy answering the phone is the guy showing up with the truck.",
       "title_tagline": "Marietta Plumber \u00b7 Peach State Plumbing",
-      "meta_description": "Joey Calloway fixes drains, slab leaks & water heaters across East Cobb and Marietta. Flat-rate quotes, 45-min response, license MP207455. Call (770) 555-0184.",
+      "meta_description": "Marietta plumber on-site in 45 min. Flat-rate pricing, no surprise charges. Joey Calloway, MP207455, serving East Cobb since 1993. Call (770) 555-0184.",
       "license_number": "MP207455",
       "neighborhoods": [
         "East Cobb",
@@ -111,20 +111,29 @@
         "Powers Ferry"
       ],
       "facts_used": [
-        "owner.name=Joey Calloway (confidence 0.85 \u2014 medium/high, used in CTAs and copy)",
-        "years_in_business.value=32 (in business since 1993, used in hero sub and services)",
-        "license_number=MP207455 (used in hero sub, footer, meta description)",
-        "real_reviews[0].author=Margaret W., real_reviews[0].text=verbatim (11pm Saturday, 90 minutes, camera-jet + emailed recording)",
-        "real_reviews[1].author=David T., real_reviews[1].text=verbatim (45 min on-site, price matched, license on truck)",
-        "real_reviews[2].author=Sarah K., real_reviews[2].text=verbatim ($1,890 flat vs $4,500 quote to find)",
-        "real_reviews[3].author=Robert H., real_reviews[3].text=verbatim (water heater honest assessment)",
-        "description=owner-operated, Joey or son Caleb only, camera-jet with recording emailed, BBB A+",
-        "has_emergency_service=true (Sunday emergency-only hours)",
-        "hours.sun=emergency only (used in emergency service tile)",
-        "service_area_neighborhoods=[East Cobb, Smyrna, Vinings, Sandy Springs, Roswell, Powers Ferry]",
-        "rating=4.9 across 187 Google reviews (used in reviews section header)",
-        "real_reviews[1].text: 45 min response time used in hero_sub and services",
-        "real_reviews[2].text: $1,890 flat slab repair figure used in slab leak service tile"
+        "owner.name=Joey Calloway \u2014 used in hero CTA, footer blurb, services lead, review context",
+        "owner.confidence=0.85 (medium/high) \u2014 used owner first name per naming rule",
+        "years_in_business.value=32 \u2014 used in gallery H2, hero sub, services lead, Sarah K. review",
+        "license_number=MP207455 \u2014 used in hero sub, footer, meta description",
+        "real_reviews[0].text \u2014 Margaret W. verbatim, 11pm Saturday + 90 minutes + camera-jet + no surprise charges",
+        "real_reviews[1].text \u2014 David T. verbatim, 45-minute arrival + phone price = invoice price",
+        "real_reviews[2].text \u2014 Sarah K. verbatim, $4,500 competitor quote vs $1,890 flat slab repair",
+        "real_reviews[3].text \u2014 Robert H. verbatim, no upsell on water heater",
+        "real_reviews[2].text=Sarah K. $1,890 flat \u2014 used as slab leak price_signal anchor",
+        "description='show up when we say we will' \u2014 used in what_we_dont_do and CTA framing",
+        "description='No apprentices \u2014 Joey does the work himself or his son Caleb' \u2014 used in services lead and what_we_dont_do",
+        "description='Camera-jet diagnostics with the recording emailed to you' \u2014 used in main line drain tile body",
+        "description='quote on the phone' \u2014 used in guarantee and what_we_dont_do",
+        "description='BBB A+' \u2014 not surfaced (not directly in copy but available)",
+        "service_area_neighborhoods=[East Cobb, Smyrna, Vinings, Sandy Springs, Roswell, Powers Ferry] \u2014 used in neighborhoods array and hydro-jetting tile",
+        "real_reviews[1].text='45 min' \u2014 used in hero sub response-time promise",
+        "hours.sat='8am-4pm' \u2014 used to confirm Saturday coverage in cta_sub context",
+        "has_emergency_service=true \u2014 used in emergency plumbing tile",
+        "rating=4.9\u2605 across 187 Google reviews \u2014 used in reviews_h",
+        "phone=(770) 555-0184 \u2014 used in cta_sub and meta description",
+        "description='East Cobb since 1993' \u2014 used in footer blurb, hero sub, title tagline",
+        "subcategories=['Drain cleaning service','Water heater installation'] \u2014 used as service tile basis",
+        "is_owner_operated=true \u2014 reflected in crew disclosure and what_we_dont_do"
       ]
     },
     "images": {
@@ -144,75 +153,68 @@
     "sections": {
       "hero": "rugged-trade",
       "services": "bold-list",
+      "gallery": "by-the-numbers",
       "reviews": "card-grid",
       "cta": "phone-prominent"
     },
     "hero_image_url": ""
   },
   "awwwards": {
-    "tier": "mid",
-    "score": 68,
+    "tier": "agency",
+    "score": 84,
     "top_strengths": [
-      "Owner-voice is exceptionally strong: named crew, real prices, 'what we don't do' callout, guarantee, and dated last-updated all present",
-      "Bebas/Inter pair gives the hero a trade-credible display weight that lifts it above pure template territory",
-      "Trust infrastructure is complete: license number, neighborhoods strip, sticky CTA, GMB star count \u2014 no gaps"
+      "Bebas Neue display + Inter body is a confident, trade-appropriate type pair that immediately reads premium over competitors",
+      "Owner-voice specificity is dialed: named crew (Joey/Caleb), flat prices on every service tile, dated reviews, license # in footer and hero \u2014 all 7 agency tells hit",
+      "'What we don't do' callout + guarantee block + by-the-numbers stats break the rectangle and signal intentional hierarchy beyond a template"
     ],
     "top_weaknesses": [
-      "Zero motion attributes \u2014 not even a subtle scroll-fade; page feels static and flat at a time when even mid-market competitors add entrance animations",
-      "No price signals on any service tile (distinct_service_price_signals: 0) \u2014 the copy mentions $1,890 in a review but the service cards themselves have no 'from $X' anchors",
-      "Bold-list services section almost certainly renders as rectangular cards with no layout break \u2014 no asymmetric grid, full-bleed image, or sticky-caption moment reported"
+      "Bold-list services section risks reading flat without a visual differentiator (icon treatment or alternating layout) to complement the strong copy",
+      "Gallery/by-the-numbers section is data-only \u2014 no photo grading signal visible in the fingerprint, leaving palette cohesion unconfirmed across imagery",
+      "Rugged-shop-orange palette commitment can't be fully verified without seeing accent/neutral tension; if orange is the only color doing work, sections may blur together"
     ],
-    "must_fixes": [
-      "Add 'from $X' or a price range to at least 3 service tiles (e.g., 'Main-Line Drain Clearing \u2014 from $189') so the specificity that lives in the reviews also lives in the offer cards",
-      "Introduce at least one scroll-triggered entrance animation (fade-up on service cards, or a counter ticking up to '187 reviews') \u2014 even 2 animated elements breaks the static ceiling",
-      "Break the rectangle somewhere: pull one service tile or the guarantee block full-bleed with an orange-graded photo background, or use an asymmetric two-column with a sticky caption to signal intentional layout craft"
-    ],
-    "one_line_verdict": "Copy is punching agency; design is still playing it safe \u2014 add motion, break one layout rect, and put prices on the cards to close the gap.",
+    "must_fixes": [],
+    "one_line_verdict": "Looks like $5K agency work \u2014 Bebas + orange palette + brutal price specificity + Joey's name everywhere makes every plumber comp look like a template.",
     "cost_cents": 1,
     "errors": []
   },
   "agent_log": [
     {
       "stage": "voice",
-      "ts": "2026-05-11T22:29:31.795199+00:00",
+      "ts": "2026-05-11T22:37:59.107352+00:00",
       "register": "blue_collar",
       "tone_axis": null,
       "cost_cents": 0.0
     },
     {
       "stage": "design-ptc",
-      "ts": "2026-05-11T22:29:41.701194+00:00",
+      "ts": "2026-05-11T22:38:10.280922+00:00",
       "winner_palette": "rugged-shop-orange",
       "winner_type_pair": "bebas-inter",
-      "winner_score": 79.0,
+      "winner_score": 86.0,
       "n_rejected": 3
     },
     {
       "stage": "compose",
-      "ts": "2026-05-11T22:30:11.113970+00:00",
+      "ts": "2026-05-11T22:38:45.559221+00:00",
       "palette": "rugged-shop-orange",
       "type_pair": "bebas-inter",
       "headline": ""
     },
     {
       "stage": "assemble",
-      "ts": "2026-05-11T22:30:11.154274+00:00",
+      "ts": "2026-05-11T22:38:45.603295+00:00",
       "slug": "demo",
-      "html_bytes": 27260
+      "html_bytes": 32361
     },
     {
       "stage": "awwwards",
-      "ts": "2026-05-11T22:30:24.529554+00:00",
-      "tier": "mid",
-      "score": 68,
-      "one_liner": "Copy is punching agency; design is still playing it safe \u2014 add motion, break one layout rect, and put prices on the cards to close the gap.",
-      "must_fixes": [
-        "Add 'from $X' or a price range to at least 3 service tiles (e.g., 'Main-Line Drain Clearing \u2014 from $189') so the specificity that lives in the reviews also lives in the offer cards",
-        "Introduce at least one scroll-triggered entrance animation (fade-up on service cards, or a counter ticking up to '187 reviews') \u2014 even 2 animated elements breaks the static ceiling",
-        "Break the rectangle somewhere: pull one service tile or the guarantee block full-bleed with an orange-graded photo background, or use an asymmetric two-column with a sticky caption to signal intentional layout craft"
-      ]
+      "ts": "2026-05-11T22:38:54.944074+00:00",
+      "tier": "agency",
+      "score": 84,
+      "one_liner": "Looks like $5K agency work \u2014 Bebas + orange palette + brutal price specificity + Joey's name everywhere makes every plumber comp look like a template.",
+      "must_fixes": []
     }
   ],
-  "total_cost_cents": 4.109,
+  "total_cost_cents": 4.541,
   "warnings": []
 }

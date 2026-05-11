@@ -145,12 +145,20 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
 </section>
 {% endif %}
 {% if copy.guarantee %}
-<section style="padding:60px 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }};text-align:center">
-  <div class="wrap" style="max-width:760px">
-    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};text-transform:uppercase;letter-spacing:.2em;margin-bottom:18px;font-weight:600">Our guarantee</div>
-    <p style="font-family:{{ tokens.type.display_family }};font-size:clamp(24px,3.2vw,40px);font-weight:{{ tokens.type.display_weight }};line-height:1.25">{{ copy.guarantee }}</p>
+{# Rectangle-break: full-bleed accent-color band, asymmetric grid with an
+   oversized italic mark on the left and the guarantee statement on the
+   right. One layout interruption per page is the cheapest way to push out
+   of "stacked rects everywhere" into "agency-tier intentional layout." #}
+<section style="padding:80px 0;background:{{ tokens.palette.accent }};color:#fff;overflow:hidden">
+  <div class="wrap" style="display:grid;grid-template-columns:160px 1fr;gap:48px;align-items:start;max-width:1180px">
+    <div data-motion="kerning-tighten" aria-hidden="true" style="font-family:{{ tokens.type.display_family }};font-size:clamp(120px,18vw,220px);line-height:.85;font-style:italic;opacity:.32;font-weight:{{ tokens.type.display_weight }};margin-top:-20px">&ldquo;</div>
+    <div>
+      <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;text-transform:uppercase;letter-spacing:.2em;margin-bottom:18px;font-weight:600;opacity:.85">Our guarantee</div>
+      <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.6vw,46px);font-weight:{{ tokens.type.display_weight }};line-height:1.18;letter-spacing:-0.005em">{{ copy.guarantee }}</p>
+    </div>
   </div>
 </section>
+{% raw %}<style>@media(max-width:720px){section[style*="grid-template-columns:160px 1fr"] > .wrap{grid-template-columns:1fr !important;gap:8px !important}}</style>{% endraw %}
 {% endif %}
 {% if sections.gallery %}{% include sections.gallery %}{% endif %}
 {% if sections.reviews and copy.reviews_list %}{% include sections.reviews %}{% endif %}
@@ -161,7 +169,7 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
    Two buttons: call + text. Text falls back to call if SMS not supported on device. #}
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call" aria-label="Call {{ business.name }}">📞 Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there')|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
 </div>
 
 <footer><div class="wrap">

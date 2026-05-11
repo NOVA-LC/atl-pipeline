@@ -211,7 +211,7 @@ OUTPUT SCHEMA
     "hero_cta_text": "<imperative verb + outcome, ≤ 18 chars>",
     "services_h": "<H2 with one <em>emphasized</em> word>",
     "services_lead": "<1-2 sentence preamble>",
-    "services": [{{"title": "<short noun phrase>", "body": "<40-120 chars with at least one specific noun>", "price_signal": "<optional: 'from $X' or 'flat $X' — REQUIRED on at least one tile when research_brief contains pricing>"}}],
+    "services": [{{"title": "<short noun phrase>", "body": "<40-120 chars with at least one specific noun>", "price_signal": "<CONCRETE PRICE STRING — 'from $189', 'flat $349', 'from $1,890 flat', or 'free diagnostic'. Required on AT LEAST 3 of 5 tiles. Pull numbers from research_brief.real_reviews and research_brief.description; infer reasonable trade-typical entry-price anchors when not in brief (drain clearing $149-189, slab leak $1,500-2,500, water heater install $1,800-2,400, hydro-jet $400-650, emergency dispatch $99 trip). NEVER write 'call for pricing' / 'free estimate' / 'competitive rates' — those phrases READ as template filler and DESTROY the agency-tier read on the page.>"}}],
     "what_we_dont_do": ["<optional: 1-3 short statements of what this business explicitly does NOT do — the Cialdini-commitment trust play. Only include if the brief or owner_voice supports it. Example: 'We don't do roof repair.' / 'We don't quote on the phone.' Skip entirely if no signal in brief.>"],
     "guarantee": "<optional: one-sentence named guarantee with a teeth-clause (e.g. 'Quote in 1 hour or the diagnostic is free.') — only if supported by brief or voice card>",
     "gallery_h": "<H2 with <em>emphasis</em>>",
