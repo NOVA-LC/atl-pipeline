@@ -10,14 +10,14 @@ Usage:
   python -m atl_pipeline.cli mark-replied <email>         # manual: mark a lead as replied
   python -m atl_pipeline.cli status                       # see pipeline state
 """
-import os, json, datetime, click, requests
+import os, json, datetime, subprocess, click, requests
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
 from . import (db, ingest as _ingest, dedup, verify, research, generate,
                deploy, email as _email, blog, enrich, email_verify, scraper, warmup, inbox,
-               sms as _sms, vm as _vm, call_sheet)
+               sms as _sms, vm as _vm, call_sheet, dashboard)
 
 
 def _url_is_live(url, timeout=8, max_attempts=5, wait_seconds=20):
@@ -215,6 +215,74 @@ def run(xlsx, max_sends, skip_blog, dry_run):
                         click.echo(f'    ! Resend response: {cs_resp}')
                 except Exception as e:
                     click.echo(f'  ! email send failed (non-fatal — content above): {e}')
+
+        # 9b. DASHBOARD — interactive HTML version with one-click call/text
+        try:
+            base = (env.get('DEMOS_BASE_URL') or 'atlanta-demos.vercel.app').rstrip('/')
+            base = base.replace('https://', '').replace('http://', '')
+            html = dashboard.render_dashboard(
+                [dict(r) for r in todays],
+                base_url=f'https://{base}',
+            )
+            # Write to umbrella demos repo so Vercel serves it
+            dash_dir = Path(repo_path) / 'dashboard'
+            dash_dir.mkdir(parents=True, exist_ok=True)
+            (dash_dir / 'index.html').write_text(html, encoding='utf-8')
+            # Commit + push as its own commit so it's clear in git history
+            try:
+                subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html'])
+                # noop guard
+                r = subprocess.run(['git', '-C', repo_path, 'diff', '--cached', '--quiet'])
+                if r.returncode != 0:
+                    subprocess.check_call(['git', '-C', repo_path, 'commit', '-m',
+                                           f'dashboard: refresh {datetime.date.today().isoformat()} ({len(todays)} leads)'])
+                    subprocess.check_call(['git', '-C', repo_path, 'push', 'origin', 'main'])
+                    click.echo(f'  🎛  dashboard pushed: https://{base}/dashboard/')
+                else:
+                    click.echo(f'  🎛  dashboard unchanged')
+            except Exception as e:
+                click.echo(f'  ! dashboard push failed (non-fatal): {e}')
+
+            # Email a tiny notification with just the dashboard link (alongside the call sheet email)
+            if not dry_run and env.get('RESEND_API_KEY') and env.get('RESEND_FROM_EMAIL'):
+                try:
+                    import requests as _rq
+                    dash_url = f'https://{base}/dashboard/'
+                    to_email = env.get('RESEND_FROM_EMAIL')
+                    subject = f'🎛  Dashboard — {datetime.date.today().isoformat()} · {len(todays)} leads'
+                    big_btn = (
+                        f'<a href="{dash_url}" style="display:inline-block;background:#3a82f7;'
+                        'color:#fff;padding:14px 28px;border-radius:10px;font-weight:600;'
+                        f'text-decoration:none;font-family:-apple-system,sans-serif;font-size:16px">'
+                        f'Open dashboard ({len(todays)} leads) →</a>'
+                    )
+                    body_html = (
+                        '<div style="font-family:-apple-system,sans-serif;line-height:1.5;'
+                        'padding:20px;max-width:520px">'
+                        f'<h2 style="margin:0 0 6px">📞 Today\'s leads are ready</h2>'
+                        f'<p style="color:#555;margin:0 0 18px">'
+                        f'Live demos, one-click call/text. Tracks who you\'ve dialed via localStorage.</p>'
+                        f'{big_btn}'
+                        f'<p style="color:#888;font-size:13px;margin-top:24px">'
+                        f'Direct link: <a href="{dash_url}">{dash_url}</a></p>'
+                        '</div>'
+                    )
+                    payload = {
+                        'from': f'Nova Pipeline <{to_email}>',
+                        'to': [to_email],
+                        'subject': subject,
+                        'text': f'Dashboard ready: {dash_url}',
+                        'html': body_html,
+                    }
+                    rr = _rq.post('https://api.resend.com/emails',
+                                  headers={'Authorization': f'Bearer {env["RESEND_API_KEY"]}',
+                                           'Content-Type': 'application/json'},
+                                  json=payload, timeout=15)
+                    click.echo(f'  📬 dashboard link emailed (status={rr.status_code})')
+                except Exception as e:
+                    click.echo(f'  ! dashboard email failed (non-fatal): {e}')
+        except Exception as e:
+            click.echo(f'  ! dashboard generation failed (non-fatal): {e}')
     except Exception as e:
         click.echo(f'  ! call-sheet failed: {e}')
 
