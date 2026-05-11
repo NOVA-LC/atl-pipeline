@@ -1,0 +1,12 @@
+{
+  "name": "archivo-inter",
+  "vibe_tags": ["modern", "clean", "homeowner-residential", "tech-forward"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap",
+  "display_family": "'Archivo', sans-serif",
+  "display_weight": 700,
+  "display_letter_spacing": "-0.02em",
+  "display_italic_works": false,
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "modern services, suburban homeowner audience, plumbing/HVAC/electrical residential"
+}

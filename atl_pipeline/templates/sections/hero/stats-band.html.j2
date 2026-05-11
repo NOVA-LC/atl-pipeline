@@ -1,0 +1,19 @@
+{# Hero variant: stats are the headline. Best for highly-rated established biz. #}
+<section class="hero hero-stats" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:{% if images.hero %}linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.7)),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.bg }}{% endif %};color:{{ tokens.palette.ink }}">
+  <div class="wrap" style="max-width:1180px">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">{{ copy.eyebrow }}</div>
+    <h1 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1.05;margin-bottom:36px;max-width:1000px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+    <p style="font-size:21px;max-width:640px;color:{{ tokens.palette.muted }};margin-bottom:48px;font-weight:300">{{ copy.hero_sub }}</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:32px;margin-bottom:48px;padding:32px 0;border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }}">
+      <div><div style="font-family:{{ tokens.type.display_family }};font-size:48px;font-weight:500;color:{{ tokens.palette.ink }};line-height:1">{{ business.rating }}<em style="color:{{ tokens.palette.accent }};font-style:italic">★</em></div><div style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:{{ tokens.palette.muted }};margin-top:8px">on Google</div></div>
+      <div><div style="font-family:{{ tokens.type.display_family }};font-size:48px;font-weight:500;color:{{ tokens.palette.ink }};line-height:1">{{ business.reviews }}</div><div style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:{{ tokens.palette.muted }};margin-top:8px">reviews</div></div>
+      {% if business.years %}<div><div style="font-family:{{ tokens.type.display_family }};font-size:48px;font-weight:500;color:{{ tokens.palette.ink }};line-height:1">{{ business.years }}</div><div style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:{{ tokens.palette.muted }};margin-top:8px">years serving {{ business.city }}</div></div>{% endif %}
+      <div><div style="font-family:{{ tokens.type.display_family }};font-size:48px;font-weight:500;color:{{ tokens.palette.accent }};line-height:1;font-style:italic">{{ copy.stats_fourth_label|default('Free') }}</div><div style="font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:{{ tokens.palette.muted }};margin-top:8px">{{ copy.stats_fourth_sub|default('estimates') }}</div></div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <a href="tel:{{ business.phone }}" style="padding:18px 36px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px">📞 {{ business.phone_display }}</a>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,10 @@
+{
+  "name": "split-photo-copy",
+  "kind": "hero",
+  "vibe_tags": ["modern", "honest-trade", "homeowner-residential"],
+  "requires": {
+    "min_real_photos": 1
+  },
+  "best_for": "info-dense businesses, residential trades where credentials matter. Photo on right, copy on left.",
+  "avoid_when": "vibe is heritage/refined — split layout reads contemporary"
+}

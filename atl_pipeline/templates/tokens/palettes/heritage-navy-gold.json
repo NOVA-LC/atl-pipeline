@@ -1,0 +1,12 @@
+{
+  "name": "heritage-navy-gold",
+  "vibe_tags": ["heritage", "trust-first", "premium", "tradition"],
+  "ink": "#0A1F3F",
+  "accent": "#C9A961",
+  "bg": "#FAFAF7",
+  "bg_blur": "rgba(250,250,247,.85)",
+  "muted": "#445971",
+  "card_bg": "rgba(0,0,0,.03)",
+  "border": "rgba(0,0,0,.08)",
+  "fits": "established businesses, 20+ years, professional services, quality-first audience"
+}

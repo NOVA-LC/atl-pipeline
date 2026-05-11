@@ -1,0 +1,8 @@
+{
+  "name": "numbered-grid",
+  "kind": "services",
+  "vibe_tags": ["editorial", "premium", "heritage"],
+  "requires": {"min_services": 4, "max_services": 6},
+  "best_for": "businesses with 4–6 named services. Editorial grid with numbered cards.",
+  "avoid_when": "single-trade specialists or fewer than 4 services"
+}

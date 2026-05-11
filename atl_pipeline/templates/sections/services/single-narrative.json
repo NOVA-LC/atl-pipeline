@@ -1,0 +1,8 @@
+{
+  "name": "single-narrative",
+  "kind": "services",
+  "vibe_tags": ["specialist", "single-trade", "premium"],
+  "requires": {"min_services": 1, "max_services": 3},
+  "best_for": "single-trade specialists (radiator shops, septic-only, narrow specialists). One big focused statement instead of a grid.",
+  "avoid_when": "businesses with many distinct service lines"
+}

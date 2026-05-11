@@ -1,0 +1,12 @@
+{
+  "name": "compact",
+  "section_y": "60px",
+  "section_y_lg": "80px",
+  "hero_y_top": "60px",
+  "hero_y_bottom": "40px",
+  "wrap_max": "1180px",
+  "wrap_x": "24px",
+  "h1_size": "clamp(40px, 6vw, 88px)",
+  "h2_size": "clamp(30px, 4vw, 52px)",
+  "fits": "info-dense businesses, lots of services, mobile-first audience"
+}

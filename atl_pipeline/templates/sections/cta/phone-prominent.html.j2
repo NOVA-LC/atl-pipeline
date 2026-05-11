@@ -1,0 +1,11 @@
+{# CTA variant: phone-prominent, centered. Universal fallback. #}
+<section id="contact" style="padding:{{ tokens.spacing.section_y_lg }} 0;text-align:center;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,72px);font-weight:{{ tokens.type.display_weight }};margin-bottom:24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:19px;color:{{ tokens.palette.muted }};max-width:600px;margin:0 auto 40px;font-weight:300">{{ copy.cta_sub }}</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+      <a href="tel:{{ business.phone }}" style="padding:18px 36px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px">📞 {{ business.phone_display }}</a>
+      {% if business.google_maps_url %}<a href="{{ business.google_maps_url }}" target="_blank" rel="noopener" style="padding:18px 36px;background:transparent;color:{{ tokens.palette.ink }};border:1.5px solid {{ tokens.palette.border }};border-radius:999px;text-decoration:none;font-weight:600;font-size:16px">View on Google Maps →</a>{% endif %}
+    </div>
+  </div>
+</section>

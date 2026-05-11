@@ -1,0 +1,12 @@
+{
+  "name": "emergency-red",
+  "vibe_tags": ["urgent", "speed-first", "24/7", "trust-first"],
+  "ink": "#0F1F2E",
+  "accent": "#DC2626",
+  "bg": "#FFFFFF",
+  "bg_blur": "rgba(255,255,255,.92)",
+  "muted": "#475569",
+  "card_bg": "#FEF2F2",
+  "border": "rgba(220,38,38,.15)",
+  "fits": "emergency services, 24/7 dispatch, septic/plumbing/HVAC with same-day claim, speed-first audience"
+}

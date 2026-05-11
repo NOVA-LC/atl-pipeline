@@ -1,0 +1,12 @@
+{
+  "name": "modern-charcoal",
+  "vibe_tags": ["modern", "premium", "commercial", "minimal"],
+  "ink": "#1A1D21",
+  "accent": "#10B981",
+  "bg": "#F4F4F5",
+  "bg_blur": "rgba(244,244,245,.9)",
+  "muted": "#52525B",
+  "card_bg": "#FFFFFF",
+  "border": "rgba(0,0,0,.08)",
+  "fits": "commercial contractors, property managers, B2B-leaning small businesses"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "default",
+  "section_y": "100px",
+  "section_y_lg": "120px",
+  "hero_y_top": "80px",
+  "hero_y_bottom": "60px",
+  "wrap_max": "1280px",
+  "wrap_x": "32px",
+  "h1_size": "clamp(44px, 7vw, 108px)",
+  "h2_size": "clamp(36px, 5vw, 64px)",
+  "fits": "most businesses, default editorial pacing"
+}

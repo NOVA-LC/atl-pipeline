@@ -1,0 +1,18 @@
+{# Reviews variant: horizontal scrolling strip. Conveys volume of reviews. #}
+<section id="reviews" style="padding:{{ tokens.spacing.section_y }} 0 calc({{ tokens.spacing.section_y }} - 20px);background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};overflow:hidden">
+  <div class="wrap">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">— What customers say</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.05;margin-bottom:40px;max-width:880px">{{ copy.reviews_h|safe }}</h2>
+  </div>
+  <div style="display:flex;gap:18px;overflow-x:auto;padding:8px 0 28px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">
+    <div style="flex:0 0 32px"></div>
+    {% for r in copy.reviews_list %}
+    <div style="flex:0 0 360px;background:{{ tokens.palette.card_bg }};padding:32px;border-radius:14px;border:1px solid {{ tokens.palette.border }};scroll-snap-align:start">
+      <div style="color:#FBBF24;font-size:16px;letter-spacing:2px;margin-bottom:14px">{{ '★' * r.stars }}</div>
+      <p style="font-size:15px;line-height:1.65;margin-bottom:16px">&ldquo;{{ r.text }}&rdquo;</p>
+      <div style="font-size:13px;color:{{ tokens.palette.muted }}">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}</div>
+    </div>
+    {% endfor %}
+    <div style="flex:0 0 32px"></div>
+  </div>
+</section>

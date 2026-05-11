@@ -1,0 +1,12 @@
+{
+  "name": "warm-earth",
+  "vibe_tags": ["landscape", "outdoor", "warm", "homeowner-residential"],
+  "ink": "#2A1B0E",
+  "accent": "#C85A3A",
+  "bg": "#FAF4EC",
+  "bg_blur": "rgba(250,244,236,.88)",
+  "muted": "#5C4A3C",
+  "card_bg": "#FFFFFF",
+  "border": "rgba(42,27,14,.1)",
+  "fits": "landscaping, tree service, outdoor trades, residential audience"
+}

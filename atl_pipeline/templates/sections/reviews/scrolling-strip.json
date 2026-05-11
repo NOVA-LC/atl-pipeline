@@ -1,0 +1,8 @@
+{
+  "name": "scrolling-strip",
+  "kind": "reviews",
+  "vibe_tags": ["social-proof", "abundant"],
+  "requires": {"min_reviews": 4},
+  "best_for": "businesses with 4+ strong reviews. Horizontal scrolling cards convey volume.",
+  "avoid_when": "fewer than 4 reviews — looks sparse"
+}

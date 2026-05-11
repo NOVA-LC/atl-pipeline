@@ -1,0 +1,12 @@
+{
+  "name": "generous",
+  "section_y": "140px",
+  "section_y_lg": "180px",
+  "hero_y_top": "120px",
+  "hero_y_bottom": "100px",
+  "wrap_max": "1320px",
+  "wrap_x": "40px",
+  "h1_size": "clamp(52px, 8vw, 132px)",
+  "h2_size": "clamp(40px, 6vw, 80px)",
+  "fits": "premium, single-trade specialists, slow-narrative pacing"
+}
