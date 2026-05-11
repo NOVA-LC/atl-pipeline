@@ -216,5 +216,13 @@
     }
   ],
   "total_cost_cents": 4.541,
-  "warnings": []
+  "warnings": [],
+  "_with_flux_dev_hero": true,
+  "_awwwards_post_flux_hero": {
+    "tier": "agency",
+    "score": 87,
+    "verdict": "Reads like a boutique trade shop's site \u2014 Bebas + orange + Joey's name in the CTA is a complete point of view; a prospect would believe this cost $5K."
+  },
+  "_image_gen_cost_cents": 3.0,
+  "_total_cost_cents_with_imagery": 7.54
 }
