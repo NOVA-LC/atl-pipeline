@@ -1,0 +1,28 @@
+{# Branded 404. Static — Vercel will serve this at /404 for any unknown route
+   in the demos repo. Written into the demos repo at root by deploy.ensure_infra(). #}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>404 · We can't find that page · nova</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#F4F1EA">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Georgia,'Times New Roman',serif;background:#F4F1EA;color:#0F1014;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center;line-height:1.6}
+.glyph{font-size:120px;line-height:1;color:#C9A961;margin-bottom:20px;font-style:italic}
+h1{font-size:clamp(36px,5vw,64px);font-weight:500;margin-bottom:20px;letter-spacing:-0.02em}
+h1 em{color:#C9A961;font-style:italic}
+p{font-size:18px;max-width:540px;color:#445971;margin-bottom:36px}
+a.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 32px;background:#0A1F3F;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:15px;font-family:system-ui,sans-serif}
+small{margin-top:48px;font-size:13px;color:#7a8896;font-family:ui-monospace,monospace}
+</style>
+</head>
+<body>
+<div class="glyph">404</div>
+<h1>This page <em>sprung a leak.</em></h1>
+<p>We couldn't find what you were looking for. The site you meant to visit is probably one level up, or hit the home link below.</p>
+<a class="btn" href="/">← Back home</a>
+<small>nova · atlanta · built sites for trades</small>
+</body>
+</html>

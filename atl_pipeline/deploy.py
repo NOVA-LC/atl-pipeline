@@ -107,16 +107,38 @@ def ensure_tracker_function(repo_path: str | Path) -> bool:
     return True
 
 
+def ensure_404(repo_path: str | Path) -> bool:
+    """Write the branded 404.html to the demos repo root. Vercel serves it
+    automatically for any unknown route under the umbrella project.
+    """
+    from pathlib import Path as _P
+    src = _P(__file__).parent / 'templates' / 'shells' / '404.html.j2'
+    target = _P(repo_path) / '404.html'
+    if not src.exists():
+        return False
+    desired = src.read_text()
+    if target.exists():
+        try:
+            if target.read_text() == desired:
+                return False
+        except Exception:
+            pass
+    target.write_text(desired)
+    return True
+
+
 def ensure_infra(repo_path: str | Path) -> list[str]:
     """Write all infra files into the demos repo (vercel.json, tracker fn,
-    etc.). Returns the list of repo-relative paths that were changed; pass
-    this to git_commit_and_push as extra_paths.
+    branded 404, etc.). Returns the list of repo-relative paths that were
+    changed; pass this to git_commit_and_push as extra_paths.
     """
     changed = []
     if ensure_vercel_config(repo_path):
         changed.append('vercel.json')
     if ensure_tracker_function(repo_path):
         changed.append('api/track.js')
+    if ensure_404(repo_path):
+        changed.append('404.html')
     return changed
 
 

@@ -4,6 +4,9 @@
     <div style="font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:24px;opacity:.9">{{ copy.cta_eyebrow|default('Need help now?') }}</div>
     <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,72px);font-weight:{{ tokens.type.display_weight }};margin-bottom:20px;line-height:1.05">{{ copy.cta_h|safe }}</h2>
     <p style="font-size:20px;max-width:620px;margin:0 auto 36px;font-weight:400;opacity:.95">{{ copy.cta_sub }}</p>
-    <a href="tel:{{ business.phone }}" style="display:inline-flex;align-items:center;gap:12px;padding:22px 44px;background:#fff;color:{{ tokens.palette.accent }};border-radius:999px;text-decoration:none;font-weight:700;font-size:18px;box-shadow:0 20px 40px -15px rgba(0,0,0,.3)">📞 Call now · {{ business.phone_display }}</a>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+      <a href="tel:{{ business.phone }}" style="display:inline-flex;align-items:center;gap:12px;padding:22px 44px;background:#fff;color:{{ tokens.palette.accent }};border-radius:999px;text-decoration:none;font-weight:700;font-size:18px;box-shadow:0 20px 40px -15px rgba(0,0,0,.3)" aria-label="Call {{ business.name }} now">📞 Tap to call · {{ business.phone_display }}</a>
+      <a href="sms:{{ business.phone }}?&body=Emergency%20at%20" style="display:inline-flex;align-items:center;gap:12px;padding:22px 36px;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.45);border-radius:999px;text-decoration:none;font-weight:700;font-size:16px" aria-label="Text {{ business.name }}">💬 Text {{ copy.owner_first_name|default('us') }} now</a>
+    </div>
   </div>
 </section>

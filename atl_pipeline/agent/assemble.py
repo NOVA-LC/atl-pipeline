@@ -381,6 +381,7 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
         'copy': copy,
         'tokens': tokens,
         'sections': sections,
+        'industry': industry,  # used by tab-blur + console + favicon scaffolds
         'year': _dt.date.today().year,
     }
 
