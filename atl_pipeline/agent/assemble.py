@@ -386,6 +386,28 @@ def _resolve_copy(composed: dict, lead: dict, osf_data: dict, industry: str, res
     # compose_in's copy.services tiles (which can carry price_signal per tile)
     # and copy.what_we_dont_do (optional, if compose generated it).
 
+    # === Pull image-led section assets from generated photos ===
+    # The "behind the work" split + "environmental moment" sections render
+    # only when these copy fields are present. Pull from research_brief's
+    # _generated_photos cache (populated by orchestrator's image_gen stage).
+    gen = (research_brief or {}).get('_generated_photos') or {}
+    process_image = gen.get('process_image') or gen.get('process_pipe') or ''
+    environmental_image = gen.get('environmental_image') or gen.get('neighborhood') or ''
+    process_statement = ''
+    environmental_statement = ''
+    if process_image:
+        # Use compose's owner-voice if available, else assemble a default in
+        # the owner's first-person register.
+        process_statement = (copy_in.get('process_statement') or
+            (f"Every job starts the same way. {owner_first or 'I'} runs the "
+             f"camera, you see the footage, you get a flat-rate quote before "
+             f"any wrench moves.") if owner_first else
+            "Every job starts the same way. Camera first, footage emailed, "
+            "flat-rate quote before any wrench moves.")
+    if environmental_image:
+        environmental_statement = (copy_in.get('environmental_statement') or
+            f"On the road in {lead.get('city', 'the area')} before most of us are awake.")
+
     # === Build copy.stats for the by-the-numbers gallery alternative ===
     # 3-6 oversized numerals drawn from real business signals, used when the
     # lead has no real photos but we still want a visual rhythm break.
@@ -444,6 +466,14 @@ def _resolve_copy(composed: dict, lead: dict, osf_data: dict, industry: str, res
         'what_we_dont_do': copy_in.get('what_we_dont_do') or [],
         'guarantee': copy_in.get('guarantee'),
         'stats': stats,
+        # Image-led section assets — only render when populated
+        'process_image': process_image,
+        'process_statement': process_statement,
+        'process_eyebrow': copy_in.get('process_eyebrow') or 'Behind the work',
+        'process_byline': copy_in.get('process_byline'),
+        'environmental_image': environmental_image,
+        'environmental_statement': environmental_statement,
+        'environmental_eyebrow': copy_in.get('environmental_eyebrow'),
     }
     cleaned, removed = banned.clean_copy_dict(raw_copy)
     cleaned['_banned_phrases_removed'] = removed

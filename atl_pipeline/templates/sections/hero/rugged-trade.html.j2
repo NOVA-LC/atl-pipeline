@@ -1,14 +1,35 @@
-{# Hero variant: bold rugged slab, dark over photo or palette. Industrial. #}
-<section class="hero hero-rugged" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:{% if images.hero %}linear-gradient(rgba(15,20,30,.78),rgba(15,20,30,.85)),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.ink }}{% endif %};color:#fff">
-  <div class="wrap" style="max-width:1180px">
-    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:28px">▌ {{ copy.eyebrow }}</div>
-    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1;margin-bottom:32px;text-transform:{{ tokens.type.display_text_transform|default('none') }}">
-      {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</span>{% endif %}
+{# Hero variant: rugged-trade. Bold uppercase display type. When images.hero
+   is supplied it renders as a darkened photo backdrop; otherwise solid ink.
+
+   Aggressive treatment: 35% black overlay (not 85%) so the photo actually
+   reads as a photo. Headline pushed to bottom-left for editorial weight.
+   Oversized Bebas type. Vertical-text city marker rotated on the right edge
+   for visual rhythm break. Scroll cue at the bottom. #}
+<section class="hero hero-rugged" style="position:relative;min-height:88vh;display:flex;flex-direction:column;justify-content:flex-end;padding:120px 0 80px;background:{% if images.hero %}linear-gradient(180deg,rgba(15,20,30,.32) 0%,rgba(15,20,30,.42) 55%,rgba(15,20,30,.85) 100%),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.ink }}{% endif %};color:#fff;overflow:hidden">
+
+  {# Vertical city marker rotated against the right edge #}
+  <div aria-hidden="true" style="position:absolute;right:28px;top:50%;transform:translateY(-50%) rotate(90deg);transform-origin:right center;font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;pointer-events:none">{{ business.city|upper }} · GA · EST {{ year - 32 if year else '1993' }}</div>
+
+  <div class="wrap" style="max-width:1280px;width:100%">
+    <div class="eyebrow" data-motion="kerning-tighten" style="display:inline-flex;align-items:center;gap:14px;color:{{ tokens.palette.accent }};font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:36px">
+      <span style="display:inline-block;width:36px;height:1px;background:{{ tokens.palette.accent }}"></span>
+      {{ copy.eyebrow }}
+    </div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,10vw,160px);font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing|default('-0.02em') }};line-height:.92;margin:0 0 36px;text-transform:{{ tokens.type.display_text_transform|default('none') }};max-width:1180px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:{{ tokens.palette.accent }};display:inline-block">{{ copy.headline_em }}</span>{% endif %}
     </h1>
-    <p style="font-size:20px;max-width:640px;color:rgba(255,255,255,.85);margin-bottom:40px;font-weight:400">{{ copy.hero_sub }}</p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <a href="tel:{{ business.phone }}" style="padding:18px 32px;background:{{ tokens.palette.accent }};color:#0F1014;border-radius:4px;text-decoration:none;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em">📞 {{ business.phone_display }}</a>
-      <a href="#services" style="padding:18px 32px;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.3);border-radius:4px;text-decoration:none;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.05em">{{ copy.hero_cta_text|default('Our Work') }}</a>
+    <p style="font-size:clamp(18px,1.6vw,22px);max-width:680px;color:rgba(255,255,255,.88);margin-bottom:48px;font-weight:400;line-height:1.5">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <a href="tel:{{ business.phone }}" style="padding:20px 36px;background:{{ tokens.palette.accent }};color:#0F1014;border-radius:4px;text-decoration:none;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.08em;box-shadow:0 14px 40px -12px {{ tokens.palette.accent }}88">📞 {{ business.phone_display }}</a>
+      <a href="#services" style="padding:20px 36px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:4px;text-decoration:none;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.08em">{{ copy.hero_cta_text|default('Our Work') }}</a>
     </div>
   </div>
+
+  {# Bottom scroll cue: subtle, accent-colored, animates down on hover #}
+  <div aria-hidden="true" style="position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.5);display:flex;flex-direction:column;align-items:center;gap:10px">
+    <span>Scroll</span>
+    <span style="display:inline-block;width:1px;height:36px;background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0))"></span>
+  </div>
 </section>
+
+{% raw %}<style>@media(max-width:720px){.hero-rugged{min-height:auto !important;padding:64px 0 48px !important}.hero-rugged > div[aria-hidden="true"]:first-of-type{display:none !important}}</style>{% endraw %}

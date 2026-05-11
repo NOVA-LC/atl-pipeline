@@ -131,6 +131,34 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
 
 <main id="main">
 {% if sections.hero %}{% include sections.hero %}{% endif %}
+
+{# Image-led "Behind the work" split — a full-width 50/50 with a process
+   photo on one side and an editorial typographic statement on the other.
+   Renders only when copy.process_image is supplied (the assembler picks
+   from research_brief._generated_photos.process_image when set, else
+   skips). Establishes that real photos exist on the page before the user
+   even reaches services. #}
+{% if copy.process_image %}
+<section style="background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }}">
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;min-height:62vh">
+    <div data-motion="parallax-cover" style="background:url('{{ copy.process_image }}') center/cover;min-height:420px;position:relative;overflow:hidden">
+      <img src="{{ copy.process_image }}" alt="Joey at work in {{ business.city }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+    </div>
+    <div style="padding:clamp(48px,8vw,120px) clamp(32px,6vw,96px);display:flex;flex-direction:column;justify-content:center;background:{{ tokens.palette.bg }}">
+      <div class="eyebrow" style="display:inline-flex;align-items:center;gap:14px;color:{{ tokens.palette.accent }};font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:32px">
+        <span style="display:inline-block;width:36px;height:1px;background:{{ tokens.palette.accent }}"></span>
+        {{ copy.process_eyebrow|default('Behind the work') }}
+      </div>
+      <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(26px,3vw,42px);font-weight:{{ tokens.type.display_weight }};line-height:1.22;letter-spacing:-0.01em;margin:0 0 28px;color:{{ tokens.palette.ink }}">{{ copy.process_statement|default("Every job starts the same way. Joey runs the camera, you see the footage, you get a flat-rate quote before any wrench moves.") }}</p>
+      {% if copy.process_byline %}
+      <div style="font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:{{ tokens.palette.muted }}">— {{ copy.process_byline }}</div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){section > div[style*="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"]{grid-template-columns:1fr !important}section > div[style*="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"] > div:first-child{min-height:340px !important}}</style>{% endraw %}
+{% endif %}
+
 {% if sections.services %}{% include sections.services %}{% endif %}
 {# Cialdini-commitment "what we don't do" callout — only renders when compose
    supplied it (research-supported). Hard-to-fake signal. #}
@@ -161,6 +189,24 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
 {% raw %}<style>@media(max-width:720px){section[style*="grid-template-columns:160px 1fr"] > .wrap{grid-template-columns:1fr !important;gap:8px !important}}</style>{% endraw %}
 {% endif %}
 {% if sections.gallery %}{% include sections.gallery %}{% endif %}
+
+{# Environmental moment — full-bleed photograph with bottom-left typography
+   overlay. Renders only when copy.environmental_image is supplied. Provides
+   a second photographic anchor on the page beyond the hero, and grounds the
+   business in its actual geography rather than relying on the trust strip
+   alone to say "we're local." #}
+{% if copy.environmental_image %}
+<section style="position:relative;min-height:60vh;display:flex;flex-direction:column;justify-content:flex-end;padding:60px 0 60px;background:linear-gradient(180deg,rgba(15,20,30,0) 35%,rgba(15,20,30,.65) 75%,rgba(15,20,30,.9) 100%),url('{{ copy.environmental_image }}') center/cover;color:#fff;overflow:hidden">
+  <div class="wrap" style="max-width:1280px;width:100%">
+    <div class="eyebrow" style="display:inline-flex;align-items:center;gap:14px;color:{{ tokens.palette.accent }};font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:24px">
+      <span style="display:inline-block;width:36px;height:1px;background:{{ tokens.palette.accent }}"></span>
+      {{ copy.environmental_eyebrow|default(business.city|upper + ' · DAWN') }}
+    </div>
+    <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(32px,4.6vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1.05;letter-spacing:-0.015em;margin:0;max-width:880px;text-transform:{{ tokens.type.display_text_transform|default('none') }}">{{ copy.environmental_statement|default("On the road in " + business.city + " before most of us are awake.") }}</p>
+  </div>
+</section>
+{% endif %}
+
 {% if sections.reviews and copy.reviews_list %}{% include sections.reviews %}{% endif %}
 {% if sections.cta %}{% include sections.cta %}{% endif %}
 </main>

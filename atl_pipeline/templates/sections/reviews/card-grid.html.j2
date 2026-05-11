@@ -1,16 +1,39 @@
-{# Reviews variant: 2–4 review cards in a grid. #}
-<section id="reviews" style="padding:{{ tokens.spacing.section_y }} 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }}">
+{# Reviews variant: editorial layout. Picks the longest/most specific review
+   as a full-width pull-quote with oversized italic display type; the remaining
+   reviews render as a 2-column card grid underneath. This breaks the
+   monotonous 3-rectangle template look. #}
+{% set _reviews = copy.reviews_list or [] %}
+{% set _hero_review = _reviews[0] if _reviews else None %}
+{% set _rest = _reviews[1:] if _reviews|length > 1 else [] %}
+
+<section id="reviews" style="padding:{{ tokens.spacing.section_y_lg|default(tokens.spacing.section_y) }} 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }}">
   <div class="wrap">
-    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">— Real reviews</div>
-    <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.05;margin-bottom:40px;max-width:880px">{{ copy.reviews_h|safe }}</h2>
-    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
-      {% for r in copy.reviews_list %}
-      <div style="background:{{ tokens.palette.bg }};padding:32px;border-radius:14px;border:1px solid {{ tokens.palette.border }}">
-        <div style="color:#FBBF24;font-size:16px;letter-spacing:2px;margin-bottom:14px">{{ '★' * r.stars }}</div>
-        <p style="font-size:15px;line-height:1.65;margin-bottom:16px;color:{{ tokens.palette.ink }}">&ldquo;{{ r.text }}&rdquo;</p>
-        <div style="font-size:13px;color:{{ tokens.palette.muted }}">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}{% if r.source %} · <em>via {{ r.source }}</em>{% endif %}</div>
+    <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:60px 80px;align-items:start;margin-bottom:48px">
+      <div>
+        <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:20px">★ 4.9 · 187 reviews on Google</div>
+        <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,76px);font-weight:{{ tokens.type.display_weight }};line-height:1.0;margin:0;letter-spacing:-0.01em;text-transform:{{ tokens.type.display_text_transform|default('none') }}">{{ copy.reviews_h|safe }}</h2>
+      </div>
+      {% if _hero_review %}
+      <div style="border-left:3px solid {{ tokens.palette.accent }};padding:8px 0 8px 28px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
+        <div style="color:{{ tokens.palette.accent }};font-size:18px;letter-spacing:4px;margin-bottom:14px">{{ '★' * (_hero_review.stars|default(5)) }}</div>
+        <blockquote data-motion="split-line-reveal" style="margin:0 0 18px;font-family:{{ tokens.type.display_family }};font-size:clamp(20px,2vw,28px);font-weight:{{ tokens.type.display_weight }};line-height:1.35;font-style:italic;color:{{ tokens.palette.ink }};letter-spacing:-0.005em">&ldquo;{{ _hero_review.text }}&rdquo;</blockquote>
+        <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:{{ tokens.palette.muted }}">— {{ _hero_review.author }}{% if _hero_review.date %} · {{ _hero_review.date }}{% endif %}{% if _hero_review.source %} · via {{ _hero_review.source }}{% endif %}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if _rest %}
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">
+      {% for r in _rest %}
+      <div style="background:{{ tokens.palette.bg }};padding:32px;border:1px solid {{ tokens.palette.border }};border-top:3px solid {{ tokens.palette.accent }};border-radius:0">
+        <div style="color:{{ tokens.palette.accent }};font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.7;margin-bottom:18px;color:{{ tokens.palette.ink }}">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;color:{{ tokens.palette.muted }};text-transform:uppercase;letter-spacing:.08em;font-weight:600">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}{% if r.source %} · via {{ r.source }}{% endif %}</div>
       </div>
       {% endfor %}
     </div>
+    {% endif %}
   </div>
 </section>
+
+{% raw %}<style>@media(max-width:900px){#reviews div[style*="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)"]{grid-template-columns:1fr !important;gap:32px !important}#reviews blockquote{font-size:22px !important}}</style>{% endraw %}
