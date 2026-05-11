@@ -1,6 +1,7 @@
 {
   "name": "archivo-inter",
   "vibe_tags": ["modern", "clean", "homeowner-residential", "tech-forward"],
+  "fits_verticals": ["plumber", "hvac"],
   "google_font_link": "https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap",
   "display_family": "'Archivo', sans-serif",
   "display_weight": 700,

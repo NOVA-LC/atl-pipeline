@@ -1,6 +1,7 @@
 {
   "name": "oswald-inter",
   "vibe_tags": ["rugged", "blue-collar", "industrial", "bold"],
+  "fits_verticals": ["radiator", "auto", "septic"],
   "google_font_link": "https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap",
   "display_family": "'Oswald', sans-serif",
   "display_weight": 600,

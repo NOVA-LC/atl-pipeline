@@ -1,0 +1,182 @@
+{# Motion preset library — single JS file, vanilla (no React), data-attribute
+   driven. Loaded as ES module after GSAP/Lenis CDN tags. Composition agent
+   tags elements with data-motion="<preset-name>" and this script wires the
+   animation on DOMContentLoaded.
+
+   12 presets: reveal-up, split-line-reveal, kerning-tighten, parallax-cover,
+   pin-scrub-steps, horizontal-panels, marquee-scrub, mask-clip-reveal,
+   image-stack-tilt, counter-scrub, sticky-caption, cursor-magnetic.
+
+   Respects prefers-reduced-motion. Disables Lenis + magnetic on touch.
+   Inlined into shells via {% raw %} so Jinja doesn't parse the JS.
+#}
+{% raw %}
+gsap.registerPlugin(ScrollTrigger);
+const _reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const _touch  = matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+// Lenis smooth-scroll only on non-touch, non-reduced-motion contexts
+if (!_reduce && !_touch && typeof Lenis !== 'undefined') {
+  const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, syncTouch: false });
+  function _raf(t){ lenis.raf(t); requestAnimationFrame(_raf); }
+  requestAnimationFrame(_raf);
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add(t => lenis.raf(t * 1000));
+  gsap.ticker.lagSmoothing(0);
+}
+
+const _REG = {};
+function registerMotion(name, fn) { _REG[name] = fn; }
+
+// ===== 12 presets =====
+
+registerMotion('reveal-up', (el) => {
+  gsap.from(el.children, {
+    y: 60, opacity: 0, duration: 0.8, stagger: 0.08,
+    ease: 'power3.out',
+    scrollTrigger: { trigger: el, start: 'top 80%', toggleActions: 'play none none reverse' }
+  });
+});
+
+registerMotion('split-line-reveal', (el) => {
+  if (typeof SplitText === 'undefined') {
+    gsap.from(el, { y: 30, opacity: 0, duration: 0.8, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%' } });
+    return;
+  }
+  const split = SplitText.create(el, { type: 'lines', mask: 'lines' });
+  gsap.from(split.lines, {
+    yPercent: 110, duration: 1.0, stagger: 0.1, ease: 'power4.out',
+    scrollTrigger: { trigger: el, start: 'top 80%' }
+  });
+});
+
+registerMotion('kerning-tighten', (el) => {
+  gsap.from(el, {
+    letterSpacing: '0.4em', opacity: 0, duration: 1.2, ease: 'expo.out',
+    scrollTrigger: { trigger: el, start: 'top 85%' }
+  });
+});
+
+registerMotion('parallax-cover', (el) => {
+  const img = el.querySelector('img');
+  if (!img) return;
+  gsap.to(img, {
+    yPercent: -20, ease: 'none',
+    scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true }
+  });
+});
+
+registerMotion('pin-scrub-steps', (el) => {
+  const steps = el.querySelectorAll('[data-step]');
+  if (steps.length < 2) return;
+  ScrollTrigger.create({
+    trigger: el, start: 'top top', end: () => `+=${steps.length * 100}%`,
+    pin: true, scrub: 1
+  });
+  steps.forEach((s, i) => {
+    gsap.from(s, {
+      opacity: 0, y: 40,
+      scrollTrigger: { trigger: el, start: () => `top+=${i*100}% top`, end: `+=100%`, scrub: 1 }
+    });
+  });
+});
+
+registerMotion('marquee-scrub', (el) => {
+  const inner = el.querySelector('[data-marquee-track]');
+  if (!inner) return;
+  const tl = gsap.to(inner, { xPercent: -50, repeat: -1, duration: 20, ease: 'linear' });
+  ScrollTrigger.create({
+    trigger: el, start: 'top bottom', end: 'bottom top',
+    onUpdate: self => tl.timeScale(1 + Math.abs(self.getVelocity()) / 2000)
+  });
+});
+
+registerMotion('mask-clip-reveal', (el) => {
+  gsap.from(el, {
+    clipPath: 'inset(0 50% 0 50%)', duration: 1.2, ease: 'power4.inOut',
+    scrollTrigger: { trigger: el, start: 'top 75%' }
+  });
+});
+
+registerMotion('image-stack-tilt', (el) => {
+  const cards = el.querySelectorAll('[data-card]');
+  cards.forEach((c, i) => gsap.set(c, { rotate: (i-1)*-4, y: (i-1)*20 }));
+  gsap.to(cards, {
+    rotate: 0, y: 0, stagger: 0.15, ease: 'expo.out',
+    scrollTrigger: { trigger: el, start: 'top 70%' }
+  });
+});
+
+registerMotion('counter-scrub', (el) => {
+  const target = parseFloat(el.dataset.to || el.textContent || '0');
+  if (!isFinite(target)) return;
+  const obj = { n: 0 };
+  gsap.to(obj, {
+    n: target, duration: 2, ease: 'power1.out',
+    onUpdate() { el.textContent = Math.round(obj.n).toLocaleString(); },
+    scrollTrigger: { trigger: el, start: 'top 85%' }
+  });
+});
+
+registerMotion('sticky-caption', (el) => {
+  // CSS handles the sticky; we cascade the right column's children
+  const right = el.querySelector('[data-cascade]');
+  if (!right) return;
+  gsap.from(right.children, {
+    y: 60, opacity: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out',
+    scrollTrigger: { trigger: right, start: 'top 80%' }
+  });
+});
+
+registerMotion('cursor-magnetic', (el) => {
+  if (_touch) return;
+  const label = el.querySelector('[data-magnet-label]') || el;
+  el.addEventListener('mousemove', (e) => {
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width/2) * 0.25;
+    const y = (e.clientY - r.top - r.height/2) * 0.25;
+    gsap.to(el,   { x, y, duration: 0.6, ease: 'power3.out' });
+    gsap.to(label, { x: -x*0.4, y: -y*0.4, duration: 0.6, ease: 'power3.out' });
+  });
+  el.addEventListener('mouseleave', () => {
+    gsap.to(el,   { x: 0, y: 0, duration: 0.5, ease: 'power3.out' });
+    gsap.to(label, { x: 0, y: 0, duration: 0.5, ease: 'power3.out' });
+  });
+});
+
+registerMotion('hover-tilt-card', (el) => {
+  if (_touch) return;
+  el.style.transformStyle = 'preserve-3d';
+  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1)';
+  el.addEventListener('mousemove', (e) => {
+    const r = el.getBoundingClientRect();
+    const rx = (e.clientY - r.top - r.height/2) / r.height * -10;
+    const ry = (e.clientX - r.left - r.width/2) / r.width * 10;
+    el.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+  el.addEventListener('mouseleave', () => {
+    el.style.transform = '';
+  });
+});
+
+// ===== Init: scan + wire =====
+function _initMotion() {
+  if (_reduce) {
+    document.querySelectorAll('[data-motion]').forEach(el => {
+      gsap.set(el, { opacity: 1, clearProps: 'transform' });
+    });
+    return;
+  }
+  document.querySelectorAll('[data-motion]').forEach(el => {
+    const name = el.dataset.motion;
+    if (_REG[name]) _REG[name](el);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initMotion);
+} else {
+  _initMotion();
+}
+{% endraw %}

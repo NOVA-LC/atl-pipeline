@@ -1,6 +1,7 @@
 {
   "name": "playfair-inter",
   "vibe_tags": ["refined", "premium", "boutique", "established"],
+  "fits_verticals": ["landscape", "hvac"],
   "google_font_link": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600&display=swap",
   "display_family": "'Playfair Display', serif",
   "display_weight": 700,

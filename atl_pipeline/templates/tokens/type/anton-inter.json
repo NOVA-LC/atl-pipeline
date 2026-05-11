@@ -1,0 +1,14 @@
+{
+  "name": "anton-inter",
+  "vibe_tags": ["industrial", "bold", "no-nonsense", "blue-collar"],
+  "fits_verticals": ["radiator", "auto", "septic"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap",
+  "display_family": "'Anton', sans-serif",
+  "display_weight": 400,
+  "display_letter_spacing": "0.005em",
+  "display_italic_works": false,
+  "display_text_transform": "uppercase",
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "rugged trades, owner-operator shops, condensed industrial display"
+}

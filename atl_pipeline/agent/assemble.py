@@ -47,6 +47,9 @@ DEFAULT_PALETTE_BY_INDUSTRY = {
     'landscape': 'warm-earth',
     'septic': 'emergency-red',
 }
+# Multiple type-pair candidates per vertical so a slug-deterministic hash can
+# pick a different default for neighbor demos. Composition agent overrides
+# this when it makes an explicit pick; this is the fallback diversity layer.
 DEFAULT_TYPE_BY_INDUSTRY = {
     'plumber': 'archivo-inter',
     'hvac': 'fraunces-inter',
@@ -54,6 +57,20 @@ DEFAULT_TYPE_BY_INDUSTRY = {
     'landscape': 'fraunces-inter',
     'septic': 'archivo-inter',
 }
+TYPE_CANDIDATES_BY_INDUSTRY = {
+    'plumber':   ['archivo-inter', 'lora-inter', 'bebas-inter', 'fraunces-inter'],
+    'hvac':      ['fraunces-inter', 'dm-serif-inter', 'ibm-plex-inter', 'cormorant-inter', 'space-mono-inter'],
+    'radiator':  ['oswald-inter', 'anton-inter', 'bebas-inter', 'space-mono-inter'],
+    'landscape': ['lora-inter', 'cormorant-inter', 'playfair-inter', 'abril-inter', 'dm-serif-inter'],
+    'septic':    ['bebas-inter', 'anton-inter', 'oswald-inter', 'archivo-inter'],
+}
+
+
+def _slug_hash(slug: str | None) -> int:
+    """Deterministic small integer for picking from variant lists per-slug."""
+    if not slug:
+        return 0
+    return sum(ord(c) for c in slug)
 DEFAULT_SPACING = 'default'
 DEFAULT_SECTIONS_BY_INDUSTRY = {
     'plumber': {'hero': 'split-photo-copy', 'services': 'icon-cards',
@@ -94,19 +111,27 @@ def _safe_choice(choice: str | None, available: set, default: str) -> str:
     return default
 
 
-def _resolve_tokens(composed: dict, industry: str, full_catalog: dict) -> dict:
-    """Pick palette + type + spacing dicts, falling back industry-default when
-    the composed values are missing or unknown."""
+def _resolve_tokens(composed: dict, industry: str, full_catalog: dict, slug: str = '') -> dict:
+    """Pick palette + type + spacing dicts, falling back to industry default
+    when the composed values are missing or unknown. Uses a slug-deterministic
+    hash to rotate among the per-vertical type candidates so neighbor demos
+    don't share defaults (anti-clone diversity)."""
     avail = full_catalog['available']
     palette_name = _safe_choice(
         composed.get('palette'),
         avail['palettes'],
         DEFAULT_PALETTE_BY_INDUSTRY.get(industry, 'clean-trade-blue'),
     )
+    # Type-pair: rotate among vertical candidates via slug hash
+    candidates = TYPE_CANDIDATES_BY_INDUSTRY.get(industry, [DEFAULT_TYPE_BY_INDUSTRY.get(industry, 'archivo-inter')])
+    candidates = [c for c in candidates if c in avail['type_pairs']]
+    if not candidates:
+        candidates = ['archivo-inter']
+    type_default = candidates[_slug_hash(slug) % len(candidates)]
     type_name = _safe_choice(
         composed.get('type_pair'),
         avail['type_pairs'],
-        DEFAULT_TYPE_BY_INDUSTRY.get(industry, 'archivo-inter'),
+        type_default,
     )
     spacing_name = _safe_choice(
         composed.get('spacing'),
@@ -412,7 +437,7 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
     full_catalog = catalog.load_all()
 
     # Resolve choices with hard fallbacks
-    tokens = _resolve_tokens(composed, industry, full_catalog)
+    tokens = _resolve_tokens(composed, industry, full_catalog, slug=lead.get('slug', ''))
     if composed.get('palette') and composed['palette'] != tokens['_names']['palette']:
         warnings.append(f"unknown palette '{composed.get('palette')}' → '{tokens['_names']['palette']}'")
     if composed.get('type_pair') and composed['type_pair'] != tokens['_names']['type']:

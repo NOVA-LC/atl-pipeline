@@ -1,0 +1,13 @@
+{
+  "name": "space-mono-inter",
+  "vibe_tags": ["technical", "modern", "indie-tech", "monospace-accent"],
+  "fits_verticals": ["auto", "commercial", "hvac"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap",
+  "display_family": "'Space Mono', monospace",
+  "display_weight": 700,
+  "display_letter_spacing": "-0.01em",
+  "display_italic_works": false,
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "indie-trade aesthetic, motor/auto/mechanical work, modern shop branding"
+}

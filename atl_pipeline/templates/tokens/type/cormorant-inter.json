@@ -1,0 +1,13 @@
+{
+  "name": "cormorant-inter",
+  "vibe_tags": ["elegant", "classic", "refined", "boutique"],
+  "fits_verticals": ["landscape", "hvac"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600&display=swap",
+  "display_family": "'Cormorant Garamond', serif",
+  "display_weight": 500,
+  "display_letter_spacing": "-0.005em",
+  "display_italic_works": true,
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "boutique high-end residential, design-led trades, garden/landscape premium"
+}

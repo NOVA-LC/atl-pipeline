@@ -1,0 +1,13 @@
+{
+  "name": "ibm-plex-inter",
+  "vibe_tags": ["technical", "precise", "commercial", "B2B"],
+  "fits_verticals": ["hvac", "auto", "commercial"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&family=Inter:wght@400;500&display=swap",
+  "display_family": "'IBM Plex Sans', sans-serif",
+  "display_weight": 600,
+  "display_letter_spacing": "-0.015em",
+  "display_italic_works": false,
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "commercial trades, B2B-tilt small businesses, technical precision feel"
+}
