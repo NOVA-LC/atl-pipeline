@@ -34,6 +34,56 @@ BANNED_PHRASES = [
     'one stop shop',
     'attention to detail',  # cliche, banned to force specificity
     'family-owned and operated',  # cliche; allowed if rephrased with specifics
+    # Tier-2 additions (per copywriting research):
+    'trusted',
+    'leading',
+    'quality service',
+    'top-rated',
+    'professional service',
+    'committed to excellence',
+    'your satisfaction is our priority',
+    'we go above and beyond',
+    'second to none',
+    'passionate',
+    'dedicated',
+    'unlock',
+    'empower',
+    'delve',
+    'seamless',
+    'in today',  # catches "in today's fast-paced world" etc.
+    "let's dive in",
+    "let's explore",
+    "here's the thing",
+    'hot take',
+]
+
+
+# Latent AI tells — patterns that betray a model wrote the copy even when no
+# banned phrases appear. Each is a compiled regex; matched at critic-time.
+LATENT_AI_TELLS = [
+    # "It's not just X — it's Y" / "Not just X, but Y" construction
+    (re.compile(r"\bit's not just\b|\bnot just\s+\w+[,—-]\s*it'?s\b", re.IGNORECASE), 'not-just-X-its-Y'),
+    # Em-dash in marketing copy (allowed in body if voice card permits; flagged
+    # by default — banned if voice_card.em_dash_rate < threshold)
+    (re.compile(r'—|–'), 'em-dash-in-marketing'),
+    # Bold-term-colon-explanation list ("**Reliability:** We show up.")
+    (re.compile(r'\*\*[A-Z][A-Za-z\s]{2,30}\*\*:\s', ), 'bold-colon-list'),
+    # Rule-of-three triplets: "fast, reliable, and affordable"
+    (re.compile(r'\b\w+,\s+\w+,\s+and\s+\w+\b', re.IGNORECASE), 'rule-of-three'),
+    # "Whether you're X or Y" audience-fork
+    (re.compile(r"\bwhether you'?re\b", re.IGNORECASE), 'whether-youre-X-or-Y'),
+    # "Whether it's X or Y"
+    (re.compile(r"\bwhether it'?s\b", re.IGNORECASE), 'whether-its-X-or-Y'),
+    # Title-case feature names invented by the model
+    (re.compile(r'\b(?:Premium|Comprehensive|Advanced|Total|Complete)\s+[A-Z][a-z]+\s+(?:Solutions|Services|Care|Experience)\b'), 'titlecase-feature'),
+    # Soft modal stacking: "can help you to be able to"
+    (re.compile(r'\bcan help you to\b|\bbe able to be\b', re.IGNORECASE), 'soft-modal-stack'),
+    # Generic pseudo-quantification with no source
+    (re.compile(r'\bover\s+\d+%\s+of\s+(homeowners|customers|clients|americans)\b', re.IGNORECASE), 'pseudo-quant'),
+    # Parallel verb stacking — "We diagnose, we repair, we restore" (3+ first-person verbs)
+    (re.compile(r'\b(?:we|i)\s+\w+,\s+(?:we|i)\s+\w+,\s+(?:we|i)\s+\w+\b', re.IGNORECASE), 'parallel-verb-stack'),
+    # "Look no further" — local-services AI default
+    (re.compile(r'\blook no further\b', re.IGNORECASE), 'look-no-further'),
 ]
 
 
@@ -113,6 +163,22 @@ def assert_clean(text: str, sources: Iterable[str] = ()) -> None:
     bad = find_banned(text)
     if bad:
         raise ValueError(f'banned phrases in copy: {bad!r}')
+
+
+def find_latent_tells(text: str, allow_em_dash: bool = False) -> list[dict]:
+    """Scan text for the latent AI-tell regex patterns. Returns a list of
+    {pattern, matched_text, span} dicts. Allow em-dash if voice_card permits
+    them in the owner's actual writing.
+    """
+    if not text:
+        return []
+    hits = []
+    for pat, name in LATENT_AI_TELLS:
+        if allow_em_dash and name == 'em-dash-in-marketing':
+            continue
+        for m in pat.finditer(text):
+            hits.append({'pattern': name, 'matched': m.group(0)[:80], 'span': [m.start(), m.end()]})
+    return hits
 
 
 def clean_copy_dict(copy: dict) -> tuple[dict, list[str]]:
