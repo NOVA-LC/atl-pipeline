@@ -22,7 +22,10 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import anthropic
 
-from . import assemble, banned, catalog, compose, cost, critic, research, schemas, voice
+from . import (
+    assemble, banned, catalog, compose, cost, critic, research, schemas,
+    voice, headline, voice_critic,
+)
 from .. import db, deploy
 from .. import outscraper_fields as osf
 from .. import photo_library as pl
@@ -150,6 +153,51 @@ def build_for_lead(
 
         log.append({'ts': _now_iso(), 'stage': 'compose', 'event': 'done',
                     'cost_so_far_cents': round(tracker.per_lead_spent_cents, 2)})
+
+    # 3b. Headline factory — 25-gen + rubric-grade selection, Haiku.
+    # Replaces composed.copy.headline_top/headline_em only when the factory's
+    # winner scores >= 10/14; otherwise compose's headline is kept.
+    if composed and not composed.get('_parse_error') and tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
+        try:
+            composed_headline = (composed.get('copy') or {}).get('headline_top', '')
+            hf = headline.run_factory(
+                lead, research_brief, voice_card, tracker,
+                composed_headline=composed_headline, client=client,
+            )
+            log.append({'ts': _now_iso(), 'stage': 'headline-factory',
+                        'kept_compose': hf.get('kept_compose_headline', True),
+                        'candidates': hf.get('candidates_count', 0),
+                        'winner_score': (hf.get('winner') or {}).get('score'),
+                        'winner': (hf.get('winner') or {}).get('headline', '')[:80]})
+            if not hf.get('kept_compose_headline') and hf.get('winner', {}).get('headline'):
+                if 'copy' not in composed:
+                    composed['copy'] = {}
+                composed['copy']['headline_top'] = hf['winner']['headline']
+                # Headline factory winners are single-line; clear the italicized
+                # split so the hero renders as one strong line.
+                composed['copy']['headline_em'] = ''
+        except cost.BudgetExceeded:
+            warnings.append('headline factory: budget exceeded, kept compose headline')
+        except Exception as e:
+            warnings.append(f'headline factory crashed (kept compose headline): {e!r}')
+
+    # 3c. Voice-fidelity critic — hostile audit of composed copy vs voice_card.
+    # Algorithmic pass is free; optional LLM hostile pass fires only if algo
+    # flagged issues. Verdict can trigger a single compose-revise (4 below).
+    voice_verdict: dict = {}
+    if composed and not composed.get('_parse_error'):
+        try:
+            voice_verdict = voice_critic.audit(
+                composed, voice_card, tracker,
+                hostile_pass=True, client=client,
+            )
+            log.append({'ts': _now_iso(), 'stage': 'voice-critic',
+                        'verdict': voice_verdict.get('verdict'),
+                        'fidelity_score': voice_verdict.get('fidelity_score'),
+                        'issue_count': len(voice_verdict.get('issues', [])) if voice_verdict.get('issues') else len(voice_verdict.get('algorithmic', {}).get('issues', [])),
+                        'biggest_tell': voice_verdict.get('biggest_tell', '')[:120]})
+        except Exception as e:
+            warnings.append(f'voice critic crashed: {e!r}')
 
     # 4. Critic (quality grader against top-tier-website rubric) + optional revise pass
     if composed and not composed.get('_parse_error'):
