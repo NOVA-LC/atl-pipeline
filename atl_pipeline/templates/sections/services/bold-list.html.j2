@@ -4,7 +4,7 @@
     <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:24px">▌ What we do</div>
     <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1;margin-bottom:24px;text-transform:{{ tokens.type.display_text_transform|default('none') }}">{{ copy.services_h|safe }}</h2>
     <p style="font-size:18px;max-width:680px;color:rgba(255,255,255,.75);margin-bottom:48px">{{ copy.services_lead }}</p>
-    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)">
+    <div data-motion="reveal-up" class="svc-bold-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)">
       {% for svc in copy.services %}
       <div style="background:{{ tokens.palette.ink }};padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:180px">
         <div>
@@ -19,3 +19,13 @@
     </div>
   </div>
 </section>
+{% raw %}<style>
+/* Orphan-tile spans: when 5 tiles in a 3-col grid, last tile fills the empty
+   cell. When 4 tiles, last spans 3 to fill the row. Keeps grid intentional
+   instead of trailing dead-space on the right edge. */
+.svc-bold-grid > div:last-child:nth-child(3n+1) { grid-column: span 3; }
+.svc-bold-grid > div:last-child:nth-child(3n+2) { grid-column: span 2; }
+.svc-bold-grid > div:nth-last-child(2):nth-child(3n+1) { grid-column: span 2; }
+@media(max-width:900px){.svc-bold-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.svc-bold-grid > div:last-child:nth-child(odd){grid-column:span 2 !important}}
+@media(max-width:600px){.svc-bold-grid{grid-template-columns:1fr !important}.svc-bold-grid > div{grid-column:auto !important}}
+</style>{% endraw %}

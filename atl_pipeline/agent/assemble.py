@@ -619,11 +619,33 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
         'spacing': tokens['_names']['spacing'],
         'sections': section_names,
     }
+    # Richer fingerprint so the awwwards classifier can perceive iteration
+    # improvements. Without these counts the classifier reads the same coarse
+    # JSON every round and produces the same must_fixes — saturating ~84.
     fp_inputs = {
         'palette': effective['palette'],
         'type_pair': effective['type_pair'],
         'sections': section_names,
         'hero_image_url': images['hero'],
+        # Quantitative signals derived from the rendered HTML
+        'image_count': html.count('<img '),
+        'image_led_sections': sum(1 for k in ('process_image', 'environmental_image')
+                                  if copy.get(k)),
+        'motion_attr_count': html.count('data-motion'),
+        'distinct_service_price_signals': sum(
+            1 for s in (copy.get('services') or []) if s.get('price_signal')
+        ),
+        'has_what_we_dont_do': bool(copy.get('what_we_dont_do')),
+        'has_guarantee': bool(copy.get('guarantee')),
+        'has_license_number': bool(copy.get('license_number')),
+        'neighborhoods_count': len(copy.get('neighborhoods') or []),
+        'stats_count': len(copy.get('stats') or []),
+        'reviews_count': len(copy.get('reviews_list') or []),
+        'has_pull_quote_review': 'border-left:3px solid' in html and 'blockquote' in html,
+        'has_rectangle_break': 'gradient' in html.lower() and 'full-bleed' in html.lower() or
+                               html.count('background:' + (tokens.get('palette', {}).get('accent') or 'none')) > 0,
+        'html_bytes': len(html),
+        'section_count': html.count('<section'),
     }
     return {
         'html': html,
