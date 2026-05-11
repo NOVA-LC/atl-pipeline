@@ -22,9 +22,10 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import anthropic
 
-from . import assemble, banned, catalog, compose, cost, critic, research, schemas
+from . import assemble, banned, catalog, compose, cost, critic, research, schemas, voice
 from .. import db, deploy
 from .. import outscraper_fields as osf
+from .. import photo_library as pl
 
 
 def _now_iso() -> str:
@@ -102,6 +103,30 @@ def build_for_lead(
         agent_status = 'degraded_thin_research' if agent_status == 'agent_built' else agent_status
         warnings.append('research brief thin — falling back to Phase 1 defaults for unspecified copy')
 
+    # 2b. Voice fingerprinting — extract per-lead voice card from reviews +
+    # owner-written content. Always returns a dict; uses trade-region archetype
+    # when the corpus is too thin. ~$0.003/lead when Claude qualitative call
+    # fires; $0 for the archetype path.
+    voice_card: dict = {}
+    log.append({'ts': _now_iso(), 'stage': 'voice', 'event': 'start'})
+    try:
+        industry = pl.industry_for(lead.get('category'))
+        voice_card = voice.extract_voice_card(
+            lead, research_brief, tracker,
+            industry=industry, client=client,
+        )
+    except cost.BudgetExceeded:
+        warnings.append('voice budget exceeded; falling back to archetype only')
+        try:
+            voice_card = voice.archetype_card(pl.industry_for(lead.get('category')))
+        except Exception:
+            voice_card = {}
+    except Exception as e:
+        warnings.append(f'voice extraction crashed: {e!r}')
+    log.append({'ts': _now_iso(), 'stage': 'voice', 'event': 'done',
+                'source': voice_card.get('_source', 'unknown'),
+                'owner_voice_words': voice_card.get('_owner_voice_word_count', 0)})
+
     # 3. Composition sub-agent — may run twice (revise once)
     composed: dict = {}
     if tracker.per_lead_spent_cents < tracker.per_lead_cap_cents:
@@ -110,6 +135,7 @@ def build_for_lead(
             composed = compose.compose_page(
                 lead, research_brief, tracker,
                 model=compose_model, client=client, full_catalog=full_catalog,
+                voice_card=voice_card,
             )
         except cost.BudgetExceeded as e:
             warnings.append(f'compose budget exceeded: {e}')
@@ -155,6 +181,7 @@ def build_for_lead(
                     research_brief | {'_critic_hints': verdict.get('revision_hints', {}),
                                        '_critic_weaknesses': verdict.get('weaknesses', [])},
                     tracker, model=compose_model, client=client, full_catalog=full_catalog,
+                    voice_card=voice_card,
                 )
                 if composed2 and not composed2.get('_parse_error'):
                     composed = composed2
@@ -204,10 +231,15 @@ def build_for_lead(
     # 7. Save DB row updates
     fp = assemble.fingerprint(final['fingerprint_inputs'])
     cost_cents = int(tracker.per_lead_spent_cents)
+    # Stash voice_card alongside research_brief so it persists without a
+    # schema migration. Removed from research_brief if it accidentally got
+    # injected upstream — only this orchestrator owns the field.
+    enriched_brief = dict(research_brief or {})
+    enriched_brief['_voice_card'] = voice_card
     with db.conn() as c:
         db.update_lead(
             c, lead_id,
-            research_brief=json.dumps(research_brief)[:200_000],
+            research_brief=json.dumps(enriched_brief)[:200_000],
             composed_page=json.dumps(composed)[:200_000],
             fingerprint=json.dumps(final['fingerprint_inputs']),
             agent_cost_cents=cost_cents,
