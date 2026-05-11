@@ -140,7 +140,7 @@ def _parse_brief(text: str) -> Optional[dict]:
 def research_lead(
     lead: dict,
     tracker: cost.CostTracker,
-    model: str = 'claude-haiku-4-5-20251001',
+    model: str = 'claude-haiku-4-5',
     max_tool_calls: int = 6,
     max_output_tokens: int = 2500,
     client: 'Optional[anthropic.Anthropic]' = None,
@@ -187,7 +187,10 @@ def research_lead(
             resp = client.messages.create(
                 model=model,
                 max_tokens=max_output_tokens,
-                system=SYSTEM,
+                system=[
+                    {'type': 'text', 'text': SYSTEM,
+                     'cache_control': {'type': 'ephemeral'}}
+                ],
                 tools=TOOL_DEFS,
                 messages=messages,
             )

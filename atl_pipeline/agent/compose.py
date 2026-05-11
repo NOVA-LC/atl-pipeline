@@ -184,7 +184,7 @@ def compose_page(
     lead: dict,
     research_brief: dict,
     tracker: cost.CostTracker,
-    model: str = 'claude-sonnet-4-6-20251001',
+    model: str = 'claude-sonnet-4-6',
     max_output_tokens: int = 3500,
     client: 'Optional[anthropic.Anthropic]' = None,
     full_catalog: Optional[dict] = None,
@@ -223,7 +223,14 @@ def compose_page(
         resp = client.messages.create(
             model=model,
             max_tokens=max_output_tokens,
-            system=system,
+            # Catalog is identical for every lead — cache it. ~90% input cost
+            # reduction on every lead after the first in any 5-minute window.
+            system=[
+                {'type': 'text', 'text': system,
+                 'cache_control': {'type': 'ephemeral'}}
+            ],
+            thinking={'type': 'adaptive'},
+            output_config={'effort': 'medium'},
             messages=[{'role': 'user', 'content': user}],
         )
     except Exception:

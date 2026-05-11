@@ -97,7 +97,7 @@ def critique(
     research_brief: dict,
     neighbor_fps: Iterable[dict],
     tracker: cost.CostTracker,
-    model: str = 'claude-haiku-4-5-20251001',
+    model: str = 'claude-haiku-4-5',
     client: 'Optional[anthropic.Anthropic]' = None,
 ) -> dict:
     """Grade the composed page. Always returns a verdict dict, never raises."""
@@ -152,7 +152,12 @@ def critique(
 
     try:
         resp = client.messages.create(
-            model=model, max_tokens=1200, system=SYSTEM,
+            model=model, max_tokens=1200,
+            # Critic SYSTEM is the same rubric for every lead — cache it
+            system=[
+                {'type': 'text', 'text': SYSTEM,
+                 'cache_control': {'type': 'ephemeral'}}
+            ],
             messages=[{'role': 'user', 'content': user}],
         )
     except Exception as e:

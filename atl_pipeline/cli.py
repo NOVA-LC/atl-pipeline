@@ -356,6 +356,32 @@ def daily(ctx, dry_run):
             return
         ctx.invoke(run, xlsx=str(xlsx), dry_run=dry_run)
 
+        # 2b. V3 agent pass (feature-flagged). Re-renders today's research_status='done'
+        # leads with the agentic composer. Defaults: $0.15/lead cap, $10/day cap.
+        # Set AGENT_V3=true and (optionally) AGENT_V3_BUDGET_CENTS / AGENT_V3_DAILY_CAP_CENTS
+        # to enable. Always-publish contract — leads still get a site even if agent
+        # fails; the `run` stage above produced the Phase 1 baseline already.
+        stage = 'agent-v3'
+        if os.environ.get('AGENT_V3', '').lower() in ('true', '1', 'yes') and not dry_run:
+            try:
+                budget = int(os.environ.get('AGENT_V3_BUDGET_CENTS', '15'))
+                daily_cap = int(os.environ.get('AGENT_V3_DAILY_CAP_CENTS', '1000'))
+                limit = int(os.environ.get('AGENT_V3_LIMIT', '50'))
+                click.echo(f'agent-v3: building (budget=${budget/100:.2f}/lead, daily=${daily_cap/100:.2f})')
+                out = _agent.build_all(
+                    limit=limit,
+                    per_lead_cap_cents=budget,
+                    daily_cap_cents=daily_cap,
+                    push=True,
+                )
+                click.echo(f"agent-v3: processed={out['leads_processed']} cost=${out['total_cost_usd']:.4f}")
+                for status, n in sorted(out.get('status_counts', {}).items(), key=lambda kv: -kv[1]):
+                    click.echo(f"  {status}: {n}")
+                if out.get('daily_budget_hit'):
+                    click.echo('  ! daily budget cap reached — remaining leads skipped, will retry tomorrow')
+            except Exception as e:
+                click.echo(f'  ! agent-v3 failed (non-fatal — Phase 1 demos already published): {e}')
+
         # 3. Send Day-3 / Day-7 follow-ups
         stage = 'send-followups'
         if not dry_run:

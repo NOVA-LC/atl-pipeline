@@ -16,12 +16,13 @@ from typing import Optional
 
 
 # USD per 1M tokens. Cached at module import; update here on price changes.
+# Keep both alias and date-suffixed IDs since the SDK accepts either.
 PRICING = {
-    'claude-haiku-4-5-20251001': {'input': 1.00, 'output': 5.00},
     'claude-haiku-4-5': {'input': 1.00, 'output': 5.00},
-    'claude-sonnet-4-6-20251001': {'input': 3.00, 'output': 15.00},
+    'claude-haiku-4-5-20251001': {'input': 1.00, 'output': 5.00},
     'claude-sonnet-4-6': {'input': 3.00, 'output': 15.00},
-    'claude-opus-4-7': {'input': 15.00, 'output': 75.00},
+    'claude-sonnet-4-6-20251001': {'input': 3.00, 'output': 15.00},
+    'claude-opus-4-7': {'input': 5.00, 'output': 25.00},
 }
 
 
@@ -32,7 +33,7 @@ def _price(model: str) -> dict:
     for k, v in PRICING.items():
         if model.startswith(k.rsplit('-', 1)[0]):
             return v
-    return PRICING['claude-haiku-4-5-20251001']
+    return PRICING['claude-haiku-4-5']
 
 
 def estimate_call_cost(model: str, input_tokens: int, output_tokens: int) -> float:

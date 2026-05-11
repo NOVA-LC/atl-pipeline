@@ -1,0 +1,73 @@
+{# Longform shell — narrative-heavy layout for storytelling-fit businesses.
+   Same section slots as standard.html.j2, but with more breathing room,
+   serif-leaning defaults, and a hero/about flow that reads like an editorial
+   feature rather than a sales landing. Composition agent picks this when
+   the business has a strong heritage story, owner narrative, or premium vibe. #}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ business.name }}{% if copy.title_tagline %} — {{ copy.title_tagline }}{% endif %}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% if copy.meta_description %}<meta name="description" content="{{ copy.meta_description }}">{% endif %}
+<link href="{{ tokens.type.google_font_link }}" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};line-height:1.7;-webkit-font-smoothing:antialiased;font-weight:{{ tokens.type.body_weight }}}
+.wrap{max-width:{{ tokens.spacing.wrap_max }};margin:0 auto;padding:0 {{ tokens.spacing.wrap_x }}}
+.wrap-narrow{max-width:780px;margin:0 auto;padding:0 {{ tokens.spacing.wrap_x }}}
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:{{ tokens.palette.bg_blur }};border-bottom:1px solid {{ tokens.palette.border }};padding:18px 0}
+.nav-row{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:{{ tokens.type.display_family }};font-weight:{{ tokens.type.display_weight }};font-size:24px;letter-spacing:-0.01em;color:{{ tokens.palette.ink }}}
+.logo em{color:{{ tokens.palette.accent }};font-style:italic}
+.nav-links{display:flex;gap:36px;font-size:14px;font-weight:500}
+.nav-links a{color:{{ tokens.palette.ink }};text-decoration:none;opacity:.65;letter-spacing:.02em}
+.nav-cta{padding:11px 22px;background:transparent;color:{{ tokens.palette.ink }};border:1px solid {{ tokens.palette.border }};border-radius:999px;text-decoration:none;font-size:14px;font-weight:500}
+footer{padding:100px 0 40px;border-top:1px solid {{ tokens.palette.border }};font-size:14px;color:{{ tokens.palette.muted }};background:{{ tokens.palette.bg }}}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:80px;margin-bottom:50px}
+.foot-grid h5{font-family:{{ tokens.type.display_family }};font-size:14px;font-style:italic;margin-bottom:18px;color:{{ tokens.palette.ink }}}
+.foot-grid p, .foot-grid a{display:block;padding:5px 0;color:{{ tokens.palette.muted }};text-decoration:none;font-size:14px}
+.demo-tag{position:fixed;bottom:24px;right:24px;background:{{ tokens.palette.ink }};color:#fff;padding:14px 22px;border-radius:999px;font-size:13px;font-weight:400;letter-spacing:.02em;z-index:100}
+.demo-tag::before{content:'DEMO  ·  ';opacity:.55}
+section{position:relative}
+@media(max-width:900px){.nav-links,.foot-grid{display:none}}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap nav-row">
+<div class="logo">{{ business.name }}</div>
+<div class="nav-links">
+<a href="#services">Services</a>
+<a href="#gallery">Work</a>
+{% if copy.reviews_list %}<a href="#reviews">Words</a>{% endif %}
+<a href="#contact">Contact</a>
+</div>
+<a href="tel:{{ business.phone }}" class="nav-cta">{{ business.phone_display }}</a>
+</div></nav>
+
+{% if sections.hero %}{% include sections.hero %}{% endif %}
+{% if sections.services %}{% include sections.services %}{% endif %}
+{% if sections.gallery %}{% include sections.gallery %}{% endif %}
+{% if sections.reviews and copy.reviews_list %}{% include sections.reviews %}{% endif %}
+{% if sections.cta %}{% include sections.cta %}{% endif %}
+
+<footer><div class="wrap">
+<div class="foot-grid">
+<div>
+  <div class="logo">{{ business.name }}</div>
+  <p style="margin-top:18px;max-width:340px;font-style:italic;font-family:{{ tokens.type.display_family }};color:{{ tokens.palette.muted }};font-size:16px;line-height:1.65">{{ copy.footer_blurb }}</p>
+</div>
+<div><h5>Find us</h5>{% if business.address %}<p>{{ business.address }}</p>{% endif %}<p>{{ business.city }}, {{ business.state }}</p>{% if business.hours %}<p>{{ business.hours }}</p>{% endif %}</div>
+<div><h5>Get in touch</h5><a href="tel:{{ business.phone }}">{{ business.phone_display }}</a>{% if business.google_maps_url %}<a href="{{ business.google_maps_url }}" target="_blank" rel="noopener">Google Maps</a>{% endif %}</div>
+</div>
+<div style="padding-top:36px;border-top:1px solid {{ tokens.palette.border }};display:flex;justify-content:space-between;font-size:13px;letter-spacing:.02em">
+<div>© {{ year }} {{ business.name }}</div>{% if business.rating %}<div>{{ business.rating }}★ across {{ business.reviews }} reviews</div>{% endif %}
+</div>
+</div></footer>
+
+<div class="demo-tag">{{ business.name }}</div>
+
+</body>
+</html>
