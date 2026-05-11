@@ -1,0 +1,11 @@
+{
+  "name": "full-bleed-photo",
+  "kind": "hero",
+  "vibe_tags": ["premium", "heritage", "modern"],
+  "requires": {
+    "min_real_photos": 1,
+    "min_photo_width_px": 800
+  },
+  "best_for": "businesses with strong Google photos of their work, storefront, or crew. Photo-forward.",
+  "avoid_when": "no real photos available — would force Unsplash stock and look generic"
+}

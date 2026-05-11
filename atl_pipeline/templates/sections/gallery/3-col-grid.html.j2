@@ -1,0 +1,16 @@
+{# Gallery variant: 3-column grid with alternating aspect ratios. #}
+<section id="gallery" style="padding:{{ tokens.spacing.section_y }} 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">— On the job</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.05;margin-bottom:60px;max-width:880px">{{ copy.gallery_h|safe }}</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+      {% for p in images.gallery %}
+      <figure style="margin:0;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:{{ '4/5' if loop.index0 % 2 == 1 else '4/3' }};box-shadow:0 20px 40px -25px rgba(0,0,0,.25)">
+        <img src="{{ p.url }}" alt="{{ p.caption|default(business.name) }}" style="width:100%;height:100%;object-fit:cover;display:block">
+        {% if p.caption %}<figcaption style="position:absolute;left:0;right:0;bottom:0;padding:18px;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);color:#fff;font-size:13px">{{ p.caption }}</figcaption>{% endif %}
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){#gallery div[style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr !important}}</style>{% endraw %}

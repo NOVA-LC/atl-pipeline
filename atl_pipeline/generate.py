@@ -3,6 +3,7 @@ import os, re, json
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from . import photo_library as pl
+from . import outscraper_fields as osf
 
 TPL_DIR = Path(__file__).parent / 'templates'
 
@@ -79,10 +80,32 @@ INDUSTRY_DEFAULTS = {
     },
 }
 
+_SUBTYPE_STRIP = re.compile(r'\b(contractor|service|services|company|shop)\b', re.IGNORECASE)
+
+
+def _service_tile_from_subtype(subtype, city):
+    """Turn a raw Google subcategory ('Air conditioning repair service') into a
+    {title, body} tile. Title strips the boilerplate words; body stays specific."""
+    title = _SUBTYPE_STRIP.sub('', subtype).strip().rstrip('-').title()
+    if not title:
+        title = subtype.title()
+    body = f"{subtype.strip()} — serving {city or 'metro Atlanta'} and surrounding."
+    return {'title': title, 'body': body}
+
+
 def build_context(lead, research):
-    """Merge Outscraper lead row + research payload into a render context."""
+    """Merge Outscraper lead row + research payload into a render context.
+
+    Priority order for personalized fields:
+      1. raw_outscraper (Google Business Profile data we already paid for)
+      2. research payload (Brave Search + Haiku synthesis)
+      3. industry defaults (boilerplate)
+    """
     industry = pl.industry_for(lead.get('category'))
     defaults = INDUSTRY_DEFAULTS[industry]
+
+    # Pull rich GBP fields from raw_outscraper (photos, reviews, hours, etc.)
+    osf_data = osf.parse_all(lead.get('raw_outscraper'))
 
     # Phone display
     phone = (lead.get('phone') or '').strip()
@@ -117,38 +140,97 @@ def build_context(lead, research):
             parts = tag.split('.', 1)
             headline_top, headline_em = parts[0].strip(), parts[1].strip(' .')
 
-    hero_sub = (
-        research.get('vibe', '') if research else ''
-    ) or f"{lead.get('rating', '')}★ on Google. {lead.get('reviews', '')} reviews. {lead.get('city') or ''}."
+    # Hero subhead: prefer the owner's own Google description (first sentence),
+    # then research vibe, then a fact line. Track whether we consumed the
+    # description here so the About section doesn't echo it.
+    hero_sub = ''
+    description_used_in_hero = False
+    desc = osf_data['description']
+    if desc:
+        first = re.split(r'(?<=[.!?])\s+', desc, maxsplit=1)[0]
+        if 30 <= len(first) <= 240:
+            hero_sub = first
+        else:
+            hero_sub = desc[:240].rstrip() + ('…' if len(desc) > 240 else '')
+        description_used_in_hero = True
+    if not hero_sub and research and research.get('vibe'):
+        hero_sub = research['vibe']
+    if not hero_sub:
+        rating_bit = f"{lead['rating']}★ on Google" if lead.get('rating') else ''
+        review_bit = f"{lead['reviews']} reviews" if lead.get('reviews') else ''
+        city_bit = lead.get('city') or ''
+        hero_sub = ' · '.join([b for b in [rating_bit, review_bit, city_bit] if b])
+
+    # Years in business: Google data > research guess
+    years = osf_data['years_in_business'] or (research or {}).get('years_in_business_claim')
 
     about_h = f"{lead['business_name']}, <em>{lead.get('city') or ''}</em>."
     about_body = ''
-    if research and research.get('owner_name') and research['owner_name'] != 'unknown':
-        years = research.get('years_in_business_claim')
+    # If we have a description that's long enough AND we didn't already use it
+    # as the hero subhead (or used only the first sentence), use the rest here
+    if desc and len(desc) >= 80:
+        if description_used_in_hero and len(desc) > len(hero_sub) + 40:
+            # Use the remainder past the hero's first sentence
+            remainder = desc[len(hero_sub):].lstrip(' .…')
+            if len(remainder) >= 40:
+                about_body = remainder
+        elif not description_used_in_hero:
+            about_body = desc
+    if not about_body and research and research.get('owner_name') and research['owner_name'] != 'unknown':
         if years:
             about_body = f"{owner_first} has run {lead['business_name']} for {years} years. Same trade, same town."
         else:
             about_body = f"{owner_first} runs {lead['business_name']} hands-on — every call, every customer."
+    if not about_body and years:
+        about_body = f"{lead['business_name']} has served {lead.get('city') or 'metro Atlanta'} for {years} years."
     if not about_body:
         about_body = f"Local-owned and run from {lead.get('city') or 'metro Atlanta'}. Family work, family standards."
 
-    gallery = [
-        {'url': pl.img_url(pid), 'caption': cap}
-        for pid, cap in pl.PHOTOS[industry]
-    ]
+    # Hero image: prefer a real Google photo over Unsplash stock
+    real_photos = osf_data['photos']
+    if real_photos:
+        hero_img = real_photos[0]
+    else:
+        hero_img = f'https://images.unsplash.com/photo-{pl.HEROES[industry]}?auto=format&fit=crop&w=1600&q=80'
 
+    # Gallery: prefer real photos (skip the one used as hero), fall back to industry stock
+    if len(real_photos) >= 4:
+        gallery_photos = real_photos[1:7] if len(real_photos) > 6 else real_photos[1:]
+        # If we sliced down to fewer than 4 (small photo set), pad with industry stock
+        if len(gallery_photos) < 4:
+            stock = [pl.img_url(pid) for pid, _ in pl.PHOTOS[industry]]
+            gallery_photos = gallery_photos + [u for u in stock if u not in gallery_photos]
+        gallery = [{'url': u, 'caption': ''} for u in gallery_photos[:6]]
+    else:
+        gallery = [
+            {'url': pl.img_url(pid), 'caption': cap}
+            for pid, cap in pl.PHOTOS[industry]
+        ]
+
+    # Service tiles: Google subtypes (most specific) > research specialties > industry defaults
+    subtypes = osf_data['subtypes']
     services = research.get('specialties') if research else None
-    if services and len(services) >= 4:
-        # Build service tiles from researched specialties
+    city_for_body = lead.get('city') or 'the area'
+    if subtypes and len(subtypes) >= 3:
+        services_tiles = [_service_tile_from_subtype(s, city_for_body) for s in subtypes[:6]]
+        # Pad with industry defaults if we got fewer than 6
+        if len(services_tiles) < 6:
+            services_tiles = services_tiles + defaults['services'][: 6 - len(services_tiles)]
+    elif services and len(services) >= 4:
         services_tiles = [
-            {'title': s.title(), 'body': f"Trusted {s.lower()} work across {lead.get('city') or 'the area'}."}
+            {'title': s.title(), 'body': f"Trusted {s.lower()} work across {city_for_body}."}
             for s in services[:6]
         ]
     else:
         services_tiles = defaults['services']
 
-    reviews_list = (research or {}).get('real_reviews') or []
-    reviews_list = [r for r in reviews_list if r.get('text')][:3]
+    # Reviews: real Google reviews from Outscraper beat Brave-Search-scraped fragments
+    real_reviews = osf_data['reviews']
+    if real_reviews:
+        reviews_list = real_reviews[:3]
+    else:
+        reviews_list = (research or {}).get('real_reviews') or []
+        reviews_list = [r for r in reviews_list if r.get('text')][:3]
 
     return {
         'business_name': lead['business_name'],
@@ -159,14 +241,14 @@ def build_context(lead, research):
         'rating': lead.get('rating'),
         'reviews': lead.get('reviews'),
         'google_maps_url': lead.get('google_maps_url'),
-        'hours': research.get('hours') if research else None,
-        'years_in_business': (research or {}).get('years_in_business_claim'),
+        'hours': osf_data['hours_summary'] or (research.get('hours') if research else None),
+        'years_in_business': years,
         'same_day': 'Same-day' if industry in ('plumber','hvac','septic') else None,
         'availability_lbl': 'service across metro',
         'owner_name': owner, 'owner_first_name': owner_first,
         'accent': accent, 'ink': defaults['ink'],
         'bg': '#FAFAF7', 'bg_blur': 'rgba(250,250,247,.85)',
-        'hero_img': f'https://images.unsplash.com/photo-{pl.HEROES[industry]}?auto=format&fit=crop&w=1600&q=80',
+        'hero_img': hero_img,
         'eyebrow': f"{lead.get('city')} · {industry.upper()}",
         'headline_top': headline_top, 'headline_em': headline_em, 'headline_bottom': '',
         'hero_sub': hero_sub,

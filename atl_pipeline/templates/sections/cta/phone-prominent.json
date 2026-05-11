@@ -1,0 +1,8 @@
+{
+  "name": "phone-prominent",
+  "kind": "cta",
+  "vibe_tags": ["any"],
+  "requires": {},
+  "best_for": "default CTA. Centered, click-to-call dominant.",
+  "avoid_when": "never — universally applicable fallback"
+}

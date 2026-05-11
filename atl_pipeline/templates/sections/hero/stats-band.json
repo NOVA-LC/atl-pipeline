@@ -1,0 +1,11 @@
+{
+  "name": "stats-band",
+  "kind": "hero",
+  "vibe_tags": ["trust-first", "established", "social-proof"],
+  "requires": {
+    "min_rating": 4.7,
+    "min_reviews": 50
+  },
+  "best_for": "high-trust businesses where rating and review count are the headline. Full-bleed photo with prominent stats overlay.",
+  "avoid_when": "rating < 4.5 or reviews < 50 — stats would underwhelm"
+}

@@ -1,0 +1,18 @@
+{# Hero variant: full-bleed background photo with overlay. Best for businesses
+   with one strong real photo. The image fills the hero, copy sits on a soft
+   gradient. Uses tokens.spacing for vertical rhythm. #}
+<section class="hero hero-full-bleed" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,.55)),url('{{ images.hero }}') center/cover;color:#fff">
+  <div class="wrap">
+    <div class="eyebrow" style="color:#fff;opacity:.85;font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">
+      {{ copy.eyebrow }}
+    </div>
+    <h1 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1.05;margin-bottom:32px;max-width:1100px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+    <p style="font-size:21px;max-width:620px;color:rgba(255,255,255,.92);margin-bottom:40px;font-weight:300">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <a href="tel:{{ business.phone }}" style="padding:18px 36px;background:{{ tokens.palette.accent }};color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px">📞 Call · {{ business.phone_display }}</a>
+      <a href="#services" style="padding:18px 36px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;text-decoration:none;font-weight:600;font-size:16px">{{ copy.hero_cta_text|default('What we do →') }}</a>
+    </div>
+  </div>
+</section>

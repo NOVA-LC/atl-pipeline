@@ -1,0 +1,10 @@
+{
+  "name": "rugged-trade",
+  "kind": "hero",
+  "vibe_tags": ["rugged", "blue-collar", "industrial", "honest-trade"],
+  "requires": {
+    "min_real_photos": 0
+  },
+  "best_for": "auto shops, welding, radiator, septic, hands-on trades. Bold uppercase type, dark slab over photo or color.",
+  "avoid_when": "refined/premium/boutique vibe"
+}

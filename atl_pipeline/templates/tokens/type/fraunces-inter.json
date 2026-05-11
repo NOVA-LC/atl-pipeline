@@ -1,0 +1,12 @@
+{
+  "name": "fraunces-inter",
+  "vibe_tags": ["heritage", "premium", "editorial", "tradition"],
+  "google_font_link": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap",
+  "display_family": "'Fraunces', serif",
+  "display_weight": 500,
+  "display_letter_spacing": "-0.02em",
+  "display_italic_works": true,
+  "body_family": "'Inter', system-ui, sans-serif",
+  "body_weight": 400,
+  "fits": "established, quality-first, traditional trades, longer copy"
+}

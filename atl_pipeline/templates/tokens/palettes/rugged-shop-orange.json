@@ -1,0 +1,12 @@
+{
+  "name": "rugged-shop-orange",
+  "vibe_tags": ["rugged", "blue-collar", "honest-trade", "speed-first"],
+  "ink": "#1B2530",
+  "accent": "#D4663E",
+  "bg": "#F5F2EC",
+  "bg_blur": "rgba(245,242,236,.88)",
+  "muted": "#4A5560",
+  "card_bg": "#FFFFFF",
+  "border": "rgba(0,0,0,.1)",
+  "fits": "auto/radiator/welding shops, hands-on trades, blue-collar audience, owner-operator businesses"
+}

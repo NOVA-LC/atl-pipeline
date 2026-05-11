@@ -1,0 +1,22 @@
+{# Gallery variant: one feature shot + optional thumbs. Handles photo-sparse case. #}
+<section id="gallery" style="padding:{{ tokens.spacing.section_y }} 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">— The shop</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.05;margin-bottom:60px;max-width:880px">{{ copy.gallery_h|safe }}</h2>
+    {% set photos = images.gallery %}
+    {% if photos and photos|length > 0 %}
+    <figure style="margin:0 0 18px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;box-shadow:0 30px 60px -30px rgba(0,0,0,.35)">
+      <img src="{{ photos[0].url }}" alt="{{ photos[0].caption|default(business.name) }}" style="width:100%;height:100%;object-fit:cover;display:block">
+    </figure>
+    {% if photos|length > 1 %}
+    <div style="display:grid;grid-template-columns:repeat({{ [photos|length - 1, 3]|min }},1fr);gap:18px">
+      {% for p in photos[1:4] %}
+      <figure style="margin:0;border-radius:10px;overflow:hidden;aspect-ratio:4/3">
+        <img src="{{ p.url }}" alt="{{ p.caption|default(business.name) }}" style="width:100%;height:100%;object-fit:cover;display:block">
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</section>

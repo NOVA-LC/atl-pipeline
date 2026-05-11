@@ -1,0 +1,20 @@
+{# Hero variant: split layout, copy on left, photo on right. Reads modern. #}
+<section class="hero hero-split" style="padding:{{ tokens.spacing.hero_y_top }} 0 {{ tokens.spacing.hero_y_bottom }};background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap" style="display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center">
+    <div>
+      <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px">{{ copy.eyebrow }}</div>
+      <h1 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h1_size }};font-weight:{{ tokens.type.display_weight }};letter-spacing:{{ tokens.type.display_letter_spacing }};line-height:1.05;margin-bottom:28px">
+        {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</em>{% endif %}
+      </h1>
+      <p style="font-size:20px;color:{{ tokens.palette.muted }};margin-bottom:32px;font-weight:300;max-width:540px">{{ copy.hero_sub }}</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="tel:{{ business.phone }}" style="padding:16px 32px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:15px">📞 {{ business.phone_display }}</a>
+        <a href="#services" style="padding:16px 32px;background:transparent;color:{{ tokens.palette.ink }};border:1.5px solid {{ tokens.palette.border }};border-radius:999px;text-decoration:none;font-weight:600;font-size:15px">{{ copy.hero_cta_text|default('What we do →') }}</a>
+      </div>
+    </div>
+    <figure style="margin:0;border-radius:18px;overflow:hidden;aspect-ratio:4/5;box-shadow:0 30px 60px -30px rgba(0,0,0,.3)">
+      <img src="{{ images.hero }}" alt="{{ business.name }}" style="width:100%;height:100%;object-fit:cover;display:block">
+    </figure>
+  </div>
+</section>
+<style>@media(max-width:900px){.hero-split .wrap{grid-template-columns:1fr !important}.hero-split figure{aspect-ratio:4/3}}</style>

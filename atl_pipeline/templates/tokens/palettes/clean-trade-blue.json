@@ -1,0 +1,12 @@
+{
+  "name": "clean-trade-blue",
+  "vibe_tags": ["modern", "honest-trade", "homeowner-residential", "quality-first"],
+  "ink": "#0E2238",
+  "accent": "#2563EB",
+  "bg": "#FFFFFF",
+  "bg_blur": "rgba(255,255,255,.92)",
+  "muted": "#475569",
+  "card_bg": "#F8FAFC",
+  "border": "rgba(15,30,56,.08)",
+  "fits": "residential plumbing/HVAC/electrical, suburban homeowner audience, trust-first"
+}

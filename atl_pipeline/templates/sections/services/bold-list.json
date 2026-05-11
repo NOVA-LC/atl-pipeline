@@ -1,0 +1,8 @@
+{
+  "name": "bold-list",
+  "kind": "services",
+  "vibe_tags": ["rugged", "blue-collar", "industrial", "no-nonsense"],
+  "requires": {"min_services": 3, "max_services": 8},
+  "best_for": "rugged trades, auto/welding/septic, owners who don't want fluff. Bold uppercase service names, terse body.",
+  "avoid_when": "premium/refined/boutique vibe"
+}

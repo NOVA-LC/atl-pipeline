@@ -1,0 +1,8 @@
+{
+  "name": "single-feature",
+  "kind": "gallery",
+  "vibe_tags": ["minimal", "premium", "editorial"],
+  "requires": {"min_photos": 1},
+  "best_for": "businesses with only 1–3 quality photos. One large feature shot plus 2 thumbs.",
+  "avoid_when": "many strong photos available — wastes them"
+}

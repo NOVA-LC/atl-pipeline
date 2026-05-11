@@ -1,0 +1,8 @@
+{
+  "name": "3-col-grid",
+  "kind": "gallery",
+  "vibe_tags": ["editorial", "balanced"],
+  "requires": {"min_photos": 6, "max_photos": 6},
+  "best_for": "businesses with 6+ photos of similar quality/aspect. Balanced editorial grid.",
+  "avoid_when": "fewer than 4 real photos available — would force stock fill"
+}

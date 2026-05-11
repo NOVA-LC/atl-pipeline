@@ -1,0 +1,8 @@
+{
+  "name": "masonry",
+  "kind": "gallery",
+  "vibe_tags": ["organic", "varied", "editorial"],
+  "requires": {"min_photos": 5},
+  "best_for": "mixed aspect ratios from real Google photos. Lets each photo breathe at its natural shape.",
+  "avoid_when": "very few photos (<5) — looks sparse"
+}

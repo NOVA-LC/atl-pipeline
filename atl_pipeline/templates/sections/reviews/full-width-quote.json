@@ -1,0 +1,8 @@
+{
+  "name": "full-width-quote",
+  "kind": "reviews",
+  "vibe_tags": ["editorial", "premium", "single-star-quote"],
+  "requires": {"min_reviews": 1},
+  "best_for": "one strong testimonial as the centerpiece. Works even with just 1 review.",
+  "avoid_when": "many strong reviews available — wastes them"
+}

@@ -89,6 +89,19 @@ def _migrate(c):
         c.execute('ALTER TABLE leads ADD COLUMN vm1_sent_at TIMESTAMP')
     if 'vm1_id' not in cols:
         c.execute('ALTER TABLE leads ADD COLUMN vm1_id TEXT')
+    # V3 agent columns
+    if 'research_brief' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN research_brief TEXT')
+    if 'composed_page' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN composed_page TEXT')
+    if 'fingerprint' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN fingerprint TEXT')
+    if 'agent_cost_cents' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN agent_cost_cents INTEGER DEFAULT 0')
+    if 'agent_status' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN agent_status TEXT')
+    if 'agent_log' not in cols:
+        c.execute('ALTER TABLE leads ADD COLUMN agent_log TEXT')
 
 
 @contextmanager

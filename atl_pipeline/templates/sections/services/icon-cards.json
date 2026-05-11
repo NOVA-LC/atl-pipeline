@@ -1,0 +1,8 @@
+{
+  "name": "icon-cards",
+  "kind": "services",
+  "vibe_tags": ["modern", "homeowner-residential", "friendly"],
+  "requires": {"min_services": 3, "max_services": 6},
+  "best_for": "residential trades, suburban homeowner audience, approachable feel",
+  "avoid_when": "rugged/blue-collar or heritage vibe"
+}

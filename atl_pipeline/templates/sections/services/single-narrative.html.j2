@@ -1,0 +1,18 @@
+{# Services variant: narrative one-trade specialist statement. #}
+<section id="services" style="padding:{{ tokens.spacing.section_y_lg }} 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap" style="max-width:980px">
+    <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">Our craft</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:{{ tokens.spacing.h2_size }};font-weight:{{ tokens.type.display_weight }};line-height:1.1;margin-bottom:32px">{{ copy.services_h|safe }}</h2>
+    <p style="font-size:22px;color:{{ tokens.palette.muted }};line-height:1.7;margin-bottom:40px;max-width:780px">{{ copy.services_lead }}</p>
+    {% if copy.services %}
+    <ul style="list-style:none;padding:0;margin:40px 0 0;border-top:1px solid {{ tokens.palette.border }}">
+      {% for svc in copy.services %}
+      <li style="padding:24px 0;border-bottom:1px solid {{ tokens.palette.border }};display:flex;gap:24px;align-items:baseline">
+        <span style="font-family:{{ tokens.type.display_family }};font-style:italic;color:{{ tokens.palette.accent }};font-size:24px;min-width:60px">{{ '0%d'|format(loop.index) }}.</span>
+        <div><div style="font-family:{{ tokens.type.display_family }};font-size:22px;margin-bottom:6px">{{ svc.title }}</div><div style="color:{{ tokens.palette.muted }};font-size:16px;line-height:1.6">{{ svc.body }}</div></div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</section>
