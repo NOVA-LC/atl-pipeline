@@ -169,6 +169,16 @@ def build_for_lead(
                 model=compose_model, client=client, full_catalog=full_catalog,
                 voice_card=voice_card,
             )
+            # If PTC pinned the design, compose may have legitimately omitted
+            # the design fields from its top-level output (we told it "design
+            # is decided"). Backfill from the hint so assemble doesn't fall
+            # through to defaults.
+            dh = (research_brief or {}).get('_design_hint') or {}
+            if dh:
+                composed.setdefault('palette', dh.get('palette'))
+                composed.setdefault('type_pair', dh.get('type_pair'))
+                if dh.get('sections') and not composed.get('sections'):
+                    composed['sections'] = dh['sections']
         except cost.BudgetExceeded as e:
             warnings.append(f'compose budget exceeded: {e}')
             agent_status = 'degraded_budget'

@@ -333,7 +333,7 @@ def compose_page(
     research_brief: dict,
     tracker: cost.CostTracker,
     model: str = 'claude-sonnet-4-6',
-    max_output_tokens: int = 3500,
+    max_output_tokens: int = 8000,
     client: 'Optional[anthropic.Anthropic]' = None,
     full_catalog: Optional[dict] = None,
     voice_card: Optional[dict] = None,
@@ -406,8 +406,6 @@ def compose_page(
                 {'type': 'text', 'text': system,
                  'cache_control': {'type': 'ephemeral'}}
             ],
-            thinking={'type': 'adaptive'},
-            output_config={'effort': 'medium'},
             messages=[{'role': 'user', 'content': user}],
         )
     except Exception:
@@ -420,7 +418,22 @@ def compose_page(
     text = '\n'.join(b.text for b in resp.content if b.type == 'text').strip()
     composed = _parse_composed(text)
     if not composed:
-        return {'_parse_error': True, '_last_text': text[:500]}
+        # Capture block-type breakdown so we can tell apart "no text block at
+        # all" (thinking ate the budget) from "text block but unparseable"
+        # (model returned prose, hit JSON depth limit, etc).
+        block_summary = [
+            {'type': getattr(b, 'type', '?'),
+             'text_len': len(getattr(b, 'text', '') or ''),
+             'thinking_len': len(getattr(b, 'thinking', '') or '')}
+            for b in resp.content
+        ]
+        stop_reason = getattr(resp, 'stop_reason', None)
+        return {
+            '_parse_error': True,
+            '_last_text': text[:2000],
+            '_blocks': block_summary,
+            '_stop_reason': stop_reason,
+        }
 
     # Resolve photo indexes into URLs using the research_brief
     composed = _resolve_photo_indexes(composed, research_brief)
