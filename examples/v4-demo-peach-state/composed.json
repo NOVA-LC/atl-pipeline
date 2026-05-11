@@ -1,0 +1,86 @@
+{
+  "palette": "heritage-navy-gold",
+  "type_pair": "lora-inter",
+  "sections": {
+    "hero": "minimal-type",
+    "services": "numbered-grid",
+    "gallery": "masonry",
+    "reviews": "full-width-quote",
+    "cta": "phone-prominent"
+  },
+  "shell": "standard",
+  "copy": {
+    "eyebrow": "East Cobb \u00b7 since 1993",
+    "headline_top": "Joey's been fixing pipes",
+    "headline_em": "in East Cobb since 1993.",
+    "hero_sub": "Owner-operated. License # on every invoice. We quote on the phone \u2014 the price you hear is the price you pay. Camera-jet diagnostics with the recording emailed to you.",
+    "hero_cta_text": "Call Joey: (770) 555-0184",
+    "services_h": "What we <em>actually</em> do.",
+    "services_lead": "We don't pretend to do everything. Three things, done by Joey or his son Caleb \u2014 no apprentices on your job.",
+    "services": [
+      {
+        "title": "Drain & sewer cleaning",
+        "body": "Camera-jet with the recording emailed to you. Most clogs done in under 90 minutes.",
+        "price_signal": "flat $189"
+      },
+      {
+        "title": "Water heater service",
+        "body": "Flush, repair, or replace. We'll tell you if yours has another 2-3 years in it. Honest answer, even when the new one would pay us more.",
+        "price_signal": "from $349"
+      },
+      {
+        "title": "Slab leak detection & repair",
+        "body": "Electronic locator + thermal imaging. Most leaks pinpointed in under 30 min.",
+        "price_signal": "from $1,890 flat"
+      }
+    ],
+    "gallery_h": "32 years of <em>actual</em> work.",
+    "reviews_h": "What East Cobb says.",
+    "reviews_list": [
+      {
+        "author": "Margaret W.",
+        "rating": 5,
+        "text": "Joey himself came out Saturday at 11pm when my main line backed up. Quoted me before he started, no surprise charges. Camera-jetted the line and emailed me the recording. Done in 90 minutes.",
+        "date": "3 weeks ago",
+        "source": "Google"
+      },
+      {
+        "author": "David T.",
+        "rating": 5,
+        "text": "Third plumber I called after two no-shows. Peach State picked up on the first ring, was at my house in 45 min, and the price he quoted on the phone is the price I paid. License # right on the truck.",
+        "date": "2 months ago",
+        "source": "Google"
+      },
+      {
+        "author": "Sarah K.",
+        "rating": 5,
+        "text": "32 years of doing this shows. Joey diagnosed a slab leak in 10 minutes that another company quoted me $4,500 to find. His repair: $1,890 flat.",
+        "date": "4 months ago",
+        "source": "Google"
+      }
+    ],
+    "cta_eyebrow": "Phone rings to Joey or Caleb.",
+    "cta_h": "Got a problem? <em>Call us.</em>",
+    "cta_sub": "(770) 555-0184 \u00b7 East Cobb, Marietta, Smyrna, Vinings",
+    "license_number": "MP207455",
+    "neighborhoods": [
+      "East Cobb",
+      "Smyrna",
+      "Vinings",
+      "Sandy Springs",
+      "Roswell",
+      "Powers Ferry"
+    ],
+    "what_we_dont_do": [
+      "We don't quote on the phone for slab leaks \u2014 we have to find it first.",
+      "We don't use apprentices. Joey does the work, or Caleb does.",
+      "We don't do new construction. Repairs and renovations only."
+    ],
+    "guarantee": "If we can't quote the job in one phone call or one site visit, your service call is free.",
+    "footer_blurb": "Joey Calloway, MP207455. Family-owned in East Cobb since 1993. We answer the phone and put the license number on every invoice.",
+    "stats_fourth_label": "32 yrs",
+    "stats_fourth_sub": "since '93",
+    "title_tagline": "Owner-operated plumber, East Cobb \u00b7 License MP207455",
+    "meta_description": "Joey Calloway has been fixing plumbing in East Cobb since 1993. Owner-operated. We quote on the phone, license # on every invoice, camera-jet recordings emailed."
+  }
+}
