@@ -41,6 +41,28 @@ con.close()
 " && touch "$MARKER"
 fi
 
+# One-time migration v2: rewrite all existing vercel_urls to the umbrella-project
+# path scheme. After this, every demo lives at https://{DEMOS_BASE_URL}/{slug}/
+# served by a single Vercel project. Eliminates the 50-project-per-repo limit.
+MARKER_V2="$(dirname "$DB_PATH")/.migrate_to_umbrella_v2.done"
+if [ ! -f "$MARKER_V2" ] && [ -f "$DB_PATH" ]; then
+    echo ">> [entrypoint] one-time migration v2: rewriting URLs to umbrella scheme"
+    python -c "
+import sqlite3, os
+db = os.environ.get('PIPELINE_DB_PATH', '/data/pipeline.db')
+base = (os.environ.get('DEMOS_BASE_URL') or 'atlanta-demos.vercel.app').rstrip('/')
+base = base.replace('https://', '').replace('http://', '')
+con = sqlite3.connect(db)
+rows = con.execute(\"SELECT id, slug FROM leads WHERE demo_html IS NOT NULL AND slug IS NOT NULL AND slug != ''\").fetchall()
+for lead_id, slug in rows:
+    url = f'https://{base}/{slug}/'
+    con.execute('UPDATE leads SET vercel_url = ? WHERE id = ?', (url, lead_id))
+con.commit()
+print(f'>> [entrypoint] rewrote {len(rows)} vercel_urls to {base}/{{slug}}/')
+con.close()
+" && touch "$MARKER_V2"
+fi
+
 # Clone or pull the demos repo
 if [ ! -d "$DEMOS_REPO_LOCAL/.git" ]; then
     echo ">> [entrypoint] cloning demos repo (first run)"
