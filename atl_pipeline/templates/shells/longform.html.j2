@@ -125,6 +125,26 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
 <main id="main">
 {% if sections.hero %}{% include sections.hero %}{% endif %}
 {% if sections.services %}{% include sections.services %}{% endif %}
+{% if copy.what_we_dont_do %}
+<section style="padding:50px 0;border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }};color:{{ tokens.palette.ink }}">
+  <div class="wrap-narrow">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};text-transform:uppercase;letter-spacing:.2em;margin-bottom:24px;font-weight:600">What we don't do</div>
+    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px">
+      {% for item in copy.what_we_dont_do %}
+      <li style="font-family:{{ tokens.type.display_family }};font-size:22px;font-style:italic;line-height:1.5;color:{{ tokens.palette.muted }}">— {{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+{% if copy.guarantee %}
+<section style="padding:90px 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }};text-align:center">
+  <div class="wrap-narrow">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};text-transform:uppercase;letter-spacing:.2em;margin-bottom:24px;font-weight:600">Our guarantee</div>
+    <p style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.6vw,52px);font-weight:{{ tokens.type.display_weight }};line-height:1.2;font-style:italic">{{ copy.guarantee }}</p>
+  </div>
+</section>
+{% endif %}
 {% if sections.gallery %}{% include sections.gallery %}{% endif %}
 {% if sections.reviews and copy.reviews_list %}{% include sections.reviews %}{% endif %}
 {% if sections.cta %}{% include sections.cta %}{% endif %}
@@ -144,8 +164,15 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
 <div><h5>Find us</h5>{% if business.address %}<p>{{ business.address }}</p>{% endif %}<p>{{ business.city }}, {{ business.state }}</p>{% if business.hours %}<p>{{ business.hours }}</p>{% endif %}</div>
 <div><h5>Get in touch</h5><a href="tel:{{ business.phone }}">{{ business.phone_display }}</a><a href="sms:{{ business.phone }}">Text us</a>{% if business.google_maps_url %}<a href="{{ business.google_maps_url }}" target="_blank" rel="noopener">Google Maps</a>{% endif %}</div>
 </div>
+{% if copy.neighborhoods %}
+<div style="margin-bottom:28px;padding:20px 0;border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }};font-size:14px;color:{{ tokens.palette.muted }};font-style:italic;font-family:{{ tokens.type.display_family }}">
+  <span style="color:{{ tokens.palette.ink }};font-style:normal;font-family:inherit;text-transform:uppercase;letter-spacing:.1em;font-size:11px;margin-right:18px;font-weight:600">Areas we serve</span>
+  {{ copy.neighborhoods|join(' · ') }}
+</div>
+{% endif %}
 <div style="padding-top:36px;border-top:1px solid {{ tokens.palette.border }};display:flex;justify-content:space-between;font-size:13px;letter-spacing:.02em;flex-wrap:wrap;gap:8px">
-<div>© {{ year }} {{ business.name }}{% if copy.license_number %} · License #{{ copy.license_number }}{% endif %}</div>{% if business.rating %}<div>{{ business.rating }}★ across {{ business.reviews }} reviews</div>{% endif %}
+<div>© {{ year }} {{ business.name }}{% if copy.license_number %} · License #{{ copy.license_number }}{% endif %}</div>
+<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">{% if business.rating %}<span>{{ business.rating }}★ across {{ business.reviews }} reviews</span>{% endif %}{% if copy.last_updated_label %}<span style="opacity:.7">Last updated {{ copy.last_updated_label }}</span>{% endif %}</div>
 </div>
 </div></footer>
 

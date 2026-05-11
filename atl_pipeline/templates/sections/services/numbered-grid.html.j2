@@ -7,7 +7,10 @@
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:{{ tokens.palette.border }}">
       {% for svc in copy.services %}
       <div style="background:{{ tokens.palette.bg }};padding:48px 36px">
-        <div style="font-family:{{ tokens.type.display_family }};font-weight:500;font-size:14px;color:{{ tokens.palette.accent }};margin-bottom:20px">— {{ '%02d'|format(loop.index) }}</div>
+        <div style="font-family:{{ tokens.type.display_family }};font-weight:500;font-size:14px;color:{{ tokens.palette.accent }};margin-bottom:20px;display:flex;justify-content:space-between;align-items:baseline">
+          <span>— {{ '%02d'|format(loop.index) }}</span>
+          {% if svc.price_signal %}<span style="font-size:13px;color:{{ tokens.palette.ink }};font-weight:600">{{ svc.price_signal }}</span>{% endif %}
+        </div>
         <h3 style="font-family:{{ tokens.type.display_family }};font-size:24px;margin-bottom:12px">{{ svc.title }}</h3>
         <p style="color:{{ tokens.palette.muted }};font-size:15px;line-height:1.7">{{ svc.body }}</p>
       </div>

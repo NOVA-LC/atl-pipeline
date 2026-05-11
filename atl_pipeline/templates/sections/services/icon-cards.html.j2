@@ -6,8 +6,9 @@
     <p style="font-size:19px;max-width:680px;color:{{ tokens.palette.muted }};margin-bottom:48px;font-weight:300">{{ copy.services_lead }}</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
       {% for svc in copy.services %}
-      <div style="background:{{ tokens.palette.card_bg }};padding:32px 28px;border-radius:14px;border:1px solid {{ tokens.palette.border }};transition:transform .2s">
+      <div style="background:{{ tokens.palette.card_bg }};padding:32px 28px;border-radius:14px;border:1px solid {{ tokens.palette.border }};transition:transform .2s;position:relative">
         <div style="width:48px;height:48px;border-radius:12px;background:{{ tokens.palette.accent }}1A;color:{{ tokens.palette.accent }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;margin-bottom:18px">{{ '0%d'|format(loop.index) }}</div>
+        {% if svc.price_signal %}<div style="position:absolute;top:32px;right:28px;font-size:13px;font-weight:700;color:{{ tokens.palette.accent }}">{{ svc.price_signal }}</div>{% endif %}
         <h3 style="font-family:{{ tokens.type.display_family }};font-size:20px;font-weight:600;margin-bottom:10px">{{ svc.title }}</h3>
         <p style="color:{{ tokens.palette.muted }};font-size:15px;line-height:1.6">{{ svc.body }}</p>
       </div>
