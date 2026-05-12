@@ -1,0 +1,108 @@
+{
+  "shell": "standard",
+  "palette": "clean-trade-blue",
+  "type_pair": "archivo-inter",
+  "spacing": "default",
+  "sections": {
+    "hero": "minimal-type",
+    "services": "bold-list",
+    "gallery": "single-feature",
+    "reviews": "card-grid",
+    "cta": "phone-prominent"
+  },
+  "copy": {
+    "eyebrow": "Marietta, GA \u00b7 Leak Detection",
+    "headline_top": "We Find the Leak.",
+    "headline_em": "First visit. Flat rate.",
+    "hero_sub": "Serving Marietta and East Cobb Mon\u2013Fri, 8AM\u20135PM. We show up when we say we will, locate the leak with non-invasive equipment, and give you a flat-rate price before any work starts.",
+    "hero_cta_text": "Call for a quote",
+    "services_h": "What we <em>fix</em>",
+    "services_lead": "We specialize in finding water where it shouldn't be \u2014 in slabs, walls, and supply lines \u2014 so you're not paying to tear up half your house guessing.",
+    "services": [
+      {
+        "title": "Slab Leak Detection",
+        "body": "Electronic listening equipment pinpoints the break under your slab before one inch of concrete comes up.",
+        "price_signal": "from $195 diagnostic"
+      },
+      {
+        "title": "Water Line Location",
+        "body": "We trace pressurized supply lines in Marietta homes \u2014 copper, CPVC, PEX \u2014 without opening walls blind.",
+        "price_signal": "from $175 flat"
+      },
+      {
+        "title": "Pool & Spa Leak Test",
+        "body": "Pressure-test fittings, returns, and skimmer lines to isolate the loss before you drain the pool.",
+        "price_signal": "from $225 flat"
+      },
+      {
+        "title": "Irrigation Leak Scan",
+        "body": "Zone-by-zone scan of buried poly and PVC lines across East Cobb and Roswell properties.",
+        "price_signal": "from $165 flat"
+      },
+      {
+        "title": "Sewer & Drain Camera",
+        "body": "Push a RIDGID SeeSnake camera through the line and get a recording \u2014 no interpretation fees tacked on.",
+        "price_signal": "from $189 flat"
+      }
+    ],
+    "what_we_dont_do": [
+      "We don't quote a repair price over the phone before we've seen the leak.",
+      "We don't perform the repairs ourselves \u2014 you keep the contractor you already trust."
+    ],
+    "guarantee": "If we can't locate the leak during the scheduled visit, you don't pay the diagnostic fee.",
+    "gallery_h": "The work we <em>do</em>",
+    "reviews_h": "4.9 stars across <em>302 reviews</em>",
+    "reviews_list": [
+      {
+        "author": "A Marietta homeowner",
+        "text": "They found a slab leak under my kitchen in under an hour. No guessing, no torn-up floors before they knew exactly where it was. Flat rate just like they said.",
+        "stars": 5,
+        "date": "2024-03-15",
+        "source": "google"
+      },
+      {
+        "author": "B. from East Cobb",
+        "text": "Showed up on time, used their equipment, marked the spot. Done. My plumber said it was the most accurate location he'd ever been handed.",
+        "stars": 5,
+        "date": "2024-01-22",
+        "source": "google"
+      }
+    ],
+    "cta_h": "Know where the leak is <em>today</em>",
+    "cta_sub": "Call 404-579-1188 \u00b7 Marietta, GA \u00b7 Mon\u2013Fri 8AM\u20135PM",
+    "footer_blurb": "National Leak Detection works Marietta, Sandy Springs, East Cobb, Roswell, and Kennesaw \u2014 Monday through Friday, no weekend dispatch fees.",
+    "title_tagline": "Leak Detection Marietta GA | Flat-Rate",
+    "meta_description": "Non-invasive slab, water line, and pool leak detection in Marietta GA. Flat-rate diagnostics, on-site Mon\u2013Fri. Call 404-579-1188 to book today.",
+    "license_number": null,
+    "neighborhoods": [
+      "Marietta",
+      "Sandy Springs",
+      "East Cobb",
+      "Roswell",
+      "Kennesaw"
+    ],
+    "facts_used": [
+      "brief.phone=+1 404-579-1188",
+      "brief.rating=4.9 across 302 Google reviews",
+      "brief.hours.Monday=8AM-5PM (Mon\u2013Fri schedule)",
+      "brief.hours.Saturday=Closed (no weekend service)",
+      "brief.service_area_neighborhoods=[Marietta, Sandy Springs, East Cobb, Roswell, Kennesaw]",
+      "brief.photos[0].url=used as hero_index=0",
+      "brief.category=Plumber (leak detection specialist framing)",
+      "brief.city=Marietta, GA"
+    ]
+  },
+  "images": {
+    "hero_index": 0,
+    "gallery_indexes": [
+      0
+    ],
+    "hero": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAE35EMp3Lcblz6D4qiZ5of5qELc_eELvMuXANyAjCnlr9ypvy1hAq4IjcQlILbZp1Gnd7kU35kakKJ1Q8e2DbILdW_YpqWZyxzxpQ_WBUBqEMvI453WxfFd7b7sNJDtuRlLKA0=w800-h500-k-no",
+    "gallery": [
+      {
+        "url": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAE35EMp3Lcblz6D4qiZ5of5qELc_eELvMuXANyAjCnlr9ypvy1hAq4IjcQlILbZp1Gnd7kU35kakKJ1Q8e2DbILdW_YpqWZyxzxpQ_WBUBqEMvI453WxfFd7b7sNJDtuRlLKA0=w800-h500-k-no",
+        "caption": ""
+      }
+    ]
+  }
+}

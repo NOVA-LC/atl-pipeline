@@ -149,16 +149,23 @@ def hours_summary(raw):
     if isinstance(h, str):
         return h[:60]
     if isinstance(h, dict):
+        # Outscraper sometimes returns hours as {"Monday": "8AM-5PM"} and
+        # sometimes as {"Monday": ["8AM-5PM"]} — coerce list-values to their
+        # joined string so the dedup set() doesn't blow up on unhashable.
+        def _norm(v):
+            if isinstance(v, list):
+                return ', '.join(str(x) for x in v) if v else None
+            return v
         # If all weekdays match, collapse
         weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        wd_vals = [h.get(d) for d in weekdays if h.get(d)]
+        wd_vals = [_norm(h.get(d)) for d in weekdays if h.get(d)]
         if wd_vals and len(set(wd_vals)) == 1:
             return f'Mon–Fri {wd_vals[0]}'
         # Otherwise show today's hours
         import datetime
         today = datetime.datetime.now().strftime('%A')
         if h.get(today):
-            return f'{today[:3]} {h[today]}'
+            return f'{today[:3]} {_norm(h[today])}'
         # Fallback: first available
         for d in weekdays + ['Saturday', 'Sunday']:
             if h.get(d):
