@@ -600,7 +600,9 @@ def assemble(lead: dict, composed_page: dict | None = None, research_brief: dict
 
     # Render — if Jinja itself blows up (shouldn't), fall back to Phase 1 generator
     try:
-        shell_path = full_catalog['shells'][shell_name]
+        shell_entry = full_catalog['shells'][shell_name]
+        # Backwards compat: pre-metadata catalog returned a bare path string.
+        shell_path = shell_entry['partial'] if isinstance(shell_entry, dict) else shell_entry
         html = _env.get_template(shell_path).render(**ctx)
     except Exception as e:
         warnings.append(f'shell render failed: {e!r}; falling back to legacy base template')

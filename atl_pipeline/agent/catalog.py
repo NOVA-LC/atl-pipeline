@@ -63,13 +63,29 @@ def load_tokens(category: str) -> dict:
 
 
 def load_shells() -> dict:
-    """Return {name: 'shells/name.html.j2'} for every shell."""
+    """Return {name: {'partial': 'shells/x.html.j2', 'metadata': {...}}}.
+
+    Each shell can optionally ship a sibling .json carrying `fits_industries`,
+    `vibe_tags`, `signature`, and `best_for` fields. When the JSON is missing,
+    metadata defaults to `{'fits_industries': ['*']}` so the shell is
+    treated as universal — preserves backwards compat with the original
+    flat name→path mapping.
+
+    Names starting with '_' are treated as private (e.g. `_base.html.j2`
+    used for Jinja inheritance) and excluded.
+    """
     out = {}
     if not SHELLS_DIR.is_dir():
         return out
-    for tpl in SHELLS_DIR.glob('*.html.j2'):
+    for tpl in sorted(SHELLS_DIR.glob('*.html.j2')):
         name = tpl.stem.replace('.html', '')
-        out[name] = f'shells/{tpl.name}'
+        if name.startswith('_'):
+            continue  # private base templates (Jinja inheritance roots)
+        meta_path = SHELLS_DIR / f'{name}.json'
+        metadata = _read_json(meta_path) if meta_path.exists() else {
+            'fits_industries': ['*'], 'vibe_tags': [],
+        }
+        out[name] = {'partial': f'shells/{tpl.name}', 'metadata': metadata}
     return out
 
 

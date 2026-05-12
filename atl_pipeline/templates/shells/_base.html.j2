@@ -1,0 +1,171 @@
+{# Base shell — common wrapper. Variants extend with {% extends "shells/_base.html.j2" %}
+   and override the blocks they need. Blocks ordered head → body → main → footer →
+   scripts so a variant can override at any granularity.
+
+   Override surface:
+     head_extra      — extra <link>/<meta> tags
+     shell_css       — variant-specific <style> block (gets the common CSS PLUS your additions; replace the whole CSS by overriding without calling super())
+     nav             — full nav row (defaults to sticky blur nav with logo + 3 links + tel CTA)
+     trust_strip     — rating/reviews/license band; hide entirely with {% block trust_strip %}{% endblock %}
+     pre_main        — content INSIDE <main> before main_content (e.g. announcement bar)
+     main_content    — REQUIRED: the unique body of this shell variant
+     post_main       — content INSIDE <main> after main_content
+     sticky_cta      — mobile bottom bar (defaults to call+text)
+     footer          — full footer (defaults to standard 3-col + neighborhoods + license)
+     scripts_head    — analytics or marketing tags in <head>
+     scripts_body    — extra scripts before </body>
+
+   All blocks call `super()` by default, so light overrides ("add this to nav")
+   should use {% block X %}{{ super() }}<extra>{% endblock %}; full replacements
+   skip super().
+#}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ business.name }}{% if copy.title_tagline %} — {{ copy.title_tagline }}{% endif %}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% if copy.meta_description %}<meta name="description" content="{{ copy.meta_description }}">{% endif %}
+<meta name="theme-color" content="{{ tokens.palette.bg }}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{{ tokens.palette.ink }}" media="(prefers-color-scheme: dark)">
+<meta name="view-transition" content="same-origin">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='{{ tokens.palette.accent|urlencode }}'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='{{ tokens.type.display_family|replace("'", "") }}' font-size='38' font-weight='700' fill='{{ tokens.palette.bg|urlencode }}'%3E{{ business.name[0]|upper }}%3C/text%3E%3C/svg%3E">
+<link href="{{ tokens.type.google_font_link }}" rel="preload" as="style">
+<link href="{{ tokens.type.google_font_link }}" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+{% block scripts_head %}{% endblock %}
+{% block head_extra %}{% endblock %}
+{% block shell_css %}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};line-height:1.6;-webkit-font-smoothing:antialiased;font-weight:{{ tokens.type.body_weight }}}
+.wrap{max-width:{{ tokens.spacing.wrap_max }};margin:0 auto;padding:0 {{ tokens.spacing.wrap_x }}}
+:focus{outline:none}
+:focus-visible{outline:2px solid {{ tokens.palette.accent }};outline-offset:3px;border-radius:4px}
+.skip-link{position:absolute;left:-9999px;top:0;background:{{ tokens.palette.ink }};color:#fff;padding:10px 18px;text-decoration:none;font-weight:600;font-size:14px;z-index:9999}
+.skip-link:focus{left:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;z-index:99;display:none;background:{{ tokens.palette.bg }};border-top:1px solid {{ tokens.palette.border }};padding:10px 12px;gap:8px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.15)}
+.sticky-cta a{flex:1;padding:14px 18px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sticky-cta .cta-call{background:{{ tokens.palette.accent }};color:#fff}
+.sticky-cta .cta-text{background:{{ tokens.palette.ink }};color:#fff}
+.demo-tag{position:fixed;bottom:24px;right:24px;background:{{ tokens.palette.ink }};color:#fff;padding:14px 22px;border-radius:999px;font-size:13px;font-weight:500;z-index:100}
+.demo-tag::before{content:'DEMO · ';opacity:.6}
+@media(max-width:900px){.sticky-cta{display:flex}.demo-tag{bottom:84px;right:12px;padding:8px 14px;font-size:11px}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+@media print {.sticky-cta,.demo-tag,nav{display:none !important}}
+</style>
+{% endblock %}
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+
+{% block nav %}
+<nav style="position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:{{ tokens.palette.bg_blur|default('rgba(255,255,255,.88)') }};border-bottom:1px solid {{ tokens.palette.border }};padding:14px 0">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+    <div style="font-family:{{ tokens.type.display_family }};font-weight:600;font-size:22px;color:{{ tokens.palette.ink }}">{{ business.name }}</div>
+    <div style="display:flex;gap:30px;font-size:14px;font-weight:500" class="nav-links-row">
+      <a href="#services" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Services</a>
+      {% if copy.reviews_list %}<a href="#reviews" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Reviews</a>{% endif %}
+      <a href="#contact" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Contact</a>
+    </div>
+    <a href="tel:{{ business.phone }}" style="padding:11px 22px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap">📞 {{ business.phone_display }}</a>
+  </div>
+</nav>
+{% raw %}<style>@media(max-width:900px){.nav-links-row{display:none !important}}</style>{% endraw %}
+{% endblock %}
+
+{% block trust_strip %}
+{% if business.rating or business.reviews or business.years or copy.license_number %}
+<div style="background:{{ tokens.palette.card_bg }};border-bottom:1px solid {{ tokens.palette.border }};padding:12px 0;font-size:13px;font-weight:500;color:{{ tokens.palette.muted }}">
+  <div class="wrap" style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap">
+    {% if business.rating %}<span style="display:inline-flex;align-items:center;gap:6px"><span style="color:#FBBF24;font-weight:700">★</span> <strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.rating }}</strong> on Google</span>{% endif %}
+    {% if business.reviews %}<span style="opacity:.3">·</span><span><strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.reviews }}</strong> reviews</span>{% endif %}
+    {% if business.years %}<span style="opacity:.3">·</span><span><strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.years }}</strong> years in {{ business.city }}</span>{% endif %}
+    {% if copy.license_number %}<span style="opacity:.3">·</span><span>Licensed · Insured · <strong style="color:{{ tokens.palette.ink }};font-weight:700">#{{ copy.license_number }}</strong></span>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+<main id="main">
+{% block pre_main %}{% endblock %}
+{% block main_content %}{# REQUIRED override #}{% endblock %}
+{% block post_main %}{% endblock %}
+</main>
+
+{% block sticky_cta %}
+<div class="sticky-cta" role="region" aria-label="Quick contact">
+  <a href="tel:{{ business.phone }}" class="cta-call">📞 Call now</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text">💬 Text us</a>
+</div>
+{% endblock %}
+
+{% block footer %}
+<footer style="padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font-size:14px;color:{{ tokens.palette.muted }};background:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:60px;margin-bottom:40px" class="foot-grid">
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-weight:600;font-size:22px;color:{{ tokens.palette.ink }}">{{ business.name }}</div>
+        <p style="margin-top:14px;max-width:300px">{{ copy.footer_blurb }}</p>
+      </div>
+      <div>
+        <h5 style="font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:{{ tokens.palette.ink }}">Visit</h5>
+        {% if business.address %}<p style="padding:4px 0">{{ business.address }}</p>{% endif %}
+        <p style="padding:4px 0">{{ business.city }}, {{ business.state }}</p>
+      </div>
+      <div>
+        <h5 style="font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:{{ tokens.palette.ink }}">Contact</h5>
+        <a href="tel:{{ business.phone }}" style="display:block;padding:4px 0;color:{{ tokens.palette.muted }};text-decoration:none">{{ business.phone_display }}</a>
+        <a href="sms:{{ business.phone }}" style="display:block;padding:4px 0;color:{{ tokens.palette.muted }};text-decoration:none">Text us</a>
+      </div>
+    </div>
+    {% if copy.neighborhoods %}
+    <div style="padding:16px 0;border-top:1px dashed {{ tokens.palette.border }};border-bottom:1px dashed {{ tokens.palette.border }};font-size:13px;margin-bottom:24px">
+      <strong style="color:{{ tokens.palette.ink }};text-transform:uppercase;letter-spacing:.08em;font-size:11px;margin-right:14px">Areas we serve</strong>
+      {{ copy.neighborhoods|join(' · ') }}
+    </div>
+    {% endif %}
+    <div style="padding-top:30px;border-top:1px solid {{ tokens.palette.border }};display:flex;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:8px">
+      <div>© {{ year }} {{ business.name }}{% if copy.license_number %} · License #{{ copy.license_number }}{% endif %}</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        {% if business.rating %}<span>{{ business.rating }}★ across {{ business.reviews }} Google reviews</span>{% endif %}
+        {% if copy.last_updated_label %}<span style="opacity:.7">Last updated {{ copy.last_updated_label }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+</footer>
+{% raw %}<style>@media(max-width:900px){.foot-grid{grid-template-columns:1fr !important;gap:32px !important}}</style>{% endraw %}
+{% endblock %}
+
+<div class="demo-tag">{{ business.name }}</div>
+
+{# Tab-blur title swap — Stripe trick. #}
+{% raw %}<script>
+(function(){
+  try {
+    var orig = document.title;
+    var industry = {% endraw %}'{{ industry|default("local") }}'{% raw %};
+    var copy = {plumber:'👋 still need a plumber?',hvac:'👋 still need ac help?',electrician:'👋 still need an electrician?',roofer:'👋 still need a roofer?',landscape:'👋 still need a landscaper?',mechanic:'👋 still need a mechanic?',septic:'👋 still need septic help?'};
+    var away = copy[industry] || '👋 come back!';
+    document.addEventListener('visibilitychange', function(){
+      document.title = document.hidden ? away : orig;
+    });
+  } catch(_){}
+})();
+</script>{% endraw %}
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/ScrollTrigger.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/SplitText.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3/dist/lenis.min.js" defer></script>
+<script defer>
+window.addEventListener('load', function(){
+{% include 'motion/motion.js.j2' %}
+});
+</script>
+
+{% block scripts_body %}{% endblock %}
+</body>
+</html>

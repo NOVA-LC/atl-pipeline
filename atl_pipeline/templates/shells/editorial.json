@@ -1,0 +1,8 @@
+{
+  "name": "editorial",
+  "fits_industries": ["*"],
+  "vibe_tags": ["editorial", "magazine", "premium", "type-driven", "boutique"],
+  "signature": "Type-only 180px serif hero with inset photo, testimonial-first pull-quote, sticky-photo column on services, 'Field notes' dark sidebar, italic centered guarantee, '§ 02' section numbering.",
+  "best_for": "premium-feel businesses with a story (lawyers, dentists, salons, heritage trades). Best when the owner-voice and review quotes are rich.",
+  "avoid_when": "emergency-urgency businesses where speed-to-call matters more than feel (24h plumbers, AC emergency, locksmiths)"
+}

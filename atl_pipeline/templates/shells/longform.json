@@ -1,0 +1,8 @@
+{
+  "name": "longform",
+  "fits_industries": ["*"],
+  "vibe_tags": ["narrative", "scroll-driven", "story-led"],
+  "signature": "Long-form content with multiple full-bleed image breaks and sticky captions.",
+  "best_for": "highly-specialized businesses where the story is the differentiator",
+  "avoid_when": "speed-first conversion goals"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "standard",
+  "fits_industries": ["*"],
+  "vibe_tags": ["agency-default", "credible", "trade-bold", "trust-anchored"],
+  "signature": "Sticky nav + trust strip + photo hero + bold-list services + full-bleed accent guarantee. The reliable default — works for any trade that wants unambiguous credibility.",
+  "best_for": "plumber/HVAC/electrician/roofer/septic with strong photos and decent owner-voice signal",
+  "avoid_when": "lead has no photos and weak owner voice — use editorial or stats-anchored instead"
+}

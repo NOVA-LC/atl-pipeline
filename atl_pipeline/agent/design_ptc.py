@@ -110,28 +110,45 @@ def _variants_for(cat: dict, section: str) -> list[str]:
     return sorted((cat.get('sections', {}).get(section) or {}).keys())
 
 
-def _format_shell_list(cat: dict) -> str:
-    """One-line description per shell for the system prompt. The shell
-    catalog is just {name: path}, so we hardcode the editorial intent here
-    until we ship per-shell metadata.json files."""
-    descriptions = {
-        'standard': 'classic agency layout — sticky nav + trust strip + photo hero + bold-list services + full-bleed orange guarantee. Default. Best for trades that want unambiguous credibility (HVAC, electricians, plumbers w/ strong photos).',
-        'editorial': 'magazine spread — type-only 180px serif hero with inset photo, testimonial-first pull-quote after hero, sticky-photo column for services list, "Field notes" dark sidebar, italic centered guarantee, "§ 02" section numbering. Best for premium/boutique-feel trades or businesses with a strong owner-voice story.',
-        'longform': 'narrative scroll — long-form content, multiple full-bleed image breaks, sticky captions. Best for highly-specialized businesses where the story is the differentiator.',
-    }
-    shells = sorted(cat.get('shells', {}).keys())
-    rows = []
-    for name in shells:
+def _shells_for_vertical(cat: dict, vertical: str) -> list[tuple[str, dict]]:
+    """Filter the shell catalog to ones whose metadata.fits_industries
+    includes the lead's vertical (or is universal '*'). Always returns at
+    least the universal shells so PTC never runs out of options."""
+    shells = cat.get('shells', {}) or {}
+    out: list[tuple[str, dict]] = []
+    for name in sorted(shells.keys()):
         if name == '404':
             continue
-        desc = descriptions.get(name, '(no description)')
-        rows.append(f'  - {name}  — {desc}'[:300])
+        entry = shells[name]
+        meta = entry.get('metadata') if isinstance(entry, dict) else {}
+        fits = meta.get('fits_industries') if meta else ['*']
+        if not fits or '*' in fits or (vertical and vertical in fits):
+            out.append((name, meta or {}))
+    # Safety net: if filtering left us with nothing, fall back to all shells.
+    if not out:
+        for name in sorted(shells.keys()):
+            if name == '404': continue
+            entry = shells[name]
+            out.append((name, entry.get('metadata', {}) if isinstance(entry, dict) else {}))
+    return out
+
+
+def _format_shell_list(cat: dict, vertical: str = '') -> str:
+    """Per-shell description for the system prompt, filtered to shells whose
+    metadata.fits_industries includes this lead's vertical."""
+    entries = _shells_for_vertical(cat, vertical)
+    rows = []
+    for name, meta in entries:
+        sig = meta.get('signature') or meta.get('best_for') or '(no description)'
+        vibes = meta.get('vibe_tags') or []
+        vibe_str = f' [{", ".join(vibes[:4])}]' if vibes else ''
+        rows.append(f'  - {name}{vibe_str} — {sig}'[:300])
     return '\n'.join(rows)
 
 
-def _build_system_prompt(cat: dict) -> str:
+def _build_system_prompt(cat: dict, vertical: str = '') -> str:
     return SYSTEM_TPL.format(
-        shell_list=_format_shell_list(cat),
+        shell_list=_format_shell_list(cat, vertical),
         palette_list=_format_palette_list(cat),
         type_pair_list=_format_type_pair_list(cat),
         hero_variants=_variants_for(cat, 'hero'),
@@ -281,6 +298,17 @@ def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: d
     valid_shells = set((cat.get('shells') or {}).keys()) - {'404'}
     if shell and shell not in valid_shells:
         score -= 50; reasons.append(f'invalid shell {shell!r}')
+    elif shell:
+        # Industry-fit: shells declare which verticals they're designed for via
+        # `metadata.fits_industries`. Penalize hard if the model picked a shell
+        # that wasn't built for this trade — it'll render OK but the design DNA
+        # won't match (a salon shell on a roofer would look wrong).
+        entry = (cat.get('shells') or {}).get(shell) or {}
+        meta = entry.get('metadata') if isinstance(entry, dict) else {}
+        fits = (meta or {}).get('fits_industries') or ['*']
+        if vertical and '*' not in fits and vertical not in fits:
+            score -= 18
+            reasons.append(f'shell {shell!r} not built for vertical {vertical!r} (fits={fits})')
     if palette not in (cat.get('palettes') or {}):
         score -= 50; reasons.append(f'invalid palette {palette!r}')
     if type_pair not in (cat.get('type_pairs') or {}):
@@ -379,15 +407,16 @@ def pick_design(
             out['errors'].append(f'no API client: {e}')
             return out
 
-    system_prompt = _build_system_prompt(full_catalog)
     neighbor_list = list(neighbor_fps)[:6]
     user_msg = _build_user_msg(lead, voice_card or {}, neighbor_list, real_photo_count)
     vertical = (lead.get('category') or '').lower()
     # Normalize vertical to match fits_verticals tags
-    for v in ('plumber', 'hvac', 'radiator', 'landscape', 'septic', 'auto'):
+    for v in ('plumber', 'hvac', 'electrician', 'roofer', 'radiator', 'landscape',
+              'septic', 'auto', 'mechanic'):
         if v in vertical:
             vertical = v
             break
+    system_prompt = _build_system_prompt(full_catalog, vertical=vertical)
 
     candidates: list[tuple[float, dict, list[str]]] = []
     total_cost_cents = 0
