@@ -1,0 +1,313 @@
+{# Shell variant: EDITORIAL. Magazine-spread vibe — big serif type, sticky
+   photo column for services, embedded testimonial hero, narrative blocks
+   instead of stat blocks. Different rhythm from `standard.html.j2`:
+
+   standard: trust-strip → hero(photo bg) → behind-the-work split → services
+             → what-we-dont-do band → guarantee full-bleed → by-the-numbers
+             → environmental → reviews → CTA
+   editorial: hero(type-only + inset photo) → testimonial-FIRST pull-quote
+              → services as magazine 2-col with sticky photo → field-notes
+              sidebar block → guarantee centered serif → narrative process
+              → environmental → CTA → "endmark" footer
+
+   Same Jinja context (business / copy / images / tokens / sections) — drop-
+   in replacement for the existing shell. Picked via composed.shell. #}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ business.name }}{% if copy.title_tagline %} — {{ copy.title_tagline }}{% endif %}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+{% if copy.meta_description %}<meta name="description" content="{{ copy.meta_description }}">{% endif %}
+<meta name="theme-color" content="{{ tokens.palette.bg }}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="{{ tokens.palette.ink }}" media="(prefers-color-scheme: dark)">
+<link href="https://fonts.googleapis.com/css2?{{ tokens.type.fonts_query }}&display=swap" rel="preload" as="style">
+<link href="https://fonts.googleapis.com/css2?{{ tokens.type.fonts_query }}&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};line-height:1.6;-webkit-font-smoothing:antialiased;font-weight:400}
+.wrap{max-width:1320px;margin:0 auto;padding:0 40px}
+:focus{outline:none}
+:focus-visible{outline:2px solid {{ tokens.palette.accent }};outline-offset:3px;border-radius:4px}
+.skip-link{position:absolute;left:-9999px;top:0;background:{{ tokens.palette.ink }};color:#fff;padding:10px 18px;text-decoration:none;font-weight:600;font-size:14px;z-index:9999}
+.skip-link:focus{left:0}
+
+/* Minimal nav — keyline-only, no shadow. The editorial doesn't punch you
+   with a sticky bar; it lets the type breathe. */
+nav.ed-nav{padding:24px 0;border-bottom:1px solid {{ tokens.palette.border }};background:{{ tokens.palette.bg }}}
+.ed-nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.ed-mark{font-family:{{ tokens.type.display_family }};font-weight:{{ tokens.type.display_weight }};font-size:18px;letter-spacing:-0.01em;color:{{ tokens.palette.ink }}}
+.ed-meta{font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:{{ tokens.palette.muted }}}
+.ed-cta{font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:{{ tokens.palette.ink }};text-decoration:none;border-bottom:2px solid {{ tokens.palette.accent }};padding-bottom:2px}
+
+/* Sticky mobile CTA — same convention as standard shell */
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;z-index:99;display:none;background:{{ tokens.palette.bg }};border-top:1px solid {{ tokens.palette.border }};padding:10px 12px;gap:8px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.15)}
+.sticky-cta a{flex:1;padding:14px 18px;border-radius:0;text-decoration:none;font-weight:700;font-size:15px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sticky-cta .cta-call{background:{{ tokens.palette.ink }};color:#fff}
+.sticky-cta .cta-text{background:{{ tokens.palette.accent }};color:#0F1014}
+.demo-tag{position:fixed;bottom:24px;right:24px;background:{{ tokens.palette.ink }};color:#fff;padding:12px 18px;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;z-index:100}
+.demo-tag::before{content:'DEMO · ';opacity:.6}
+
+@media(max-width:900px){
+  .ed-nav .ed-meta, .ed-services-spread > .ed-photo-col{display:none}
+  .sticky-cta{display:flex}
+  .demo-tag{bottom:84px;right:12px;padding:8px 14px;font-size:10px}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<nav class="ed-nav">
+  <div class="wrap">
+    <div class="ed-mark">{{ business.name }}</div>
+    <div class="ed-meta">{{ business.city|upper }}, {{ business.state }}{% if business.rating %} · {{ business.rating }}★ × {{ business.reviews }}{% endif %}</div>
+    <a href="tel:{{ business.phone }}" class="ed-cta">Call · {{ business.phone_display }}</a>
+  </div>
+</nav>
+
+<main id="main">
+
+{# ─── EDITORIAL HERO ────────────────────────────────────────────────────────
+   Type-only hero. No giant photo backdrop. The hero photo (if any) is set
+   as a small anchored inset in the bottom-right — magazine cover-feature
+   move. Massive serif/display headline owns the canvas. Drop-cap on the
+   subhead opening word. ─────────────────────────────────────────────────── #}
+<section style="padding:clamp(72px,12vh,160px) 0 clamp(96px,16vh,200px);position:relative;overflow:hidden;background:{{ tokens.palette.bg }}">
+  <div class="wrap" style="position:relative;max-width:1320px">
+
+    <div class="ed-eyebrow" style="display:inline-block;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:48px;padding-bottom:8px;border-bottom:1px solid {{ tokens.palette.accent }}">— ISSUE 01 · {{ business.city|upper }} · {{ business.category|upper }}</div>
+
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,11vw,180px);font-weight:{{ tokens.type.display_weight }};letter-spacing:-0.035em;line-height:.88;margin:0 0 56px;max-width:1100px;color:{{ tokens.palette.ink }}">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }};font-weight:{{ tokens.type.display_weight }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px);gap:64px;align-items:end;max-width:1280px">
+      <div style="max-width:580px">
+        <p style="font-family:{{ tokens.type.body_family }};font-size:clamp(17px,1.4vw,21px);line-height:1.55;color:{{ tokens.palette.ink }};margin:0 0 32px">
+          <span style="float:left;font-family:{{ tokens.type.display_family }};font-size:clamp(64px,7vw,96px);line-height:.82;color:{{ tokens.palette.accent }};margin:8px 14px 0 0;font-weight:{{ tokens.type.display_weight }}">{{ (copy.hero_sub or 'A')[0] }}</span>{{ (copy.hero_sub or '')[1:] }}
+        </p>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+          <a href="tel:{{ business.phone }}" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.bg }};background:{{ tokens.palette.ink }};padding:18px 28px;display:inline-flex;align-items:center;gap:10px">Call · {{ business.phone_display }}</a>
+          <a href="#services" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.ink }};padding:18px 6px;border-bottom:2px solid {{ tokens.palette.accent }}">What we fix →</a>
+        </div>
+      </div>
+      {% if images.hero %}
+      <figure data-motion="parallax-cover" style="margin:0;position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:0;align-self:end">
+        <img src="{{ images.hero }}" alt="{{ business.name }} at work" style="width:100%;height:100%;object-fit:cover;display:block">
+        <figcaption style="position:absolute;bottom:14px;left:14px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:rgba(0,0,0,.5);padding:6px 10px">FIG. 1 · ON-SITE, {{ business.city|upper }}</figcaption>
+      </figure>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{# ─── EDITORIAL REVIEW HERO (testimonial-first) ─────────────────────────────
+   Pulls the most specific real review to a full-width quote IMMEDIATELY
+   after the hero. Apple-style social proof placement. #}
+{% if copy.reviews_list %}
+{% set _hero_q = copy.reviews_list[0] %}
+<section style="padding:clamp(64px,9vh,120px) 0;background:{{ tokens.palette.card_bg }};border-top:1px solid {{ tokens.palette.border }};border-bottom:1px solid {{ tokens.palette.border }}">
+  <div class="wrap" style="max-width:1100px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.muted }};margin-bottom:28px">— Customer field report</div>
+    <blockquote data-motion="split-line-reveal" style="margin:0;font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.8vw,48px);font-weight:{{ tokens.type.display_weight }};line-height:1.22;font-style:italic;letter-spacing:-0.015em;color:{{ tokens.palette.ink }}">
+      &ldquo;{{ _hero_q.text }}&rdquo;
+    </blockquote>
+    <div style="margin-top:28px;font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:{{ tokens.palette.muted }}">
+      — {{ _hero_q.author }}{% if _hero_q.date %} · {{ _hero_q.date }}{% endif %}{% if _hero_q.source %} · via {{ _hero_q.source }}{% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ─── MAGAZINE SPREAD: services with sticky photo column ────────────────────
+   Two-column layout. Left: numbered services list with prices. Right: ONE
+   sticky photo that doesn't move while you scroll the services. Pure
+   magazine-spread mechanic. Mobile collapses to stacked. #}
+<section id="services" class="ed-services-spread" style="padding:clamp(80px,12vh,160px) 0;background:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:80px;align-items:start">
+      {# Left column: services list, numbered, with prices #}
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:28px">— § 02 What we fix</div>
+        <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.2vw,72px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.022em;margin:0 0 64px;max-width:740px">{{ copy.services_h|safe }}</h2>
+
+        <ol style="list-style:none;padding:0;margin:0">
+          {% for svc in copy.services %}
+          <li style="display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:24px;padding:32px 0;border-top:1px solid {{ tokens.palette.border }}{% if loop.last %};border-bottom:1px solid {{ tokens.palette.border }}{% endif %};align-items:start">
+            <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:700;letter-spacing:.16em;color:{{ tokens.palette.accent }};padding-top:6px">{{ '%02d'|format(loop.index) }}</div>
+            <div>
+              <h3 style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:{{ tokens.type.display_weight }};line-height:1.15;margin:0 0 8px;letter-spacing:-0.01em">{{ svc.title }}</h3>
+              <p style="font-size:15px;color:{{ tokens.palette.muted }};line-height:1.65;margin:0;max-width:520px">{{ svc.body }}</p>
+            </div>
+            {% if svc.price_signal %}
+            <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ tokens.palette.ink }};padding-top:6px;white-space:nowrap">{{ svc.price_signal }}</div>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+
+      {# Right column: STICKY photo with caption. Stays put while user
+         scrolls the services list. The signature magazine-spread move. #}
+      <div class="ed-photo-col" style="position:sticky;top:80px">
+        {% if copy.process_image or images.hero %}
+        <figure style="margin:0;aspect-ratio:4/5;overflow:hidden;border:1px solid {{ tokens.palette.border }};position:relative">
+          <img src="{{ copy.process_image or images.hero }}" alt="On the job in {{ business.city }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.02) saturate(.95)">
+          <figcaption style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.75) 80%);color:#fff;padding:40px 24px 20px;font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase">FIG. 2 · METHOD</figcaption>
+        </figure>
+        <p style="margin-top:18px;font-family:{{ tokens.type.body_family }};font-size:14px;line-height:1.55;color:{{ tokens.palette.muted }};max-width:380px">{{ copy.process_statement or "Method is the same every job — camera first, footage emailed, flat-rate quote before any wrench moves." }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ─── FIELD NOTES sidebar — replaces "what we don't do" inline band ─────── #}
+{% if copy.what_we_dont_do %}
+<section style="padding:clamp(80px,10vh,140px) 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:80px;align-items:start">
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:18px">— § 03</div>
+        <h3 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,4.4vw,56px);font-weight:{{ tokens.type.display_weight }};line-height:.98;letter-spacing:-0.02em;margin:0">Field notes.</h3>
+      </div>
+      <ol style="list-style:none;padding:0;margin:0;counter-reset:fn">
+        {% for item in copy.what_we_dont_do %}
+        <li style="display:grid;grid-template-columns:60px 1fr;gap:18px;padding:20px 0;border-top:1px solid rgba(255,255,255,.18);align-items:baseline;counter-increment:fn">
+          <div style="font-family:{{ tokens.type.display_family }};font-size:14px;letter-spacing:.18em;color:{{ tokens.palette.accent }};font-style:italic">i.{{ loop.index }}</div>
+          <p style="font-family:{{ tokens.type.body_family }};font-size:clamp(16px,1.4vw,20px);line-height:1.5;color:{{ tokens.palette.bg }};margin:0">{{ item }}</p>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ─── GUARANTEE — centered serif italic on the card_bg, NOT full-bleed orange ─── #}
+{% if copy.guarantee %}
+<section style="padding:clamp(96px,14vh,180px) 0;background:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:920px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:36px">— § 04 · The guarantee</div>
+    <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(32px,4.4vw,60px);font-style:italic;font-weight:{{ tokens.type.display_weight }};line-height:1.18;letter-spacing:-0.015em;margin:0;color:{{ tokens.palette.ink }}">&ldquo;{{ copy.guarantee }}&rdquo;</p>
+    <div style="margin-top:32px;width:48px;height:1px;background:{{ tokens.palette.accent }};margin-left:auto;margin-right:auto"></div>
+  </div>
+</section>
+{% endif %}
+
+{# ─── ENVIRONMENTAL full-bleed image with bottom-left typography ──────────── #}
+{% if copy.environmental_image %}
+<section style="position:relative;min-height:56vh;display:flex;align-items:flex-end;padding:48px 0;background:linear-gradient(180deg,rgba(15,20,30,0) 30%,rgba(15,20,30,.55) 70%,rgba(15,20,30,.88) 100%),url('{{ copy.environmental_image }}') center/cover;color:#fff">
+  <div class="wrap" style="max-width:1280px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:24px">— § 05 · {{ business.city|upper }} · DAWN</div>
+    <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,4.2vw,60px);font-weight:{{ tokens.type.display_weight }};line-height:1.05;letter-spacing:-0.012em;margin:0;max-width:920px">{{ copy.environmental_statement or "On the road in " + business.city + " before most of us are awake." }}</p>
+  </div>
+</section>
+{% endif %}
+
+{# ─── REMAINING REVIEWS as side-by-side two-column ────────────────────────── #}
+{% if copy.reviews_list and copy.reviews_list|length > 1 %}
+<section id="reviews" style="padding:clamp(72px,10vh,140px) 0;background:{{ tokens.palette.card_bg }}">
+  <div class="wrap" style="max-width:1180px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:48px">— More from the file · {{ business.rating }}★ × {{ business.reviews }} reviews</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:48px;column-gap:64px">
+      {% for r in copy.reviews_list[1:] %}
+      <div>
+        <div style="color:{{ tokens.palette.accent }};font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-family:{{ tokens.type.body_family }};font-size:16px;line-height:1.65;color:{{ tokens.palette.ink }};margin:0 0 18px">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;color:{{ tokens.palette.muted }};letter-spacing:.14em;text-transform:uppercase;font-weight:700">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# ─── CTA — centered, calm. The opposite of a shouty "GET YOUR FREE QUOTE" CTA #}
+<section id="contact" style="padding:clamp(96px,14vh,180px) 0;background:{{ tokens.palette.bg }};text-align:center;border-top:1px solid {{ tokens.palette.border }}">
+  <div class="wrap" style="max-width:760px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:28px">— § 06 · {{ copy.cta_eyebrow|default('Contact') }}</div>
+    <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(42px,5.6vw,84px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.025em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-family:{{ tokens.type.body_family }};font-size:18px;color:{{ tokens.palette.muted }};max-width:540px;margin:0 auto 40px">{{ copy.cta_sub }}</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <a href="tel:{{ business.phone }}" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.bg }};background:{{ tokens.palette.ink }};padding:20px 36px">Call · {{ business.phone_display }}</a>
+      <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.ink }};padding:20px 36px;border:1px solid {{ tokens.palette.border }}">Text us a photo</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="sticky-cta" role="region" aria-label="Quick contact">
+  <a href="tel:{{ business.phone }}" class="cta-call">Call now</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text">Text us</a>
+</div>
+
+{# ─── Endmark footer — newspaper style: single column, signature mark ────── #}
+<footer style="padding:80px 0 100px;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }}">
+  <div class="wrap" style="max-width:1180px">
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:60px;align-items:start;margin-bottom:64px">
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:36px;font-weight:{{ tokens.type.display_weight }};letter-spacing:-0.02em;margin-bottom:16px">{{ business.name }}</div>
+        <p style="font-size:15px;color:rgba(255,255,255,.65);line-height:1.6;max-width:360px">{{ copy.footer_blurb }}</p>
+      </div>
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:14px">Visit</div>
+        {% if business.address %}<p style="font-size:14px;line-height:1.5;color:rgba(255,255,255,.78)">{{ business.address }}</p>{% endif %}
+        <p style="font-size:14px;color:rgba(255,255,255,.78);margin-top:4px">{{ business.city }}, {{ business.state }}</p>
+        {% if business.hours %}<p style="font-size:13px;color:rgba(255,255,255,.55);margin-top:10px;letter-spacing:.04em">{{ business.hours }}</p>{% endif %}
+      </div>
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:14px">Contact</div>
+        <a href="tel:{{ business.phone }}" style="display:block;font-size:14px;color:rgba(255,255,255,.78);text-decoration:none;margin-bottom:6px">{{ business.phone_display }}</a>
+        <a href="sms:{{ business.phone }}" style="display:block;font-size:14px;color:rgba(255,255,255,.78);text-decoration:none">Text us</a>
+      </div>
+    </div>
+    {% if copy.neighborhoods %}
+    <div style="padding:20px 0;border-top:1px solid rgba(255,255,255,.15);border-bottom:1px solid rgba(255,255,255,.15);font-size:12px;color:rgba(255,255,255,.55);letter-spacing:.04em">
+      <strong style="color:{{ tokens.palette.accent }};text-transform:uppercase;letter-spacing:.16em;font-weight:700;margin-right:18px">Areas served</strong>
+      {{ copy.neighborhoods|join(' · ') }}
+    </div>
+    {% endif %}
+    <div style="padding-top:32px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(255,255,255,.45);flex-wrap:wrap;gap:12px">
+      <div>© {{ year }} {{ business.name }}{% if copy.license_number %} · License #{{ copy.license_number }}{% endif %}</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        {% if business.rating %}<span>{{ business.rating }}★ × {{ business.reviews }} reviews</span>{% endif %}
+        {% if copy.last_updated_label %}<span>Updated {{ copy.last_updated_label }}</span>{% endif %}
+        <span aria-hidden="true" style="font-family:{{ tokens.type.display_family }};font-style:italic;color:{{ tokens.palette.accent }};font-size:18px;letter-spacing:0">— ¶</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="demo-tag">{{ business.name }}</div>
+
+{% raw %}<script>
+(function(){
+  try {
+    var orig = document.title;
+    var industry = {% endraw %}'{{ industry|default("local") }}'{% raw %};
+    var copy = {plumber:'👋 still need a plumber?',hvac:'👋 still need ac help?',landscape:'👋 still need a landscaper?'};
+    var away = copy[industry] || '👋 come back!';
+    document.addEventListener('visibilitychange', function(){
+      document.title = document.hidden ? away : orig;
+    });
+  } catch(_){}
+})();
+</script>{% endraw %}
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/ScrollTrigger.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/SplitText.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3/dist/lenis.min.js" defer></script>
+<script defer>
+window.addEventListener('load', function(){
+{% include 'motion/motion.js.j2' %}
+});
+</script>
+</body>
+</html>
