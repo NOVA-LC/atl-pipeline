@@ -263,10 +263,13 @@ def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: d
             f'hero {hero_variant!r} requires {min_hero_photos} real photo(s); '
             f'lead has {real_photo_count} — would fall back to stock')
     elif min_hero_photos == 0:
-        # Mild bonus for picking a no-photo-required hero when imagery is thin.
-        if real_photo_count < 4:
-            score += 6
-            reasons.append(f'hero {hero_variant!r} is type-forward (no photos needed)')
+        # Bonus for picking a no-photo hero ONLY when the lead has truly zero
+        # real photos. With 1-2 photos we should USE THEM in the hero (split-
+        # photo-copy is ideal), not bury them downstream while leaving the
+        # hero a flat color block.
+        if real_photo_count == 0:
+            score += 8
+            reasons.append(f'hero {hero_variant!r} is type-forward (zero real photos)')
 
     # stats-band hero requires rating + review thresholds, not photos.
     if hero_variant == 'stats-band':
