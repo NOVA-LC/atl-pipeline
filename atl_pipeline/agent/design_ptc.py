@@ -39,9 +39,12 @@ DEFAULT_N = 4
 TEMPERATURE = 0.9
 
 
-SYSTEM_TPL = """You are a senior art director picking the DESIGN SYSTEM (palette + type pair + section layouts) for ONE specific local-services business marketing site. You are NOT writing copy — a separate copywriter handles that. Your one job: pick choices that look agency-tier and don't clone the neighbor demos.
+SYSTEM_TPL = """You are a senior art director picking the DESIGN SYSTEM (shell + palette + type pair + section layouts) for ONE specific local-services business marketing site. You are NOT writing copy — a separate copywriter handles that. Your one job: pick choices that look agency-tier and don't clone the neighbor demos.
 
 Output: a single JSON object — no prose, no markdown fences.
+
+AVAILABLE SHELLS (the outer page architecture — pick ONE):
+{shell_list}
 
 AVAILABLE PALETTES (you MUST pick from this list, by name):
 {palette_list}
@@ -60,13 +63,14 @@ CONSTRAINTS:
 1. NEVER pick a palette named 'generic-blue-purple', 'pastel-gradient', or anything described as 'safe default' — commit to a palette with tension.
 2. NEVER pick Inter, Roboto, or Arial as the DISPLAY face. Inter is body-only.
 3. Pick a type_pair whose fits_verticals INCLUDES the business vertical when possible.
-4. Diversify against the NEIGHBOR DEMOS section — your output must differ from all of them in at least 2 of {{palette, type_pair, hero_variant}}.
+4. Diversify against the NEIGHBOR DEMOS section — your output must differ from all of them in at least 2 of {{shell, palette, type_pair, hero_variant}}. SHELL DIFFERENCE COUNTS DOUBLE — picking a different shell than every neighbor is the single most visible variation a prospect will notice scrolling through demos.
 
 DOCTRINE (verbatim from Anthropic's frontend-aesthetics cookbook):
 Avoid generic AI aesthetics: overused fonts (Inter/Roboto/Arial), clichéd schemes (purple gradients on white), predictable layouts. You converge on Space Grotesk — DON'T pick anything that smells like it. Think outside the box.
 
 Output schema:
 {{
+  "shell": "<name from shell list above>",
   "palette": "<name from list above>",
   "type_pair": "<name from list above>",
   "sections": {{
@@ -106,8 +110,28 @@ def _variants_for(cat: dict, section: str) -> list[str]:
     return sorted((cat.get('sections', {}).get(section) or {}).keys())
 
 
+def _format_shell_list(cat: dict) -> str:
+    """One-line description per shell for the system prompt. The shell
+    catalog is just {name: path}, so we hardcode the editorial intent here
+    until we ship per-shell metadata.json files."""
+    descriptions = {
+        'standard': 'classic agency layout — sticky nav + trust strip + photo hero + bold-list services + full-bleed orange guarantee. Default. Best for trades that want unambiguous credibility (HVAC, electricians, plumbers w/ strong photos).',
+        'editorial': 'magazine spread — type-only 180px serif hero with inset photo, testimonial-first pull-quote after hero, sticky-photo column for services list, "Field notes" dark sidebar, italic centered guarantee, "§ 02" section numbering. Best for premium/boutique-feel trades or businesses with a strong owner-voice story.',
+        'longform': 'narrative scroll — long-form content, multiple full-bleed image breaks, sticky captions. Best for highly-specialized businesses where the story is the differentiator.',
+    }
+    shells = sorted(cat.get('shells', {}).keys())
+    rows = []
+    for name in shells:
+        if name == '404':
+            continue
+        desc = descriptions.get(name, '(no description)')
+        rows.append(f'  - {name}  — {desc}'[:300])
+    return '\n'.join(rows)
+
+
 def _build_system_prompt(cat: dict) -> str:
     return SYSTEM_TPL.format(
+        shell_list=_format_shell_list(cat),
         palette_list=_format_palette_list(cat),
         type_pair_list=_format_type_pair_list(cat),
         hero_variants=_variants_for(cat, 'hero'),
@@ -219,26 +243,44 @@ def _score_candidate(cand: dict, vertical: str, neighbor_fps: list[dict], cat: d
         score -= 30
         reasons.append('Inter/Roboto/Arial as display — doctrine violation')
 
+    shell = cand.get('shell')
+
     # === Anti-clone vs neighbors ===
+    # Shell now counts on this axis and is weighted double — it's the single
+    # most visible "this is a different design" signal a prospect sees when
+    # scrolling through multiple demos. Two leads in the same batch with the
+    # same shell will read as "template" no matter how the palette varies.
     if neighbor_fps:
+        neighbor_shell_set = {fp.get('shell') for fp in neighbor_fps if fp.get('shell')}
         neighbor_palette_set = {fp.get('palette') for fp in neighbor_fps if fp.get('palette')}
         neighbor_typepair_set = {fp.get('type_pair') for fp in neighbor_fps if fp.get('type_pair')}
         neighbor_hero_set = {(fp.get('sections') or {}).get('hero') for fp in neighbor_fps}
         differs = 0
+        shell_diff = False
+        if shell and shell not in neighbor_shell_set:
+            differs += 2  # weighted double
+            shell_diff = True
         if palette and palette not in neighbor_palette_set: differs += 1
         if type_pair and type_pair not in neighbor_typepair_set: differs += 1
         if sections.get('hero') and sections.get('hero') not in neighbor_hero_set: differs += 1
-        if differs >= 2:
-            score += 18
-            reasons.append(f'differs from neighbors on {differs}/3 design axes')
+        if differs >= 3:
+            score += 22 if shell_diff else 18
+            reasons.append(f'differs from neighbors on {differs} weighted axes' +
+                           (' (incl. shell)' if shell_diff else ''))
+        elif differs == 2:
+            score += 8
+            reasons.append('differs from neighbors on 2 weighted axes')
         elif differs == 1:
             score -= 5
             reasons.append('differs from neighbors on only 1 axis — near-clone risk')
         else:
-            score -= 25
-            reasons.append('matches neighbors on ALL 3 design axes — clone')
+            score -= 28
+            reasons.append('matches neighbors on ALL design axes — clone')
 
-    # === Validity (palette + type pair exist in catalog) ===
+    # === Validity (shell + palette + type pair exist in catalog) ===
+    valid_shells = set((cat.get('shells') or {}).keys()) - {'404'}
+    if shell and shell not in valid_shells:
+        score -= 50; reasons.append(f'invalid shell {shell!r}')
     if palette not in (cat.get('palettes') or {}):
         score -= 50; reasons.append(f'invalid palette {palette!r}')
     if type_pair not in (cat.get('type_pairs') or {}):

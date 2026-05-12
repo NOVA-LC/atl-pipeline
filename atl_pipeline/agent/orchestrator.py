@@ -271,6 +271,8 @@ def build_for_lead(
             if dh:
                 composed.setdefault('palette', dh.get('palette'))
                 composed.setdefault('type_pair', dh.get('type_pair'))
+                if dh.get('shell'):
+                    composed.setdefault('shell', dh['shell'])
                 if dh.get('sections') and not composed.get('sections'):
                     composed['sections'] = dh['sections']
         except cost.BudgetExceeded as e:
