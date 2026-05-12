@@ -1,0 +1,10 @@
+{
+  "name": "hvac-comfort-modern",
+  "fits_industries": ["hvac"],
+  "vibe_tags": ["modern", "lifestyle", "premium", "comfort", "rounded"],
+  "signature": "Pale sky + warm sand + charcoal, rounded geometry, lifestyle hero with 21:9 image, sticky-column services list, big pull-quote review. Reads premium home-improvement.",
+  "best_for": "HVAC companies positioning as comfort/lifestyle (vs commodity) — heat-pump-forward, IAQ-aware, premium residential",
+  "avoid_when": "speed-first emergency dispatch — use hvac-clean-trade or plumber-rugged-urgent",
+  "recommended_palettes": ["warm-earth", "eco-sage", "clean-trade-blue"],
+  "recommended_type_pairs": ["fraunces-inter", "lora-inter", "ibm-plex-inter"]
+}

@@ -1,0 +1,79 @@
+{# Septic shell #1: utility-trusted. Forest green + cream + clay accent,
+   vacuum-truck photo, "Tank last pumped?" diagnostic. Dependable
+   rural-utility feel. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="padding:80px 0 100px;background:#2D4A2D;color:#F1EBDA;position:relative">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:48px;align-items:center" class="hero-grid">
+      <div>
+        <div style="display:inline-block;background:#D97A2B;color:#1A2C1A;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin-bottom:32px">GA-CERTIFIED INSTALLER · LICENSED · INSURED</div>
+        <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(44px,7vw,108px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.02em;margin:0 0 32px">
+          {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:#D97A2B">{{ copy.headline_em }}</span>{% endif %}
+        </h1>
+        <p style="font-size:18px;line-height:1.55;color:rgba(241,235,218,.85);max-width:540px;margin:0 0 36px">{{ copy.hero_sub }}</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <a href="tel:{{ business.phone }}" style="background:#D97A2B;color:#1A2C1A;padding:18px 32px;text-decoration:none;font-weight:700;font-size:16px">📞 Schedule a pump · {{ business.phone_display }}</a>
+          <a href="#services" style="border:1.5px solid rgba(241,235,218,.4);color:#F1EBDA;padding:18px 32px;text-decoration:none;font-weight:600;font-size:16px">Services</a>
+        </div>
+      </div>
+      {% if images.hero %}<figure style="margin:0;aspect-ratio:4/5;overflow:hidden"><img src="{{ images.hero }}" alt="{{ business.name }} service truck" style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.04)"></figure>{% endif %}
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){.hero-grid{grid-template-columns:1fr !important;gap:36px !important}}</style>{% endraw %}
+
+<section style="padding:80px 0;background:#F1EBDA;color:#2D4A2D">
+  <div class="wrap" style="text-align:center;max-width:720px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#D97A2B;margin-bottom:20px">Quick check</div>
+    <h3 style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.6vw,48px);font-weight:{{ tokens.type.display_weight }};line-height:1.15;letter-spacing:-0.015em;margin:0 0 16px">When was your tank last pumped?</h3>
+    <p style="font-size:17px;line-height:1.6;color:#5A6A55;margin:0 0 28px">Most GA septic systems need a pump every 3–5 years. If you can't remember the last one, it's time. We can come out this week.</p>
+    <a href="tel:{{ business.phone }}" style="background:#2D4A2D;color:#F1EBDA;padding:16px 32px;text-decoration:none;font-weight:700;font-size:15px">Schedule a pump</a>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:#FFFFFF">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#D97A2B;margin-bottom:20px">Services</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1.02;letter-spacing:-0.018em;margin:0 0 48px;color:#2D4A2D;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+      {% for svc in copy.services %}
+      <div style="padding:32px 28px;border:2px solid #E1E0D2;display:flex;flex-direction:column;justify-content:space-between;min-height:220px;background:#FAF8EE">
+        <div>
+          <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;color:#D97A2B;margin-bottom:14px;letter-spacing:.16em;text-transform:uppercase">№ {{ '%02d'|format(loop.index) }}</div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:22px;font-weight:{{ tokens.type.display_weight }};margin:0 0 10px;color:#2D4A2D">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:#5A6A55;margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:18px;padding-top:14px;border-top:1px solid #E1E0D2;font-weight:700;color:#2D4A2D;font-size:14px">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:#F1EBDA">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#D97A2B;margin-bottom:24px">{{ business.rating }}★ × {{ business.reviews }} reviews</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:32px">
+      {% for r in copy.reviews_list[:3] %}
+      <div style="background:#FFFFFF;padding:32px;border-left:4px solid #2D4A2D">
+        <div style="color:#D97A2B;font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 16px;color:#2D4A2D">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:11px;color:#5A6A55;letter-spacing:.16em;text-transform:uppercase;font-weight:700">— {{ r.author }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:#2D4A2D;color:#F1EBDA;text-align:center">
+  <div class="wrap" style="max-width:720px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,80px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:17px;color:rgba(241,235,218,.7);margin:0 0 32px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="background:#D97A2B;color:#1A2C1A;padding:22px 44px;text-decoration:none;font-weight:700;font-size:17px">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

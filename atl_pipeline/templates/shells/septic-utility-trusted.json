@@ -1,0 +1,10 @@
+{
+  "name": "septic-utility-trusted",
+  "fits_industries": ["septic"],
+  "vibe_tags": ["utility", "rural", "trusted", "schedule-led"],
+  "signature": "Forest green + cream + clay orange accent, vacuum-truck portrait hero, 'When was your tank last pumped?' diagnostic CTA mid-page. Reads dependable rural-utility.",
+  "best_for": "septic pumpers serving exurban GA counties (Cherokee/Forsyth/Paulding/Coweta), residential focus",
+  "avoid_when": "modern positioning that wants to break the green/brown convention — use septic-modern-cleanup",
+  "recommended_palettes": ["warm-earth", "heritage-navy-gold"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter", "lora-inter"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "auto-heritage-trust",
+  "fits_industries": ["auto", "mechanic", "radiator"],
+  "vibe_tags": ["heritage", "family-owned", "neighborhood", "honest", "serif"],
+  "signature": "Cream + navy + muted red, italic-serif accents, bordered owner/crew portrait with sepia tint, hand-written-feel testimonials. Reads neighborhood-honest-mechanic.",
+  "best_for": "family-owned shops with multi-generation history, neighborhood-trusted general repair, radiator specialists",
+  "avoid_when": "high-volume franchise/quick-lube positioning — use auto-clinical-modern",
+  "recommended_palettes": ["heritage-navy-gold", "warm-earth"],
+  "recommended_type_pairs": ["lora-inter", "fraunces-inter", "playfair-inter", "cormorant-inter"]
+}

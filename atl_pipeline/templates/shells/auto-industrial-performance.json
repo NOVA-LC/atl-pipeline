@@ -1,0 +1,10 @@
+{
+  "name": "auto-industrial-performance",
+  "fits_industries": ["auto", "mechanic", "radiator"],
+  "vibe_tags": ["industrial", "performance", "tough", "ASE-certified"],
+  "signature": "Black + signal red, condensed all-caps display, diagonal-cut buttons, ASE/NAPA/AAA red banner row, № 01 service numbering with red top-border. Reads performance shop / specialty.",
+  "best_for": "performance specialists, off-road shops, transmission/radiator specialists, ASE-certified independents",
+  "avoid_when": "neighborhood family-mechanic positioning — use auto-heritage-trust",
+  "recommended_palettes": ["emergency-red", "modern-charcoal", "rugged-shop-orange"],
+  "recommended_type_pairs": ["anton-inter", "oswald-inter", "bebas-inter"]
+}

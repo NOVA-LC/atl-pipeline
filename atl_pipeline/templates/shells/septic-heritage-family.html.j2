@@ -1,0 +1,64 @@
+{# Septic shell #3: heritage-family. Cream + navy + olive, Lora/Fraunces
+   serif, "3 generations, since 1962" line, hand-drawn tank-anatomy feel. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="padding:100px 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};border-bottom:1px solid {{ tokens.palette.border }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:60px;align-items:center" class="hero-grid">
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};margin-bottom:32px;display:inline-flex;align-items:center;gap:10px">
+          <span style="width:32px;height:1px;background:{{ tokens.palette.accent }}"></span>
+          Family-owned · {{ business.city }}, GA{% if business.years %} · {{ business.years }} years{% endif %}
+        </div>
+        <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(44px,7vw,108px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 32px">
+          {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }};font-weight:{{ tokens.type.display_weight }}">{{ copy.headline_em }}</em>{% endif %}
+        </h1>
+        <p style="font-size:18px;line-height:1.6;color:{{ tokens.palette.muted }};max-width:540px;margin:0 0 36px">{{ copy.hero_sub }}</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};padding:18px 32px;text-decoration:none;font-weight:600;font-size:16px;border-radius:4px">Call · {{ business.phone_display }}</a>
+          <a href="#services" style="color:{{ tokens.palette.ink }};padding:18px 8px;text-decoration:none;font-weight:600;font-size:16px;border-bottom:2px solid {{ tokens.palette.accent }}">What we do →</a>
+        </div>
+      </div>
+      {% if images.hero %}<figure style="margin:0;aspect-ratio:1/1;overflow:hidden;border:6px solid {{ tokens.palette.ink }}"><img src="{{ images.hero }}" alt="{{ business.name }}" style="width:100%;height:100%;object-fit:cover;display:block;filter:contrast(1.04) sepia(.05)"></figure>{% endif %}
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){.hero-grid{grid-template-columns:1fr !important;gap:36px !important}}</style>{% endraw %}
+
+<section id="services" style="padding:120px 0;background:{{ tokens.palette.card_bg }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};margin-bottom:18px">— Services</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1.05;letter-spacing:-0.018em;margin:0 0 48px;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <ol data-motion="reveal-up" style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:36px 60px">
+      {% for svc in copy.services %}
+      <li>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-style:italic;color:{{ tokens.palette.accent }};margin-bottom:10px">{{ loop.index }}.</div>
+        <h3 style="font-family:{{ tokens.type.display_family }};font-size:22px;font-weight:{{ tokens.type.display_weight }};margin:0 0 8px;letter-spacing:-0.012em">{{ svc.title }}</h3>
+        <p style="font-size:15px;color:{{ tokens.palette.muted }};line-height:1.65;margin:0 0 12px">{{ svc.body }}</p>
+        {% if svc.price_signal %}<div style="font-size:14px;font-style:italic;color:{{ tokens.palette.ink }}">{{ svc.price_signal }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:980px">
+    {% set hq = copy.reviews_list[0] %}
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.accent }};margin-bottom:28px">— Customer letter · {{ business.rating }}★ × {{ business.reviews }}</div>
+    <blockquote data-motion="split-line-reveal" style="margin:0 0 28px;font-family:{{ tokens.type.display_family }};font-size:clamp(24px,3vw,44px);font-weight:{{ tokens.type.display_weight }};line-height:1.28;font-style:italic;letter-spacing:-0.012em">&ldquo;{{ hq.text }}&rdquo;</blockquote>
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-style:italic;color:{{ tokens.palette.muted }}">— {{ hq.author }}{% if hq.date %} · {{ hq.date }}{% endif %}</div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:720px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,80px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:17px;color:rgba(232,223,198,.7);margin:0 0 32px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:{{ tokens.palette.bg }};padding:22px 44px;text-decoration:none;font-weight:600;font-size:17px;border-radius:4px">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

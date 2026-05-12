@@ -1,0 +1,79 @@
+{# Landscaper shell #2: design-build-modern. Dark sage + sand + black,
+   oversized type-over-image, before/after slider on hardscape,
+   process timeline. Reads premium contractor. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="padding:96px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};position:relative">
+  <div class="wrap">
+    <div style="max-width:1180px">
+      <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:32px">DESIGN · BUILD · MAINTAIN · {{ business.city|upper }}</div>
+      <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(52px,9vw,144px);font-weight:{{ tokens.type.display_weight }};line-height:.92;letter-spacing:-0.026em;margin:0 0 36px;color:{{ tokens.palette.bg }}">
+        {{ copy.headline_top }}{% if copy.headline_em %} <span style="color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</span>{% endif %}
+      </h1>
+      <p style="font-size:clamp(18px,1.5vw,22px);max-width:680px;color:rgba(239,234,217,.85);margin:0 0 40px;line-height:1.5">{{ copy.hero_sub }}</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:{{ tokens.palette.ink }};padding:20px 36px;text-decoration:none;font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase">Start a project</a>
+        <a href="#services" style="color:{{ tokens.palette.bg }};padding:20px 12px;text-decoration:none;font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid {{ tokens.palette.accent }}">Our process →</a>
+      </div>
+    </div>
+    {% if images.hero %}<figure style="margin:60px -32px 0;aspect-ratio:21/9;overflow:hidden"><img src="{{ images.hero }}" alt="Project in {{ business.city }}" style="width:100%;height:100%;object-fit:cover;display:block"></figure>{% endif %}
+  </div>
+</section>
+
+<section style="padding:80px 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px">
+      {% for step in [('01','Design','Plant + hardscape plan, materials spec, 3D visualizations'),('02','Build','Licensed installers, in-house masonry crew'),('03','Maintain','Seasonal rotation + irrigation tune-ups')] %}
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:36px;font-weight:{{ tokens.type.display_weight }};color:{{ tokens.palette.accent }};line-height:1;letter-spacing:-0.02em;margin-bottom:10px">{{ step[0] }}</div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:{{ tokens.type.display_weight }};margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">{{ step[1] }}</div>
+        <div style="font-size:14px;color:{{ tokens.palette.muted }};line-height:1.55">{{ step[2] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:20px">WORK SCOPE</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.4vw,72px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 48px;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:{{ tokens.palette.border }};border:1px solid {{ tokens.palette.border }}">
+      {% for svc in copy.services %}
+      <div style="background:{{ tokens.palette.bg }};padding:36px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:200px">
+        <div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:{{ tokens.type.display_weight }};margin:0 0 10px;letter-spacing:-0.012em">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:{{ tokens.palette.muted }};margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:20px;font-weight:600;color:{{ tokens.palette.accent }};font-size:14px;letter-spacing:.04em">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:24px">CLIENT REPORTS · {{ business.rating }}★ × {{ business.reviews }}</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px column-gap:64px">
+      {% for r in copy.reviews_list[:3] %}
+      <div>
+        <p style="font-family:{{ tokens.type.display_family }};font-size:clamp(18px,1.7vw,22px);line-height:1.4;font-style:italic;color:{{ tokens.palette.ink }};margin:0 0 16px">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;color:{{ tokens.palette.muted }};letter-spacing:.14em;text-transform:uppercase;font-weight:600">— {{ r.author }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:720px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,84px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:17px;color:rgba(239,234,217,.7);margin:0 0 32px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:{{ tokens.palette.ink }};padding:22px 44px;text-decoration:none;font-weight:600;font-size:15px;letter-spacing:.16em;text-transform:uppercase">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

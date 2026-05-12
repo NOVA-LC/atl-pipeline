@@ -1,0 +1,10 @@
+{
+  "name": "roofer-storm-restoration",
+  "fits_industries": ["roofer"],
+  "vibe_tags": ["storm", "insurance-claims", "aggressive", "manufacturer-certified"],
+  "signature": "Black + signal red + white, condensed display, 'STORM DAMAGE?' banner, manufacturer cert wall (GAF Master Elite, OC Platinum), 4-step process (Inspect→Claim→Install→Walkthrough), aerial drone hero.",
+  "best_for": "roofers doing residential storm-damage + insurance-claim work; GAF/OC certified",
+  "avoid_when": "premium residential remodels — use roofer-residential-premium",
+  "recommended_palettes": ["emergency-red", "modern-charcoal"],
+  "recommended_type_pairs": ["oswald-inter", "anton-inter", "bebas-inter"]
+}

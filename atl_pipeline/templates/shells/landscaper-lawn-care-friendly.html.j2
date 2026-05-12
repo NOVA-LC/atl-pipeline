@@ -1,0 +1,80 @@
+{# Landscaper shell #3: lawn-care-friendly. Bright but tasteful green +
+   white + warm yellow accent, rounded sans, photo of crew next to striped
+   lawn, recurring-service plan cards (weekly / biweekly / monthly),
+   pine-straw refresh seasonal callout. Reads dependable-route-business. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="padding:80px 0 100px;background:#3A8B3A;color:#fff;position:relative;overflow:hidden">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:48px;align-items:center" class="hero-grid">
+      <div>
+        <div style="display:inline-block;background:#F5C242;color:#1A2F1A;padding:6px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;margin-bottom:28px">📍 SERVING {{ business.city|upper }} + {{ (copy.neighborhoods|length if copy.neighborhoods else 5)|string }} NEIGHBORHOODS</div>
+        <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(44px,7vw,108px);font-weight:{{ tokens.type.display_weight }};line-height:.98;letter-spacing:-0.022em;margin:0 0 32px">
+          {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:#F5C242">{{ copy.headline_em }}</span>{% endif %}
+        </h1>
+        <p style="font-size:18px;line-height:1.55;color:rgba(255,255,255,.92);max-width:540px;margin:0 0 36px">{{ copy.hero_sub }}</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <a href="tel:{{ business.phone }}" style="background:#F5C242;color:#1A2F1A;padding:18px 32px;border-radius:999px;text-decoration:none;font-weight:700;font-size:16px">📞 Get a quote · {{ business.phone_display }}</a>
+          <a href="#services" style="background:rgba(255,255,255,.15);color:#fff;padding:18px 32px;border-radius:999px;text-decoration:none;font-weight:700;font-size:16px">See our plans</a>
+        </div>
+      </div>
+      {% if images.hero %}<figure style="margin:0;aspect-ratio:1/1;overflow:hidden;border-radius:24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.3)"><img src="{{ images.hero }}" alt="{{ business.name }} crew" style="width:100%;height:100%;object-fit:cover;display:block"></figure>{% endif %}
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){.hero-grid{grid-template-columns:1fr !important;gap:36px !important}}</style>{% endraw %}
+
+<section id="services" style="padding:120px 0;background:#fff">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#3A8B3A;margin-bottom:20px">Service plans</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.02em;margin:0 0 48px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+      {% for svc in copy.services %}
+      <div style="padding:32px 28px;background:#FAFBF9;border:2px solid #E6EAE2;border-radius:18px;display:flex;flex-direction:column;justify-content:space-between;min-height:220px">
+        <div>
+          <div style="width:44px;height:44px;border-radius:50%;background:#3A8B3A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:18px">{{ loop.index }}</div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:22px;font-weight:{{ tokens.type.display_weight }};margin:0 0 10px">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:#5A6A55;margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:20px;padding-top:14px;border-top:1px dashed #E6EAE2;font-weight:700;color:#3A8B3A;font-size:15px">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section style="padding:80px 0;background:#F5C242;color:#1A2F1A;text-align:center">
+  <div class="wrap" style="max-width:860px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:20px;opacity:.7">📦 Seasonal refresh</div>
+    <h3 style="font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.6vw,48px);font-weight:{{ tokens.type.display_weight }};line-height:1.15;margin:0 0 16px">Pine straw + mulch refresh. Two visits a year.</h3>
+    <p style="font-size:17px;line-height:1.6;margin:0 0 28px;opacity:.85">$249 per pallet · stacks across your beds in one visit · we haul the old debris.</p>
+    <a href="tel:{{ business.phone }}" style="background:#1A2F1A;color:#F5C242;padding:18px 36px;border-radius:999px;text-decoration:none;font-weight:700">Schedule a refresh →</a>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:#FAFBF9">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#3A8B3A;margin-bottom:24px">{{ business.rating }}★ × {{ business.reviews }} reviews</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:32px">
+      {% for r in copy.reviews_list[:3] %}
+      <div style="background:#fff;padding:32px;border-radius:18px;box-shadow:0 8px 24px -12px rgba(0,0,0,.1)">
+        <div style="color:#F5C242;font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 14px;color:#2A3826">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;color:#5A6A55;letter-spacing:.08em;text-transform:uppercase;font-weight:600">— {{ r.author }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:100px 0;background:#3A8B3A;color:#fff;text-align:center">
+  <div class="wrap" style="max-width:680px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.4vw,76px);font-weight:{{ tokens.type.display_weight }};line-height:1;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:18px;color:rgba(255,255,255,.85);margin:0 0 32px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="background:#F5C242;color:#1A2F1A;padding:22px 44px;border-radius:999px;text-decoration:none;font-weight:700;font-size:18px">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

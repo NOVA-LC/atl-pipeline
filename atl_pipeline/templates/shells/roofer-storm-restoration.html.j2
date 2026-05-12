@@ -1,0 +1,92 @@
+{# Roofer shell #1: storm-restoration. Black + red + white, condensed
+   Oswald, aerial-after-storm photo, insurance-claim language, GAF/OC
+   manufacturer badge wall, financing strip. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="position:relative;min-height:90vh;display:flex;flex-direction:column;justify-content:flex-end;padding:80px 0;background:{% if images.hero %}linear-gradient(180deg,rgba(14,14,14,.35) 0%,rgba(14,14,14,.75) 70%,rgba(14,14,14,.95) 100%),url('{{ images.hero }}') center/cover{% else %}#0E0E0E{% endif %};color:#fff;overflow:hidden">
+  <div class="wrap" style="position:relative">
+    <div style="position:absolute;top:-40vh;left:0;right:0;text-align:center"><span style="background:#D7263D;color:#fff;padding:8px 20px;font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.32em;text-transform:uppercase">⚠ STORM DAMAGE? FREE INSPECTION + WE FILE THE CLAIM</span></div>
+    <div style="display:inline-block;background:#D7263D;color:#fff;padding:6px 14px;font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:36px">▌ INSURANCE CLAIMS SPECIALISTS · {{ business.city|upper }}</div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(52px,11vw,180px);font-weight:700;line-height:.88;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 32px;max-width:1180px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:#D7263D">{{ copy.headline_em }}</span>{% endif %}
+    </h1>
+    <p style="font-size:clamp(17px,1.5vw,21px);max-width:620px;color:rgba(255,255,255,.88);margin:0 0 36px;line-height:1.5">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="tel:{{ business.phone }}" style="background:#D7263D;color:#fff;padding:22px 36px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase">📞 FREE INSPECTION · {{ business.phone_display }}</a>
+      <a href="#services" style="border:2px solid rgba(255,255,255,.4);color:#fff;padding:22px 36px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase">OUR PROCESS</a>
+    </div>
+  </div>
+</section>
+
+<section style="padding:40px 0;background:#0E0E0E;color:#fff;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)">
+  <div class="wrap">
+    <div style="display:flex;gap:36px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+      <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.6)">MANUFACTURER CERTIFIED</div>
+      <div style="display:flex;gap:48px;flex-wrap:wrap">
+        {% for cert in ['GAF MASTER ELITE', 'OWENS CORNING PLATINUM', 'CERTAINTEED SELECT', 'BBB A+ RATED', 'HAAG CERTIFIED'] %}
+        <span style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">{{ cert }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:#FFFFFF;color:#0E0E0E">
+  <div class="wrap">
+    <div style="display:inline-block;background:#D7263D;color:#fff;padding:6px 12px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;margin-bottom:20px">SERVICES</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,76px);font-weight:700;line-height:1;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 56px;max-width:920px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2px;background:#0E0E0E;border:2px solid #0E0E0E">
+      {% for svc in copy.services %}
+      <div style="background:#FFFFFF;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:220px">
+        <div>
+          <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:700;color:#D7263D;margin-bottom:12px;letter-spacing:.16em;text-transform:uppercase">№ {{ '%02d'|format(loop.index) }}</div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:22px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:-0.01em">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:#555;margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(0,0,0,.1);font-weight:700;color:#0E0E0E;font-size:14px;letter-spacing:.06em;text-transform:uppercase">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section style="padding:100px 0;background:#0E0E0E;color:#fff">
+  <div class="wrap">
+    <div style="display:inline-block;background:#D7263D;color:#fff;padding:6px 12px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;margin-bottom:24px">OUR PROCESS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:32px">
+      {% for step in [('01','INSPECT','Drone + ground inspection. Photo report in 48 hours.'),('02','CLAIM','We meet your adjuster + file documentation.'),('03','INSTALL','GAF-certified crew + lifetime workmanship.'),('04','WALKTHROUGH','Final inspection + magnetic nail sweep.')] %}
+      <div style="border-top:3px solid #D7263D;padding-top:18px">
+        <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:700;letter-spacing:.2em;color:#D7263D;margin-bottom:8px">{{ step[0] }}</div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px">{{ step[1] }}</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.65);line-height:1.5">{{ step[2] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:#FFFFFF">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#D7263D;margin-bottom:24px">{{ business.rating }}★ × {{ business.reviews }} REVIEWS</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:24px">
+      {% for r in copy.reviews_list[:3] %}
+      <div style="border-left:4px solid #D7263D;padding:24px 28px;background:#F7F7F7">
+        <div style="color:#D7263D;font-size:14px;letter-spacing:3px;margin-bottom:12px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 14px">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:11px;color:#555;letter-spacing:.16em;text-transform:uppercase;font-weight:700">— {{ r.author }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:#D7263D;color:#fff;text-align:center">
+  <div class="wrap" style="max-width:920px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(48px,7vw,108px);font-weight:700;line-height:.94;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 32px">{{ copy.cta_h|safe }}</h2>
+    <a href="tel:{{ business.phone }}" style="background:#0E0E0E;color:#fff;padding:26px 56px;text-decoration:none;font-weight:700;font-size:20px;letter-spacing:.04em;text-transform:uppercase">📞 FREE INSPECTION · {{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

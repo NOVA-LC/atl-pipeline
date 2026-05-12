@@ -1,0 +1,10 @@
+{
+  "name": "auto-clinical-modern",
+  "fits_industries": ["auto", "mechanic"],
+  "vibe_tags": ["clinical", "modern", "dealership-quality", "amenity-rich"],
+  "signature": "White + steel blue + light cyan accent, rounded geometry, drop-off/shuttle amenity strip, online-booking emphasis, soft-cornered service cards. Reads dealership-quality independent.",
+  "best_for": "import specialists, dealership-adjacent independents, amenity-focused general repair (loaner car, shuttle, after-hours dropbox)",
+  "avoid_when": "rough-and-ready performance shop — use auto-industrial-performance",
+  "recommended_palettes": ["clean-trade-blue", "modern-charcoal"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter"]
+}

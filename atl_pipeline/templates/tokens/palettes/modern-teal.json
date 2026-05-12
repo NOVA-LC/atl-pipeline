@@ -1,0 +1,12 @@
+{
+  "name": "modern-teal",
+  "vibe_tags": ["modern", "clean", "utility", "trustworthy", "service"],
+  "ink": "#0E2A2A",
+  "accent": "#C97B1F",
+  "bg": "#FFFFFF",
+  "bg_blur": "rgba(255,255,255,.88)",
+  "muted": "#56706E",
+  "card_bg": "#F4F8F8",
+  "border": "rgba(14,42,42,.12)",
+  "fits": "septic, water treatment, utility-services businesses that want to escape the green-and-brown template"
+}

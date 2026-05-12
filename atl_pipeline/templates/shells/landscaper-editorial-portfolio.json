@@ -1,0 +1,10 @@
+{
+  "name": "landscaper-editorial-portfolio",
+  "fits_industries": ["landscape"],
+  "vibe_tags": ["editorial", "architecture-firm", "portfolio", "luxury", "twilight"],
+  "signature": "Cream + deep forest + clay accent, GT Sectra/Fraunces serif, full-bleed twilight hero, sticky-column services list, § 01-04 numbering, italic quote-mark accents. Reads landscape-architecture-firm.",
+  "best_for": "design/build landscapers, hardscape contractors, premium outdoor-living (Buckhead/East Cobb/Decatur buyer)",
+  "avoid_when": "lawn-maintenance / route-based crews — use landscaper-lawn-care-friendly",
+  "recommended_palettes": ["editorial-forest", "warm-earth"],
+  "recommended_type_pairs": ["fraunces-inter", "cormorant-inter", "playfair-inter", "lora-inter"]
+}

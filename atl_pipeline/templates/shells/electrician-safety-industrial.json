@@ -1,0 +1,10 @@
+{
+  "name": "electrician-safety-industrial",
+  "fits_industries": ["electrician"],
+  "vibe_tags": ["safety-yellow", "industrial", "journeyman", "trades-bold"],
+  "signature": "White + safety-yellow + black, all-caps Inter Black display, master-electrician badge top of hero, № 01 service numbering, bordered photos. Reads journeyman-licensed-pro.",
+  "best_for": "old-school electricians, commercial/industrial work, residential service",
+  "avoid_when": "modern tech/EV positioning — use electrician-dark-technical",
+  "recommended_palettes": ["emergency-red", "rugged-shop-orange"],
+  "recommended_type_pairs": ["archivo-inter", "oswald-inter", "anton-inter"]
+}

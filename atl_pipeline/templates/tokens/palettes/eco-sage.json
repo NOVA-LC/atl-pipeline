@@ -1,0 +1,12 @@
+{
+  "name": "eco-sage",
+  "vibe_tags": ["eco", "sustainable", "calm", "premium", "iaq"],
+  "ink": "#1A2820",
+  "accent": "#C97B1F",
+  "bg": "#F1ECDE",
+  "bg_blur": "rgba(241,236,222,.88)",
+  "muted": "#5A6357",
+  "card_bg": "#FFFFFF",
+  "border": "rgba(26,40,32,.12)",
+  "fits": "HVAC with IAQ/heat-pump focus, eco-conscious trades, sustainability-led businesses"
+}

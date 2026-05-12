@@ -1,0 +1,12 @@
+{
+  "name": "dark-technical",
+  "vibe_tags": ["dark-mode", "technical", "premium", "modern", "electric"],
+  "ink": "#F2F4F7",
+  "accent": "#FFB400",
+  "bg": "#0B0F14",
+  "bg_blur": "rgba(11,15,20,.85)",
+  "muted": "#8A95A5",
+  "card_bg": "#141A22",
+  "border": "rgba(255,255,255,.08)",
+  "fits": "electricians, EV chargers, smart-home installers, modern tech-forward trades"
+}

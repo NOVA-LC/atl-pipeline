@@ -1,0 +1,10 @@
+{
+  "name": "roofer-residential-premium",
+  "fits_industries": ["roofer"],
+  "vibe_tags": ["premium", "residential", "editorial", "warranty", "drone"],
+  "signature": "Warm charcoal + cream + brass accent, serif display (Playfair/Fraunces), drone-flyover hero with dark gradient, sticky-column services list, italicized manufacturer-certified row. Reads home-improvement-not-emergency.",
+  "best_for": "roofers focused on premium residential remodels (not insurance claims), 'lifetime warranty' positioning",
+  "avoid_when": "storm-chasing / insurance-claim focus — use roofer-storm-restoration",
+  "recommended_palettes": ["warm-earth", "heritage-navy-gold", "modern-charcoal"],
+  "recommended_type_pairs": ["fraunces-inter", "playfair-inter", "lora-inter", "cormorant-inter"]
+}

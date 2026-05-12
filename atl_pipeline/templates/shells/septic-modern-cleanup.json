@@ -1,0 +1,10 @@
+{
+  "name": "septic-modern-cleanup",
+  "fits_industries": ["septic"],
+  "vibe_tags": ["modern", "clean", "schedule-first", "differentiator"],
+  "signature": "White + deep teal + warm clay accent, schedule-by-date feel, pump-frequency-by-household stat grid. Breaks the standard green/brown septic template.",
+  "best_for": "septic services wanting to look modern + appointment-driven, not utility-traditional",
+  "avoid_when": "rural-utility positioning — use septic-utility-trusted",
+  "recommended_palettes": ["modern-teal", "clean-trade-blue"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter", "fraunces-inter"]
+}

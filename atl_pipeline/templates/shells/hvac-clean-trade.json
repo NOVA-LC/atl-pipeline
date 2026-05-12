@@ -1,0 +1,10 @@
+{
+  "name": "hvac-clean-trade",
+  "fits_industries": ["hvac"],
+  "vibe_tags": ["clean", "trade-blue", "membership", "financing", "approachable"],
+  "signature": "Trade blue + orange CTA + white, rounded geometry, technician-at-doorstep photo, 0% APR + same-day chips, membership club CTA mid-page. The default HVAC look.",
+  "best_for": "HVAC contractors with financing partnerships, club/membership program, residential focus",
+  "avoid_when": "high-end eco/IAQ-focused — use hvac-eco-iaq",
+  "recommended_palettes": ["clean-trade-blue"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter"]
+}

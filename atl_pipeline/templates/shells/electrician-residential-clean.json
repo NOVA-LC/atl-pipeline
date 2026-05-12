@@ -1,0 +1,10 @@
+{
+  "name": "electrician-residential-clean",
+  "fits_industries": ["electrician"],
+  "vibe_tags": ["residential", "clean", "premium", "remodeler-adjacent"],
+  "signature": "Soft navy + warm wood accent + white, refined sans, 21:9 lifestyle hero (recessed lighting in modern kitchen), italicized service titles. Reads premium-residential remodeler-adjacent.",
+  "best_for": "electricians focused on residential remodel/new-construction work, designer-builder partnerships",
+  "avoid_when": "commercial/industrial focus — use electrician-safety-industrial",
+  "recommended_palettes": ["heritage-navy-gold", "warm-earth", "modern-charcoal"],
+  "recommended_type_pairs": ["fraunces-inter", "lora-inter", "ibm-plex-inter"]
+}

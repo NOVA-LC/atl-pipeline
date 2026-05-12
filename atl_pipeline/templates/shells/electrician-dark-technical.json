@@ -1,0 +1,10 @@
+{
+  "name": "electrician-dark-technical",
+  "fits_industries": ["electrician"],
+  "vibe_tags": ["dark-mode", "technical", "modern", "EV", "premium"],
+  "signature": "Near-black + amber accent + circuit grid background, JetBrains Mono for technical labels, EV charger + panel-upgrade badges, '// SERVICES' comment-style section markers. Reads modern-licensed-pro.",
+  "best_for": "electricians who install EV chargers, smart panels, generators, solar — modern tech-forward positioning",
+  "avoid_when": "old-school journeyman shop — use electrician-safety-industrial",
+  "recommended_palettes": ["dark-technical", "modern-charcoal"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter", "anton-inter"]
+}

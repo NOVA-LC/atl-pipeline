@@ -1,0 +1,72 @@
+{# Roofer shell #2: residential-premium. Warm charcoal + cream + brass,
+   serif display (Playfair/Canela), drone-flyover hero, "lifetime warranty"
+   + shingle visualizer. Reads home-improvement-not-emergency. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="position:relative;min-height:92vh;display:flex;flex-direction:column;justify-content:flex-end;padding:120px 0;background:{% if images.hero %}linear-gradient(180deg,rgba(44,42,40,.18) 0%,rgba(44,42,40,.55) 75%,rgba(44,42,40,.88) 100%),url('{{ images.hero }}') center/cover{% else %}{{ tokens.palette.ink }}{% endif %};color:#fff">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:32px">№ EST · {{ business.city|upper }}, GA{% if business.years %} · SINCE {{ year - business.years }}{% endif %}</div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,10vw,168px);font-weight:{{ tokens.type.display_weight }};line-height:.92;letter-spacing:-0.025em;margin:0 0 36px;max-width:1180px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }};font-weight:{{ tokens.type.display_weight }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+    <p style="font-size:clamp(18px,1.6vw,22px);max-width:680px;color:rgba(255,255,255,.88);margin:0 0 40px;line-height:1.5">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:#1A1814;padding:20px 36px;text-decoration:none;font-family:{{ tokens.type.display_family }};font-weight:600;font-size:14px;letter-spacing:.18em;text-transform:uppercase">Schedule estimate</a>
+      <a href="#services" style="color:#fff;padding:20px 8px;text-decoration:none;font-family:{{ tokens.type.display_family }};font-weight:600;font-size:14px;letter-spacing:.18em;text-transform:uppercase;border-bottom:1px solid {{ tokens.palette.accent }}">Our portfolio →</a>
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.8fr);gap:80px;align-items:start" class="svc-grid">
+      <div style="position:sticky;top:80px">
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:18px">№ 02 · The work</div>
+        <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1.02;letter-spacing:-0.018em;margin:0 0 24px">{{ copy.services_h|safe }}</h2>
+        <p style="font-size:16px;color:{{ tokens.palette.muted }};line-height:1.6;margin:0">{{ copy.services_lead }}</p>
+      </div>
+      <ol style="list-style:none;padding:0;margin:0">
+        {% for svc in copy.services %}
+        <li style="display:grid;grid-template-columns:60px minmax(0,1fr) auto;gap:28px;padding:32px 0;border-bottom:1px solid {{ tokens.palette.border }};align-items:start" data-motion="reveal-up">
+          <div style="font-family:{{ tokens.type.display_family }};font-size:16px;font-style:italic;color:{{ tokens.palette.accent }};padding-top:6px">{{ '0%d'|format(loop.index) }}</div>
+          <div>
+            <h3 style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:{{ tokens.type.display_weight }};line-height:1.18;margin:0 0 8px;letter-spacing:-0.012em">{{ svc.title }}</h3>
+            <p style="font-size:15px;color:{{ tokens.palette.muted }};line-height:1.65;margin:0">{{ svc.body }}</p>
+          </div>
+          {% if svc.price_signal %}<div style="font-family:{{ tokens.type.display_family }};font-size:16px;font-style:italic;color:{{ tokens.palette.ink }};white-space:nowrap;padding-top:6px">{{ svc.price_signal }}</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){.svc-grid{grid-template-columns:1fr !important;gap:32px !important}}</style>{% endraw %}
+
+<section style="padding:80px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }}">
+  <div class="wrap" style="display:flex;gap:48px;flex-wrap:wrap;align-items:center;justify-content:center">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:{{ tokens.palette.accent }}">Manufacturer Certified</div>
+    {% for cert in ['GAF Master Elite', 'Owens Corning Platinum', 'CertainTeed Select', 'BBB A+'] %}
+    <span style="font-family:{{ tokens.type.display_family }};font-size:15px;font-weight:{{ tokens.type.display_weight }};font-style:italic">{{ cert }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:{{ tokens.palette.card_bg }};text-align:center">
+  <div class="wrap" style="max-width:920px">
+    {% set hq = copy.reviews_list[0] %}
+    <blockquote data-motion="split-line-reveal" style="margin:0 0 28px;font-family:{{ tokens.type.display_family }};font-size:clamp(28px,3.6vw,52px);font-weight:{{ tokens.type.display_weight }};line-height:1.22;font-style:italic;letter-spacing:-0.012em">&ldquo;{{ hq.text }}&rdquo;</blockquote>
+    <div style="font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.muted }}">— {{ hq.author }}{% if hq.date %} · {{ hq.date }}{% endif %} · {{ business.rating }}★ × {{ business.reviews }}</div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:760px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,84px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:18px;color:{{ tokens.palette.muted }};margin:0 0 32px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};padding:22px 44px;text-decoration:none;font-family:{{ tokens.type.display_family }};font-weight:600;font-size:15px;letter-spacing:.16em;text-transform:uppercase">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

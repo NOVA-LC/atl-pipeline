@@ -1,0 +1,10 @@
+{
+  "name": "plumber-stats-anchored-editorial",
+  "fits_industries": ["plumber"],
+  "vibe_tags": ["editorial", "stats-driven", "premium", "type-led", "magazine"],
+  "signature": "Type-only hero (no photo), oversized accent-color numerals (years / rating / license # / neighborhoods), serif display + Inter body, № 01-04 section numbering, italic guarantee. Reads premium-residential remodeler who happens to plumb.",
+  "best_for": "plumbers with strong heritage signals (years, license #, owner story) but weak/no photos; high-rating buyers researching premium service",
+  "avoid_when": "emergency/24-7 trades — use plumber-rugged-urgent",
+  "recommended_palettes": ["warm-earth", "heritage-navy-gold", "modern-charcoal"],
+  "recommended_type_pairs": ["lora-inter", "fraunces-inter", "playfair-inter", "cormorant-inter"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "landscaper-design-build-modern",
+  "fits_industries": ["landscape"],
+  "vibe_tags": ["design-build", "modern", "process-led", "premium-contractor"],
+  "signature": "Dark sage + sand + black, oversized type over image hero, 3-step Design/Build/Maintain timeline, modern grid services. Reads premium contractor.",
+  "best_for": "landscapers who do design + build + maintain across the project lifecycle",
+  "avoid_when": "design-only firms — use landscaper-editorial-portfolio",
+  "recommended_palettes": ["editorial-forest", "modern-charcoal", "warm-earth"],
+  "recommended_type_pairs": ["ibm-plex-inter", "archivo-inter", "fraunces-inter"]
+}

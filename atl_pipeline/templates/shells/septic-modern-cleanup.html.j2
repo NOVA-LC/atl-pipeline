@@ -1,0 +1,73 @@
+{# Septic shell #2: modern-cleanup. White + deep teal + warm clay accent,
+   DM Sans/Manrope, clean iconography, schedule-by-date calendar widget.
+   Distinct from the templated competition. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="padding:120px 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap" style="text-align:center;max-width:980px;margin:0 auto">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:rgba(14,91,91,.08);color:{{ tokens.palette.ink }};padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:36px">
+      <span style="width:8px;height:8px;border-radius:50%;background:{{ tokens.palette.ink }}"></span>
+      Same-week scheduling available · {{ business.city }}, GA
+    </div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(48px,8vw,128px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.024em;margin:0 0 32px">
+      {{ copy.headline_top }}{% if copy.headline_em %} <em style="font-style:italic;color:{{ tokens.palette.accent }};font-weight:{{ tokens.type.display_weight }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+    <p style="font-size:clamp(18px,1.5vw,22px);line-height:1.55;color:{{ tokens.palette.muted }};max-width:680px;margin:0 auto 40px">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+      <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.ink }};color:#fff;padding:20px 36px;border-radius:8px;text-decoration:none;font-weight:600">📅 Book a visit · {{ business.phone_display }}</a>
+      <a href="#services" style="color:{{ tokens.palette.ink }};padding:20px 12px;text-decoration:none;font-weight:600;border-bottom:2px solid {{ tokens.palette.accent }}">Services →</a>
+    </div>
+  </div>
+</section>
+
+<section style="padding:80px 0;background:{{ tokens.palette.card_bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap" style="text-align:center">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:20px">Pump frequency by household</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:24px;max-width:880px;margin:0 auto">
+      {% for r in [('1–2 people','Every 5 years','1,000 gal tank'),('3–5 people','Every 3 years','1,500 gal tank'),('6+ people','Every 2 years','2,000 gal tank')] %}
+      <div style="padding:24px;background:{{ tokens.palette.bg }};border-radius:14px">
+        <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:600;color:{{ tokens.palette.accent }};letter-spacing:.04em;margin-bottom:8px">{{ r[0] }}</div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:{{ tokens.type.display_weight }};margin-bottom:4px">{{ r[1] }}</div>
+        <div style="font-size:13px;color:{{ tokens.palette.muted }}">{{ r[2] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:20px">Services</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(36px,5vw,68px);font-weight:{{ tokens.type.display_weight }};line-height:1.05;letter-spacing:-0.018em;margin:0 0 48px;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+      {% for svc in copy.services %}
+      <div style="padding:32px 28px;background:{{ tokens.palette.card_bg }};border-radius:14px;display:flex;flex-direction:column;justify-content:space-between;min-height:200px">
+        <div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:22px;font-weight:{{ tokens.type.display_weight }};margin:0 0 10px;letter-spacing:-0.01em">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:{{ tokens.palette.muted }};margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:18px;font-weight:600;color:{{ tokens.palette.accent }};font-size:14px">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:{{ tokens.palette.card_bg }};text-align:center">
+  <div class="wrap" style="max-width:920px">
+    {% set hq = copy.reviews_list[0] %}
+    <blockquote data-motion="split-line-reveal" style="margin:0 0 24px;font-family:{{ tokens.type.display_family }};font-size:clamp(22px,2.8vw,38px);font-weight:{{ tokens.type.display_weight }};line-height:1.3;font-style:italic">&ldquo;{{ hq.text }}&rdquo;</blockquote>
+    <div style="font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:{{ tokens.palette.muted }}">— {{ hq.author }} · {{ business.rating }}★ × {{ business.reviews }}</div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.ink }};color:#fff;text-align:center">
+  <div class="wrap" style="max-width:680px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,80px);font-weight:{{ tokens.type.display_weight }};line-height:1;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:#fff;padding:22px 44px;border-radius:8px;text-decoration:none;font-weight:600;font-size:17px">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{
+  "name": "plumber-rugged-urgent",
+  "fits_industries": ["plumber"],
+  "vibe_tags": ["rugged", "urgent", "blue-collar", "emergency", "trade-bold"],
+  "signature": "Dark slate hero w/ photo + accent CTA, 24/7 emergency dispatch stripe, oversized phone in header, license badges in trust strip, condensed display type (Bebas/Impact). Reads emergency-trade.",
+  "best_for": "plumbers leaning into urgency + 24/7 emergency dispatch; strong photo + license #",
+  "avoid_when": "premium/heritage plumbers — use plumber-stats-anchored-editorial or plumber-credentialed-trust",
+  "recommended_palettes": ["rugged-shop-orange", "emergency-red"],
+  "recommended_type_pairs": ["bebas-inter", "anton-inter", "oswald-inter"]
+}

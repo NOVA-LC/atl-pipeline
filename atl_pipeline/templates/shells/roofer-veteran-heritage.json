@@ -1,0 +1,10 @@
+{
+  "name": "roofer-veteran-heritage",
+  "fits_industries": ["roofer"],
+  "vibe_tags": ["veteran", "heritage", "family-owned", "badged"],
+  "signature": "Navy + muted red + cream, ★ VETERAN-OWNED ★ stamp, bordered photo, all-caps stencil display, badge-style accents. Reads Roof Troopers / Veterans Contracting.",
+  "best_for": "veteran-owned roofers, multi-generational family operations, identity-led brands",
+  "avoid_when": "non-veteran corporate operators — use roofer-residential-premium or roofer-storm-restoration",
+  "recommended_palettes": ["heritage-navy-gold", "emergency-red"],
+  "recommended_type_pairs": ["oswald-inter", "anton-inter", "archivo-inter"]
+}

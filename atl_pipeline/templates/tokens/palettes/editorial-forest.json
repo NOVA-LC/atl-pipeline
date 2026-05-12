@@ -1,0 +1,12 @@
+{
+  "name": "editorial-forest",
+  "vibe_tags": ["editorial", "luxury", "outdoor", "architectural", "twilight"],
+  "ink": "#1F2A1E",
+  "accent": "#7A6A4A",
+  "bg": "#EFEAD9",
+  "bg_blur": "rgba(239,234,217,.88)",
+  "muted": "#4A5347",
+  "card_bg": "#FFFFFF",
+  "border": "rgba(31,42,30,.14)",
+  "fits": "design/build landscapers, hardscape contractors, premium outdoor-living trades"
+}

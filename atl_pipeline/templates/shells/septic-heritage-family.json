@@ -1,0 +1,10 @@
+{
+  "name": "septic-heritage-family",
+  "fits_industries": ["septic"],
+  "vibe_tags": ["heritage", "family-owned", "trusted", "serif"],
+  "signature": "Cream + navy + olive accent, italic-serif accents throughout, bordered owner-portrait with sepia tint, family-owned-since-19XX framing. Reads farmer-trusted-with-your-land.",
+  "best_for": "multi-generation septic businesses, family-owned with strong founder story",
+  "avoid_when": "modern positioning — use septic-modern-cleanup",
+  "recommended_palettes": ["heritage-navy-gold", "warm-earth"],
+  "recommended_type_pairs": ["lora-inter", "fraunces-inter", "playfair-inter"]
+}

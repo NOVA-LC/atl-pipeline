@@ -1,0 +1,75 @@
+{# Auto shell #1: industrial-performance. Black + signal red, condensed
+   display (Anton/Oswald), diagonal cuts, photo of car on lift, dyno
+   stats, ASE Master Tech badge row. Performance shop / specialty. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block main_content %}
+<section class="hero" style="position:relative;min-height:88vh;display:flex;flex-direction:column;justify-content:flex-end;padding:80px 0;background:{% if images.hero %}linear-gradient(135deg,rgba(10,10,10,.45) 0%,rgba(10,10,10,.85) 100%),url('{{ images.hero }}') center/cover{% else %}#0A0A0A{% endif %};color:#fff;overflow:hidden">
+  <div class="wrap" style="position:relative">
+    <div style="display:inline-block;background:#D62828;color:#fff;padding:6px 14px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;margin-bottom:36px;clip-path:polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%)">▌ ASE MASTER TECHS · {{ business.city|upper }}</div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,10vw,168px);font-weight:700;line-height:.88;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 32px;max-width:1180px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:#D62828">/ {{ copy.headline_em }}</span>{% endif %}
+    </h1>
+    <p style="font-size:clamp(17px,1.5vw,22px);max-width:620px;color:rgba(255,255,255,.88);margin:0 0 36px;line-height:1.5">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <a href="tel:{{ business.phone }}" style="background:#D62828;color:#fff;padding:22px 36px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase;clip-path:polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%)">📞 BOOK · {{ business.phone_display }}</a>
+      <a href="#services" style="border:2px solid rgba(255,255,255,.4);color:#fff;padding:22px 36px;text-decoration:none;font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase">SHOP SERVICES</a>
+    </div>
+  </div>
+</section>
+
+<section style="background:#D62828;color:#fff;padding:28px 0">
+  <div class="wrap">
+    <div style="display:flex;gap:48px;flex-wrap:wrap;justify-content:center;font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">
+      <span>ASE MASTER CERTIFIED</span>
+      <span>· NAPA AUTOCARE ·</span>
+      <span>AAA APPROVED</span>
+      <span>· 36MO/36K WARRANTY ·</span>
+      <span>LOANER CARS</span>
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:#0A0A0A;color:#fff">
+  <div class="wrap">
+    <div style="display:inline-block;background:#D62828;color:#fff;padding:6px 12px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;margin-bottom:24px">SHOP SPECIALTIES</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.8vw,84px);font-weight:700;line-height:.95;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 56px;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2px;background:rgba(255,255,255,.08)">
+      {% for svc in copy.services %}
+      <div style="background:#141414;padding:36px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:220px;border-top:3px solid #D62828">
+        <div>
+          <div style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:700;color:#D62828;margin-bottom:14px;letter-spacing:.18em;text-transform:uppercase">№ {{ '%02d'|format(loop.index) }}</div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:700;margin:0 0 10px;text-transform:uppercase;letter-spacing:-0.012em">{{ svc.title }}</h3>
+          <p style="font-size:14px;line-height:1.65;color:rgba(255,255,255,.7);margin:0">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);font-weight:700;color:#fff;font-size:14px;letter-spacing:.04em;text-transform:uppercase">{{ svc.price_signal }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:#141414;color:#fff">
+  <div class="wrap">
+    <div style="display:inline-block;background:#D62828;color:#fff;padding:6px 12px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;margin-bottom:24px">{{ business.rating }}★ × {{ business.reviews }} REVIEWS</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">
+      {% for r in copy.reviews_list[:3] %}
+      <div style="background:#0A0A0A;padding:32px;border-left:4px solid #D62828">
+        <div style="color:#D62828;font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 16px;color:rgba(255,255,255,.85)">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.18em;text-transform:uppercase;font-weight:700">— {{ r.author|upper }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:#D62828;color:#fff;text-align:center">
+  <div class="wrap" style="max-width:880px">
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(48px,7vw,108px);font-weight:700;line-height:.94;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 32px">{{ copy.cta_h|safe }}</h2>
+    <a href="tel:{{ business.phone }}" style="background:#0A0A0A;color:#fff;padding:26px 56px;text-decoration:none;font-weight:700;font-size:20px;letter-spacing:.06em;text-transform:uppercase">📞 {{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

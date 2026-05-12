@@ -1,0 +1,91 @@
+{# Plumber shell #3: stats-anchored-editorial. Type-driven, oversized
+   numerals, Lora/Fraunces serif, warm cream + charcoal + rust accent,
+   muted photo. Reads premium-residential remodeler who happens to plumb. #}
+{% extends "shells/_base.html.j2" %}
+
+{% block trust_strip %}{% endblock %}
+
+{% block main_content %}
+<section class="hero" style="padding:80px 0 120px;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }};position:relative">
+  <div class="wrap">
+    <div style="display:inline-block;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:64px;padding-bottom:6px;border-bottom:1px solid {{ tokens.palette.accent }}">№ 01 · {{ business.city|upper }}, GA · ESTABLISHED{% if business.years %} {{ year - business.years }}{% endif %}</div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,10vw,164px);font-weight:{{ tokens.type.display_weight }};line-height:.92;letter-spacing:-0.03em;margin:0 0 56px;max-width:1200px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><em style="font-style:italic;color:{{ tokens.palette.accent }};font-weight:{{ tokens.type.display_weight }}">{{ copy.headline_em }}</em>{% endif %}
+    </h1>
+    <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:80px;align-items:end" class="hero-grid">
+      <p style="font-family:{{ tokens.type.body_family }};font-size:clamp(18px,1.5vw,22px);line-height:1.6;color:{{ tokens.palette.ink }};max-width:620px;margin:0">{{ copy.hero_sub }}</p>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <a href="tel:{{ business.phone }}" style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.bg }};background:{{ tokens.palette.ink }};padding:20px 28px;text-decoration:none;text-align:center">Call · {{ business.phone_display }}</a>
+        <a href="#services" style="font-family:{{ tokens.type.display_family }};font-size:14px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.ink }};padding:6px 0;text-decoration:none;border-bottom:1px solid {{ tokens.palette.accent }};text-align:center">The work →</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% raw %}<style>@media(max-width:900px){.hero-grid{grid-template-columns:1fr !important;gap:32px !important}}</style>{% endraw %}
+
+<section style="padding:80px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:48px 32px">
+      {% if business.years %}<div><div style="font-family:{{ tokens.type.display_family }};font-size:clamp(72px,9vw,128px);font-weight:{{ tokens.type.display_weight }};line-height:.88;color:{{ tokens.palette.accent }};letter-spacing:-0.03em">{{ business.years }}</div><div style="font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.bg }};margin-top:8px">Years in {{ business.city }}</div></div>{% endif %}
+      {% if business.rating %}<div><div style="font-family:{{ tokens.type.display_family }};font-size:clamp(72px,9vw,128px);font-weight:{{ tokens.type.display_weight }};line-height:.88;color:{{ tokens.palette.accent }};letter-spacing:-0.03em">{{ business.rating }}★</div><div style="font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.bg }};margin-top:8px">Across {{ business.reviews }} reviews</div></div>{% endif %}
+      {% if copy.license_number %}<div><div style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5vw,72px);font-weight:{{ tokens.type.display_weight }};line-height:.92;color:{{ tokens.palette.accent }};letter-spacing:-0.02em">#{{ copy.license_number }}</div><div style="font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.bg }};margin-top:8px">GA Master Plumber</div></div>{% endif %}
+      {% if copy.neighborhoods %}<div><div style="font-family:{{ tokens.type.display_family }};font-size:clamp(72px,9vw,128px);font-weight:{{ tokens.type.display_weight }};line-height:.88;color:{{ tokens.palette.accent }};letter-spacing:-0.03em">{{ copy.neighborhoods|length }}</div><div style="font-size:13px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:{{ tokens.palette.bg }};margin-top:8px">Neighborhoods served</div></div>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:{{ tokens.palette.bg }};color:{{ tokens.palette.ink }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:28px">№ 02 · The Work</div>
+    <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.8vw,84px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.022em;margin:0 0 72px;max-width:880px">{{ copy.services_h|safe }}</h2>
+    <ol style="list-style:none;padding:0;margin:0;max-width:1080px">
+      {% for svc in copy.services %}
+      <li style="display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:32px;padding:36px 0;border-top:1px solid {{ tokens.palette.border }}{% if loop.last %};border-bottom:1px solid {{ tokens.palette.border }}{% endif %};align-items:baseline">
+        <div style="font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:600;letter-spacing:.12em;color:{{ tokens.palette.accent }};font-style:italic">i.{{ loop.index }}</div>
+        <div>
+          <h3 style="font-family:{{ tokens.type.display_family }};font-size:clamp(24px,2.6vw,36px);font-weight:{{ tokens.type.display_weight }};line-height:1.12;margin:0 0 10px;letter-spacing:-0.012em">{{ svc.title }}</h3>
+          <p style="font-size:16px;color:{{ tokens.palette.muted }};line-height:1.6;margin:0;max-width:580px">{{ svc.body }}</p>
+        </div>
+        {% if svc.price_signal %}<div style="font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:600;letter-spacing:.04em;color:{{ tokens.palette.ink }};white-space:nowrap;font-style:italic">{{ svc.price_signal }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+
+{% if copy.guarantee %}
+<section style="padding:120px 0;background:{{ tokens.palette.card_bg }};text-align:center">
+  <div class="wrap" style="max-width:980px">
+    <p data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(32px,4.4vw,60px);font-weight:{{ tokens.type.display_weight }};font-style:italic;line-height:1.2;letter-spacing:-0.015em;margin:0;color:{{ tokens.palette.ink }}">&ldquo;{{ copy.guarantee }}&rdquo;</p>
+    <div style="margin-top:32px;width:48px;height:1px;background:{{ tokens.palette.accent }};margin-left:auto;margin-right:auto"></div>
+    <div style="margin-top:16px;font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.muted }}">— The standing offer</div>
+  </div>
+</section>
+{% endif %}
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:{{ tokens.palette.bg }}">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:28px">№ 03 · Customer Reports</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:48px column-gap:64px">
+      {% for r in copy.reviews_list[:4] %}
+      <div data-motion="reveal-up">
+        <div style="color:{{ tokens.palette.accent }};font-size:14px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-family:{{ tokens.type.display_family }};font-size:clamp(18px,1.8vw,24px);line-height:1.4;font-style:italic;color:{{ tokens.palette.ink }};margin:0 0 18px">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;color:{{ tokens.palette.muted }};letter-spacing:.14em;text-transform:uppercase;font-weight:600">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.ink }};color:{{ tokens.palette.bg }};text-align:center">
+  <div class="wrap" style="max-width:760px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:600;letter-spacing:.5em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:32px">№ 04 · Contact</div>
+    <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,6vw,88px);font-weight:{{ tokens.type.display_weight }};line-height:.96;letter-spacing:-0.022em;margin:0 0 24px">{{ copy.cta_h|safe }}</h2>
+    <p style="font-size:18px;color:rgba(255,255,255,.7);max-width:540px;margin:0 auto 40px">{{ copy.cta_sub }}</p>
+    <a href="tel:{{ business.phone }}" style="display:inline-flex;align-items:center;gap:14px;background:{{ tokens.palette.accent }};color:#0F1014;padding:22px 44px;text-decoration:none;font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:600;letter-spacing:.08em">{{ business.phone_display }}</a>
+  </div>
+</section>
+{% endblock %}

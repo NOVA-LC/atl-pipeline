@@ -1,0 +1,10 @@
+{
+  "name": "hvac-eco-iaq",
+  "fits_industries": ["hvac"],
+  "vibe_tags": ["eco", "iaq", "heat-pump", "sustainability", "rebate"],
+  "signature": "Sage/forest + cream + clay accent, IRA-rebate chip at the top, dark stats band (rebate $$$ / efficiency / MERV), heat-pump-installed positioning. Reads for the homeowner Googling 'heat pump Atlanta rebates'.",
+  "best_for": "HVAC companies that install heat pumps, mini-splits, IAQ systems; aligned with IRA 25C rebates",
+  "avoid_when": "old-school AC repair shop with no heat-pump or rebate program — use hvac-clean-trade",
+  "recommended_palettes": ["eco-sage", "warm-earth"],
+  "recommended_type_pairs": ["fraunces-inter", "ibm-plex-inter", "lora-inter"]
+}

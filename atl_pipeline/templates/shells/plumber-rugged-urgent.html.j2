@@ -1,0 +1,140 @@
+{# Plumber shell #1: rugged-urgent. Bebas/Impact, dark slate, red accent,
+   oversized phone in header, 24/7 emergency stripe, license badge row.
+   Reads blue-collar emergency.
+
+   Design DNA (per per-vertical research):
+   - Dark slate or near-black hero with red CTA
+   - Darkened photo of technician + van as hero background
+   - Massive header phone number (the buyer is on their phone, water on floor)
+   - "24/7 Emergency Available" persistent stripe
+   - License/insurance/BBB badge wall above the fold
+   - Convention: red or orange somewhere on every plumber site
+#}
+{% extends "shells/_base.html.j2" %}
+
+{% block nav %}
+<nav style="position:sticky;top:0;z-index:50;background:#0B0F14;color:#fff;border-bottom:2px solid {{ tokens.palette.accent }};padding:0">
+  <div style="background:{{ tokens.palette.accent }};color:#0B0F14;text-align:center;padding:6px 0;font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase">24/7 EMERGENCY DISPATCH · ON-SITE IN 45 MINUTES{% if business.city %} · {{ business.city|upper }} METRO{% endif %}</div>
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0">
+    <div style="font-family:{{ tokens.type.display_family }};font-weight:700;font-size:22px;letter-spacing:.04em;text-transform:uppercase">{{ business.name }}</div>
+    <a href="tel:{{ business.phone }}" style="font-family:{{ tokens.type.display_family }};font-size:28px;font-weight:700;letter-spacing:.02em;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:10px">📞 {{ business.phone_display }}</a>
+  </div>
+</nav>
+{% endblock %}
+
+{% block trust_strip %}
+<div style="background:#141A22;color:rgba(255,255,255,.85);padding:14px 0;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase">
+  <div class="wrap" style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap">
+    {% if business.rating %}<span><span style="color:#FBBF24">★</span> {{ business.rating }} on Google · {{ business.reviews }} reviews</span>{% endif %}
+    {% if copy.license_number %}<span>·</span><span>GA License #{{ copy.license_number }}</span>{% endif %}
+    <span>·</span><span>Licensed · Insured · Bonded</span>
+    <span>·</span><span style="color:{{ tokens.palette.accent }}">Flat-Rate · No Surprise Fees</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<section class="hero" style="position:relative;min-height:88vh;display:flex;flex-direction:column;justify-content:flex-end;padding:80px 0;background:{% if images.hero %}linear-gradient(180deg,rgba(11,15,20,.5) 0%,rgba(11,15,20,.78) 70%,rgba(11,15,20,.95) 100%),url('{{ images.hero }}') center/cover{% else %}#0B0F14{% endif %};color:#fff;overflow:hidden">
+  <div class="wrap" style="position:relative">
+    <div style="display:inline-block;background:{{ tokens.palette.accent }};color:#0B0F14;padding:6px 14px;font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;margin-bottom:36px">▌ {{ business.city|upper }} · {{ business.category|upper }}</div>
+    <h1 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(56px,11vw,180px);font-weight:700;letter-spacing:-0.02em;line-height:.86;text-transform:uppercase;margin:0 0 40px;max-width:1180px">
+      {{ copy.headline_top }}{% if copy.headline_em %}<br><span style="color:{{ tokens.palette.accent }}">{{ copy.headline_em }}</span>{% endif %}
+    </h1>
+    <p style="font-size:clamp(18px,1.6vw,22px);max-width:680px;color:rgba(255,255,255,.92);margin:0 0 40px;font-weight:400;line-height:1.45">{{ copy.hero_sub }}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <a href="tel:{{ business.phone }}" style="background:{{ tokens.palette.accent }};color:#0B0F14;font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:22px 36px;text-decoration:none;display:inline-flex;align-items:center;gap:12px">📞 CALL NOW · {{ business.phone_display }}</a>
+      <a href="#services" style="border:2px solid rgba(255,255,255,.35);color:#fff;font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:22px 36px;text-decoration:none">Our Work →</a>
+    </div>
+  </div>
+</section>
+
+<section id="services" style="padding:120px 0;background:#0B0F14;color:#fff">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:24px">— WHAT WE DO</div>
+    <h2 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,6vw,84px);font-weight:700;line-height:.96;letter-spacing:-0.015em;text-transform:uppercase;margin:0 0 64px">{{ copy.services_h|safe }}</h2>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)">
+      {% for svc in copy.services %}
+      <div style="background:#141A22;padding:36px 32px;display:flex;flex-direction:column;justify-content:space-between;min-height:200px">
+        <div>
+          <div style="font-family:{{ tokens.type.display_family }};font-size:15px;font-weight:700;color:{{ tokens.palette.accent }};margin-bottom:14px;letter-spacing:.12em;text-transform:uppercase">{{ '%02d.'|format(loop.index) }} {{ svc.title }}</div>
+          <div style="color:rgba(255,255,255,.82);font-size:15px;line-height:1.6">{{ svc.body }}</div>
+        </div>
+        {% if svc.price_signal %}
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.14);font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:700;color:#fff;letter-spacing:.04em;text-transform:uppercase">{{ svc.price_signal }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if copy.what_we_dont_do %}
+<section style="padding:80px 0;background:{{ tokens.palette.accent }};color:#0B0F14">
+  <div class="wrap" style="display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:60px;align-items:start">
+    <div>
+      <div style="font-family:{{ tokens.type.display_family }};font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;opacity:.7;margin-bottom:16px">— THE RULES</div>
+      <h3 style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5vw,68px);font-weight:700;line-height:.92;letter-spacing:-0.015em;text-transform:uppercase;margin:0">What we don't do.</h3>
+    </div>
+    <ol style="list-style:none;padding:0;margin:0">
+      {% for item in copy.what_we_dont_do %}
+      <li style="padding:18px 0;border-top:1px solid rgba(11,15,20,.18);font-family:{{ tokens.type.body_family }};font-size:clamp(16px,1.5vw,20px);line-height:1.5;font-weight:500">{{ '%02d'|format(loop.index) }} · {{ item }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
+{% endif %}
+
+{% if copy.reviews_list %}
+<section id="reviews" style="padding:120px 0;background:#0B0F14;color:#fff">
+  <div class="wrap">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:24px">— REAL REVIEWS · {{ business.rating }}★ × {{ business.reviews }}</div>
+    <div data-motion="reveal-up" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:32px">
+      {% for r in copy.reviews_list[:3] %}
+      <div style="background:#141A22;padding:32px;border-left:3px solid {{ tokens.palette.accent }}">
+        <div style="color:{{ tokens.palette.accent }};font-size:16px;letter-spacing:3px;margin-bottom:14px">{{ '★' * (r.stars|default(5)) }}</div>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 16px;color:rgba(255,255,255,.9)">&ldquo;{{ r.text }}&rdquo;</p>
+        <div style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:{{ tokens.palette.accent }}">— {{ r.author }}{% if r.date %} · {{ r.date }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section id="contact" style="padding:120px 0;background:{{ tokens.palette.accent }};color:#0B0F14;text-align:center">
+  <div class="wrap" style="max-width:880px">
+    <div style="font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;opacity:.7;margin-bottom:28px">— CALL US</div>
+    <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(48px,8vw,120px);font-weight:700;line-height:.92;letter-spacing:-0.02em;text-transform:uppercase;margin:0 0 40px">{{ copy.cta_h|safe }}</h2>
+    <a href="tel:{{ business.phone }}" style="display:inline-flex;align-items:center;gap:14px;background:#0B0F14;color:{{ tokens.palette.accent }};font-family:{{ tokens.type.display_family }};font-size:clamp(28px,4vw,56px);font-weight:700;padding:28px 56px;text-decoration:none;letter-spacing:.02em">📞 {{ business.phone_display }}</a>
+    <p style="margin-top:32px;font-size:14px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.7">24/7 · ON-SITE IN 45 MIN · FLAT-RATE</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block footer %}
+<footer style="padding:60px 0 90px;background:#0B0F14;color:rgba(255,255,255,.75);font-size:13px">
+  <div class="wrap">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px;margin-bottom:36px" class="foot-grid-rugged">
+      <div>
+        <div style="font-family:{{ tokens.type.display_family }};font-size:24px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;margin-bottom:14px">{{ business.name }}</div>
+        <p style="max-width:340px;line-height:1.6">{{ copy.footer_blurb }}</p>
+      </div>
+      <div>
+        <h5 style="font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:14px">VISIT</h5>
+        {% if business.address %}<p>{{ business.address }}</p>{% endif %}
+        <p>{{ business.city }}, {{ business.state }}</p>
+      </div>
+      <div>
+        <h5 style="font-family:{{ tokens.type.display_family }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:{{ tokens.palette.accent }};margin-bottom:14px">CONTACT</h5>
+        <a href="tel:{{ business.phone }}" style="color:#fff;text-decoration:none;display:block;font-family:{{ tokens.type.display_family }};font-size:18px;font-weight:700">{{ business.phone_display }}</a>
+      </div>
+    </div>
+    {% if copy.neighborhoods %}<div style="padding:18px 0;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);font-size:12px;letter-spacing:.04em;margin-bottom:24px"><strong style="color:{{ tokens.palette.accent }};letter-spacing:.18em;text-transform:uppercase;margin-right:16px">SERVING</strong>{{ copy.neighborhoods|join(' · ') }}</div>{% endif %}
+    <div style="padding-top:24px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;font-size:12px;flex-wrap:wrap;gap:8px;opacity:.65">
+      <div>© {{ year }} {{ business.name }}{% if copy.license_number %} · GA License #{{ copy.license_number }}{% endif %}</div>
+      {% if business.rating %}<div>{{ business.rating }}★ × {{ business.reviews }} Google reviews</div>{% endif %}
+    </div>
+  </div>
+</footer>
+{% raw %}<style>@media(max-width:900px){.foot-grid-rugged{grid-template-columns:1fr !important;gap:28px !important}}</style>{% endraw %}
+{% endblock %}

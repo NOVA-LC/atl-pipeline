@@ -1,0 +1,10 @@
+{
+  "name": "landscaper-lawn-care-friendly",
+  "fits_industries": ["landscape"],
+  "vibe_tags": ["friendly", "route-business", "recurring", "approachable", "fresh-green"],
+  "signature": "Bright green + warm yellow + white, rounded sans, crew-with-mower photo, recurring-plan cards, pine-straw seasonal callout (Atlanta-specific). Reads dependable route business.",
+  "best_for": "weekly/biweekly lawn maintenance crews, pine-straw refresh, route-based service businesses",
+  "avoid_when": "design/build only — use landscaper-editorial-portfolio",
+  "recommended_palettes": ["clean-trade-blue"],
+  "recommended_type_pairs": ["archivo-inter", "ibm-plex-inter"]
+}
