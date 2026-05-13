@@ -374,7 +374,8 @@ async def main():
         browser = await pw.chromium.launch(headless=not args.headed)
         ctx = await browser.new_context(
             user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            ignore_https_errors=True,
         )
         page = await ctx.new_page()
 
