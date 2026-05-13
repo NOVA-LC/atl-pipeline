@@ -425,7 +425,7 @@ def _resolve_copy(composed: dict, lead: dict, osf_data: dict, industry: str, res
         yib = int(yib)
     if isinstance(yib, int) and 1 <= yib <= 150:
         stats.append({'value': f'{yib}', 'label': 'Years in business',
-                      'detail': f'family-run since {_dt.date.today().year - yib}'})
+                      'detail': f'owner-operated since {_dt.date.today().year - yib}'})
     if neighborhoods and len(neighborhoods) >= 3:
         stats.append({'value': f'{len(neighborhoods)}',
                       'label': 'Neighborhoods served',
