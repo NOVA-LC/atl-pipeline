@@ -1,638 +1,541 @@
-
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Messiah Heating &amp; Air Conditioning</title>
+<title>Messiah Heating &amp; Air Conditioning — Decatur HVAC since 2008</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<meta name="theme-color" content="#FAF4EC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#2A1B0E" media="(prefers-color-scheme: dark)">
-<meta name="view-transition" content="same-origin">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23C85A3A'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Lora, serif' font-size='38' font-weight='700' fill='%23FAF4EC'%3EM%3C/text%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23C85A3A'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='sans-serif' font-size='38' font-weight='700' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="preload" as="style">
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,700;1,500&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<meta name="description" content="Owner-operated HVAC in Decatur, GA. Ben Parrish answers the phone, drives the truck, does the work. Same-day repair, Sundays open, interest-free financing on system replacements.">
+<meta name="theme-color" content="#0E2454" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A1733" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%230E2454'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Georgia, serif' font-size='34' font-weight='700' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E2454'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='sans-serif' font-size='34' font-weight='700' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+:root{
+  --navy:#0E2454;
+  --navy-deep:#0A1733;
+  --red:#C8202D;
+  --red-hover:#A31822;
+  --bg:#FFFFFF;
+  --bg-alt:#F4F6FA;
+  --ink:#0A1733;
+  --muted:#566175;
+  --border:rgba(14,36,84,.12);
+  --gold:#E5B53C;
+  --display:'Playfair Display', Georgia, serif;
+  --body:'Inter', system-ui, sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{font-family:&#39;Inter&#39;, system-ui, sans-serif;background:#FAF4EC;color:#2A1B0E;line-height:1.6;-webkit-font-smoothing:antialiased;font-weight:400}
-.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;font-weight:400}
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px}
+img{max-width:100%;display:block}
 
-/* Focus-visible palette-matched ring — kills the browser default "template" look */
 :focus{outline:none}
-:focus-visible{outline:2px solid #C85A3A;outline-offset:3px;border-radius:4px;transition:outline-offset .15s ease}
-
-/* Skip-to-content (hidden until keyboard-focused) */
-.skip-link{position:absolute;left:-9999px;top:0;background:#2A1B0E;color:#fff;padding:10px 18px;text-decoration:none;font-weight:600;font-size:14px;z-index:9999;border-radius:0 0 6px 0}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px;border-radius:4px}
+.skip-link{position:absolute;left:-9999px;top:0;background:var(--navy);color:#fff;padding:10px 18px;text-decoration:none;font-weight:600;font-size:14px;z-index:9999}
 .skip-link:focus{left:0}
-.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-/* Nav */
-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(250,244,236,.88);border-bottom:1px solid rgba(42,27,14,.1);padding:14px 0}
+/* ===== NAV ===== */
+nav.top{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(255,255,255,.94);border-bottom:1px solid var(--border);padding:14px 0}
 .nav-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.logo{font-family:&#39;Lora&#39;, serif;font-weight:600;font-size:22px;color:#2A1B0E}
-.logo em{color:#C85A3A;font-style:italic}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand-oval{width:46px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em}
+.brand-name{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.05;letter-spacing:-0.005em}
+.brand-tag{font-size:10px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;font-weight:600;margin-top:2px}
 .nav-links{display:flex;gap:30px;font-size:14px;font-weight:500}
-.nav-links a{color:#2A1B0E;text-decoration:none;opacity:.7;position:relative}
-.nav-links a::after{content:"";position:absolute;left:0;bottom:-4px;width:100%;height:2px;background:#C85A3A;transform:scaleX(0);transform-origin:right;transition:transform .35s cubic-bezier(.65,.05,.36,1)}
+.nav-links a{color:var(--ink);text-decoration:none;opacity:.75;position:relative;padding:6px 0}
 .nav-links a:hover{opacity:1}
-.nav-links a:hover::after{transform:scaleX(1);transform-origin:left}
-.nav-cta{padding:11px 22px;background:#2A1B0E;color:#fff;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap}
+.nav-cta{padding:12px 22px;background:var(--red);color:#fff;border-radius:6px;text-decoration:none;font-size:15px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;letter-spacing:-0.005em}
+.nav-cta:hover{background:var(--red-hover)}
 
-/* Trust strip — rating + reviews + license + years, right below nav */
-.trust-strip{background:#FFFFFF;border-bottom:1px solid rgba(42,27,14,.1);padding:12px 0;font-size:13px;font-weight:500;color:#5C4A3C}
-.trust-strip .wrap{display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap}
+/* ===== TRUST STRIP ===== */
+.trust-strip{background:var(--navy);color:#fff;padding:12px 0;font-size:13px;font-weight:500}
+.trust-strip .wrap{display:flex;gap:22px;align-items:center;justify-content:center;flex-wrap:wrap}
 .trust-strip .ts-item{display:inline-flex;align-items:center;gap:6px}
-.trust-strip .ts-item strong{color:#2A1B0E;font-weight:700}
-.trust-strip .ts-star{color:#FBBF24;font-weight:700}
-.trust-strip .ts-dot{opacity:.3;color:#2A1B0E}
+.trust-strip .ts-item strong{font-weight:700}
+.trust-strip .ts-star{color:var(--gold);font-weight:700}
+.trust-strip .ts-dot{opacity:.4}
 
-/* Sticky mobile CTA bar — the single highest-leverage conversion lift */
-.sticky-cta{position:fixed;bottom:0;left:0;right:0;z-index:99;display:none;background:#FAF4EC;border-top:1px solid rgba(42,27,14,.1);padding:10px 12px;gap:8px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.15)}
-.sticky-cta a{flex:1;padding:14px 18px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px}
-.sticky-cta .cta-call{background:#C85A3A;color:#fff}
-.sticky-cta .cta-text{background:#2A1B0E;color:#fff}
+/* ===== HERO ===== */
+.hero{position:relative;min-height:88vh;display:flex;align-items:center;color:#fff;background:linear-gradient(135deg,rgba(10,23,51,.78) 0%,rgba(14,36,84,.62) 50%,rgba(14,36,84,.42) 100%),url('assets/truck.jpg') center 30%/cover}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(10,23,51,.55) 100%);pointer-events:none}
+.hero .wrap{position:relative;z-index:2;width:100%;padding-top:64px;padding-bottom:64px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:12px;background:rgba(200,32,45,.18);border:1px solid rgba(255,255,255,.25);color:#fff;padding:10px 18px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:32px;backdrop-filter:blur(6px)}
+.hero-eyebrow .dot{width:8px;height:8px;background:var(--red);border-radius:50%;box-shadow:0 0 0 4px rgba(200,32,45,.3);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(200,32,45,.3)}50%{box-shadow:0 0 0 9px rgba(200,32,45,.0)}}
+.hero h1{font-family:var(--display);font-weight:700;font-size:clamp(46px,7vw,108px);line-height:.95;letter-spacing:-0.025em;margin-bottom:32px;max-width:1080px;text-shadow:0 2px 30px rgba(10,23,51,.4)}
+.hero h1 em{font-style:italic;color:#FCE0B5}
+.hero-sub{font-size:clamp(18px,1.7vw,22px);max-width:640px;color:rgba(255,255,255,.95);margin-bottom:40px;font-weight:400;line-height:1.55}
+.hero-sub strong{color:#fff;font-weight:700}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.hero-cta a.primary{padding:20px 36px;background:var(--red);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 12px 30px -10px rgba(200,32,45,.7);transition:transform .15s,box-shadow .15s}
+.hero-cta a.primary:hover{transform:translateY(-2px);box-shadow:0 18px 40px -12px rgba(200,32,45,.8);background:var(--red-hover)}
+.hero-cta a.secondary{padding:18px 30px;background:rgba(255,255,255,.1);color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;backdrop-filter:blur(4px);display:inline-flex;align-items:center;gap:10px}
+.hero-cta a.secondary:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.6)}
+.hero-meta{margin-top:36px;display:flex;gap:24px;flex-wrap:wrap;font-size:13px;letter-spacing:.04em;color:rgba(255,255,255,.85)}
+.hero-meta span{display:inline-flex;align-items:center;gap:8px}
+.hero-meta .check{color:var(--gold);font-weight:700}
 
-/* Footer */
-footer{padding:60px 0 90px;border-top:1px solid rgba(42,27,14,.1);font-size:14px;color:#5C4A3C;background:#FAF4EC}
-.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:60px;margin-bottom:40px}
-.foot-grid h5{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:#2A1B0E}
-.foot-grid p, .foot-grid a{display:block;padding:4px 0;color:#5C4A3C;text-decoration:none}
+/* ===== SECTIONS ===== */
+section{position:relative}
+.eyebrow{display:inline-flex;align-items:center;gap:14px;color:var(--red);font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:24px}
+.eyebrow .bar{display:inline-block;width:36px;height:1px;background:var(--red)}
+.section-h{font-family:var(--display);font-size:clamp(36px,5vw,62px);font-weight:700;line-height:1.05;letter-spacing:-0.015em;color:var(--ink);margin-bottom:24px}
+.section-h em{font-style:italic;color:var(--navy)}
+.section-sub{font-size:18px;max-width:680px;color:var(--muted);margin-bottom:48px;line-height:1.6}
 
-/* Demo tag */
-.demo-tag{position:fixed;bottom:24px;right:24px;background:#2A1B0E;color:#fff;padding:14px 22px;border-radius:999px;font-size:13px;font-weight:500;z-index:100}
-.demo-tag::before{content:'DEMO · ';opacity:.6}
+/* ===== SERVICES ===== */
+.services{padding:120px 0;background:var(--bg)}
+.svc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:24px}
+.svc-tile{background:var(--bg-alt);padding:36px 32px;border-radius:14px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,border-color .2s;display:flex;flex-direction:column;justify-content:space-between;min-height:230px;position:relative;overflow:hidden}
+.svc-tile:hover{transform:translateY(-4px);box-shadow:0 24px 50px -20px rgba(10,23,51,.25);border-color:rgba(14,36,84,.25)}
+.svc-tile .icon{width:48px;height:48px;background:var(--navy);color:#fff;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px;font-weight:700}
+.svc-tile h3{font-family:var(--display);font-size:24px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.1;letter-spacing:-0.01em}
+.svc-tile p{font-size:15px;color:var(--muted);line-height:1.6}
+.svc-tile.hero-tile{grid-column:span 2;grid-row:span 2;background:linear-gradient(155deg,var(--navy) 0%,var(--navy-deep) 100%);color:#fff;border:none;padding:56px 48px;min-height:340px;position:relative}
+.svc-tile.hero-tile::before{content:"";position:absolute;top:0;right:0;width:280px;height:280px;background:radial-gradient(circle at top right,rgba(200,32,45,.25) 0%,transparent 70%);pointer-events:none}
+.svc-tile.hero-tile .icon{background:var(--red);color:#fff;width:56px;height:56px;font-size:26px;border-radius:12px}
+.svc-tile.hero-tile h3{color:#fff;font-size:clamp(28px,3.4vw,46px);margin-bottom:18px}
+.svc-tile.hero-tile p{color:rgba(255,255,255,.85);font-size:17px;max-width:540px;line-height:1.65}
+.svc-tile.hero-tile .badge{margin-top:24px;display:inline-flex;align-items:center;gap:10px;padding:10px 18px;background:rgba(229,181,60,.18);border:1px solid rgba(229,181,60,.45);border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.04em;color:#FCE0B5;width:fit-content}
+.svc-tile.hero-tile:hover{transform:translateY(-4px);box-shadow:0 30px 70px -20px rgba(10,23,51,.5)}
 
-@media(max-width:900px){
-  .nav-links,.foot-grid{display:none}
+/* ===== REVIEWS ===== */
+.reviews{padding:120px 0;background:var(--bg-alt);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.reviews-head{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:60px 80px;align-items:start;margin-bottom:56px}
+.reviews-rating{display:flex;align-items:center;gap:18px;margin-bottom:18px}
+.reviews-rating .stars{color:var(--gold);font-size:24px;letter-spacing:3px}
+.reviews-rating .num{font-family:var(--display);font-size:32px;font-weight:700;color:var(--ink)}
+.reviews-rating .count{font-size:14px;color:var(--muted);font-weight:500}
+.reviews-link{display:inline-flex;align-items:center;gap:10px;margin-top:8px;padding:14px 24px;background:var(--ink);color:#fff;text-decoration:none;font-weight:600;font-size:14px;border-radius:8px;letter-spacing:.02em}
+.reviews-link:hover{background:var(--navy)}
+.reviews-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.review-card{background:#fff;padding:32px;border-radius:12px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column}
+.review-card .stars{color:var(--gold);font-size:18px;letter-spacing:3px;margin-bottom:14px}
+.review-card .quote{font-size:15px;line-height:1.7;color:var(--ink);flex:1;margin-bottom:20px}
+.review-card .meta{padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+.review-card .meta strong{color:var(--ink);font-weight:700}
+.review-card .gquote{position:absolute;top:18px;right:24px;font-family:var(--display);font-size:64px;color:var(--navy);opacity:.08;line-height:1;font-weight:700}
+
+/* ===== ANTI-UPSELL BAND ===== */
+.wwdd{padding:110px 0;background:var(--navy-deep);color:#fff;position:relative;overflow:hidden}
+.wwdd::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--red) 0%,transparent 100%)}
+.wwdd .eyebrow{color:var(--red)}
+.wwdd .eyebrow .bar{background:var(--red)}
+.wwdd .section-h{color:#fff;max-width:880px}
+.wwdd .section-h em{color:var(--red);font-style:italic}
+.wwdd-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;margin-top:8px}
+.wwdd-item .x{font-family:var(--display);font-size:56px;color:var(--red);line-height:.9;margin-bottom:16px;font-weight:700}
+.wwdd-item h3{font-family:var(--display);font-size:22px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.2}
+.wwdd-item p{color:rgba(255,255,255,.75);font-size:15px;line-height:1.65}
+
+/* ===== GUARANTEE ===== */
+.guarantee{padding:120px 0;background:var(--red);color:#fff;overflow:hidden}
+.guarantee .wrap{display:grid;grid-template-columns:1fr 4fr;gap:48px;align-items:center;max-width:1100px}
+.guarantee .seal{font-family:var(--display);font-size:clamp(140px,16vw,200px);line-height:.85;opacity:.92;font-style:italic;font-weight:700;color:#fff;letter-spacing:-0.04em}
+.guarantee .body .lbl{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;opacity:.85;margin-bottom:18px}
+.guarantee .body p{font-family:var(--display);font-size:clamp(26px,3.4vw,42px);font-weight:600;line-height:1.2;letter-spacing:-0.01em}
+.guarantee .body p em{font-style:italic;color:#FCE0B5}
+
+/* ===== STATS ===== */
+.stats{padding:120px 0;background:var(--bg)}
+.stats-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:60px 80px;align-items:start}
+.stat-hero .num{font-family:var(--display);font-size:clamp(120px,22vw,300px);font-weight:700;line-height:.85;color:var(--navy);letter-spacing:-0.045em;margin-bottom:18px}
+.stat-hero .lbl{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:var(--ink)}
+.stat-hero .sub{font-size:16px;color:var(--muted);margin-top:8px;line-height:1.55;max-width:380px}
+.stat-list{display:flex;flex-direction:column;gap:32px;padding-top:24px}
+.stat-row{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline}
+.stat-row .num{font-family:var(--display);font-size:clamp(54px,7vw,96px);font-weight:700;line-height:.9;color:var(--ink);letter-spacing:-0.02em}
+.stat-row .num em{font-style:normal;color:var(--red);font-size:.55em;vertical-align:super;margin-left:4px}
+.stat-row .lbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:var(--red);margin-bottom:6px}
+.stat-row .sub{font-size:14px;color:var(--muted);line-height:1.55}
+
+/* ===== BEHIND THE WORK ===== */
+.behind{background:var(--bg-alt);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.behind-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;min-height:64vh}
+.behind-photo{position:relative;overflow:hidden;min-height:420px}
+.behind-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.behind-body{padding:clamp(48px,8vw,120px) clamp(32px,6vw,96px);display:flex;flex-direction:column;justify-content:center;background:var(--bg-alt)}
+.behind-body .pull{font-family:var(--display);font-size:clamp(26px,3.2vw,44px);font-weight:600;line-height:1.2;letter-spacing:-0.01em;margin:0 0 24px;color:var(--ink)}
+.behind-body .pull em{font-style:italic;color:var(--navy)}
+.behind-body .meta{font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+
+/* ===== FINANCING ===== */
+.financing{padding:90px 0;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);color:#fff;overflow:hidden}
+.financing .wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:48px 64px;align-items:center}
+.financing .lbl{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;color:var(--red);margin-bottom:18px}
+.financing h2{font-family:var(--display);font-size:clamp(32px,4.4vw,56px);font-weight:700;line-height:1.05;letter-spacing:-0.01em;margin-bottom:20px}
+.financing h2 em{color:#FCE0B5;font-style:italic}
+.financing p{font-size:17px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:28px;max-width:540px}
+.financing .points{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:8px}
+.financing .points span{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:rgba(255,255,255,.92);font-weight:500}
+.financing .points .check{color:var(--gold);font-weight:700}
+.fin-photo{position:relative;border-radius:12px;overflow:hidden;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);transform:rotate(-1.5deg)}
+.fin-photo img{display:block;width:100%}
+
+/* ===== CTA ===== */
+.cta-final{padding:120px 0;background:var(--bg);text-align:center}
+.cta-final h2{font-family:var(--display);font-size:clamp(40px,5.6vw,80px);font-weight:700;margin-bottom:24px;line-height:1.0;letter-spacing:-0.02em;color:var(--ink)}
+.cta-final h2 em{font-style:italic;color:var(--red)}
+.cta-final p{font-size:19px;color:var(--muted);max-width:600px;margin:0 auto 36px;font-weight:400}
+.cta-final p strong{color:var(--ink);font-weight:700}
+.cta-final .buttons{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.cta-final .buttons a.primary{padding:20px 40px;background:var(--red);color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 14px 32px -10px rgba(200,32,45,.6)}
+.cta-final .buttons a.primary:hover{background:var(--red-hover);transform:translateY(-2px)}
+.cta-final .buttons a.secondary{padding:18px 34px;background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px}
+.cta-final .buttons a.secondary:hover{border-color:var(--ink)}
+
+/* ===== STICKY MOBILE CTA ===== */
+.sticky-cta{position:fixed;bottom:0;left:0;right:0;z-index:99;display:none;background:#fff;border-top:1px solid var(--border);padding:10px 12px;gap:8px;box-shadow:0 -10px 30px -10px rgba(0,0,0,.18)}
+.sticky-cta a{flex:1;padding:14px 18px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sticky-cta .cta-call{background:var(--red);color:#fff}
+.sticky-cta .cta-text{background:var(--navy);color:#fff}
+
+/* ===== FOOTER ===== */
+footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.78);font-size:14px}
+.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.foot-grid h5{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:18px;color:#fff}
+.foot-grid p, .foot-grid a{display:block;padding:5px 0;color:rgba(255,255,255,.7);text-decoration:none;font-size:14px}
+.foot-grid a:hover{color:#fff}
+.foot-brand .brand-oval{width:54px;height:40px;font-size:20px}
+.foot-brand-name{font-family:var(--display);font-size:22px;font-weight:700;color:#fff;margin-top:14px}
+.foot-brand p{margin-top:14px;max-width:320px;color:rgba(255,255,255,.65);line-height:1.65}
+.foot-bottom{padding-top:32px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.55);flex-wrap:wrap;gap:8px}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1024px){
+  .svc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .svc-tile.hero-tile{grid-column:span 2;grid-row:span 1;min-height:280px}
+  .reviews-grid{grid-template-columns:1fr}
+  .reviews-head{grid-template-columns:1fr;gap:36px}
+  .wwdd-grid{grid-template-columns:1fr;gap:36px}
+  .stats-grid{grid-template-columns:1fr;gap:48px}
+  .behind-grid{grid-template-columns:1fr}
+  .behind-photo{min-height:320px}
+  .financing .wrap{grid-template-columns:1fr;gap:40px}
+  .foot-grid{grid-template-columns:1fr 1fr;gap:32px}
+}
+@media(max-width:760px){
+  .nav-links{display:none}
   .sticky-cta{display:flex}
-  .demo-tag{bottom:84px;right:12px;padding:8px 14px;font-size:11px}
   footer{padding-bottom:110px}
-  .trust-strip .wrap{gap:14px;font-size:12px}
+  .svc-grid{grid-template-columns:1fr}
+  .svc-tile.hero-tile{grid-column:auto}
+  .hero{min-height:80vh}
+  .trust-strip .wrap{gap:12px;font-size:12px}
+  .foot-grid{grid-template-columns:1fr}
+  .guarantee .wrap{grid-template-columns:1fr;gap:24px;text-align:center}
+  .guarantee .seal{font-size:120px}
 }
 
-/* prefers-reduced-motion belt-and-suspenders */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration:.001ms !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
 }
-
-/* View Transitions API — smooth fade between pages on the static MPA */
-@keyframes vt-fade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
-::view-transition-old(root),::view-transition-new(root){animation:vt-fade .25s ease both}
-
-/* Print stylesheet — strips navigation, expands link URLs */
-@media print {
-  nav, .sticky-cta, .demo-tag, video { display:none !important; }
-  a[href]::after { content:" (" attr(href) ")"; font-size:.8em; opacity:.7; }
-  body { color:#000; background:#fff; font: 12pt Georgia, serif; }
-  h2, h3 { page-break-after: avoid; }
-  img { max-width:100% !important; page-break-inside:avoid; }
-  @page { margin: 1.5cm; }
+@media print{
+  nav, .sticky-cta, video{display:none !important}
+  body{color:#000;background:#fff;font:11pt Georgia,serif}
+  .hero{min-height:auto;background:#fff !important;color:#000}
+  .hero h1{color:#000}
 }
 </style>
 </head>
 <body>
-
 <a href="#main" class="skip-link">Skip to content</a>
 
-<nav><div class="wrap nav-row">
-<div class="logo">Messiah Heating &amp; Air Conditioning</div>
-<div class="nav-links">
-<a href="#services">Services</a>
-<a href="#reviews">Reviews</a>
-<a href="#contact">Contact</a>
-</div>
-<a href="tel:+1 404-804-9510" class="nav-cta" aria-label="Call Messiah Heating &amp; Air Conditioning at (404) 804-9510">📞 (404) 804-9510</a>
+<nav class="top"><div class="wrap nav-row">
+  <a href="#" class="brand">
+    <span class="brand-oval">M</span>
+    <span><span class="brand-name">Messiah Heating &amp; Air</span><br><span class="brand-tag">Decatur · Since 2008</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="#services">Services</a>
+    <a href="#reviews">Reviews</a>
+    <a href="#financing">Financing</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <a href="tel:+14048049510" class="nav-cta" aria-label="Call Messiah Heating at (404) 804-9510">📞 (404) 804-9510</a>
 </div></nav>
 
-
-
-<div class="trust-strip" role="region" aria-label="Trust signals">
+<div class="trust-strip">
   <div class="wrap">
     <span class="ts-item"><span class="ts-star">★</span> <strong>4.6</strong> on Google</span>
     <span class="ts-dot">·</span><span class="ts-item"><strong>45</strong> reviews</span>
-    <span class="ts-dot">·</span><span class="ts-item"><strong>18 years</strong> serving Decatur</span>
+    <span class="ts-dot">·</span><span class="ts-item"><strong>18 years</strong> in Decatur</span>
     <span class="ts-dot">·</span><span class="ts-item">Open <strong>Sundays</strong></span>
+    <span class="ts-dot">·</span><span class="ts-item"><strong>Interest-free</strong> financing</span>
   </div>
 </div>
-
 
 <main id="main">
 
-<section class="hero hero-full-bleed" style="padding:80px 0 60px;background:linear-gradient(rgba(0,0,0,.32) 0%,rgba(0,0,0,.62) 85%),url('assets/truck.jpg') center 30%/cover;color:#fff;min-height:78vh;display:flex;align-items:center">
+<!-- HERO -->
+<section class="hero">
   <div class="wrap">
-    <div class="eyebrow" style="color:#fff;opacity:.85;font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">
-      Decatur, GA · HVAC
+    <div class="hero-eyebrow"><span class="dot"></span>Same-day repair · Decatur HVAC</div>
+    <h1>AC + heat repair.<br><em>Ben answers.</em><br>Decatur, since 2008.</h1>
+    <p class="hero-sub"><strong>Ben Parrish</strong> answers the phone himself, drives the truck himself, and does the work himself. Same-day repair in most cases — including Sundays. No dispatcher, no apprentice rotation, no surprise fees.</p>
+    <div class="hero-cta">
+      <a href="tel:+14048049510" class="primary">📞 Call (404) 804-9510</a>
+      <a href="sms:+14048049510?&body=Hi%20Ben%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="secondary">💬 Text a photo</a>
     </div>
-    <h1 data-motion="split-line-reveal" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(44px, 7vw, 108px);font-weight:600;letter-spacing:-0.015em;line-height:1.0;margin-bottom:32px;max-width:1100px">
-      Eighteen years.<br>Owner-operated.<br><em style="font-style:italic;color:#C85A3A">Decatur.</em>
-    </h1>
-    <p style="font-size:21px;max-width:620px;color:rgba(255,255,255,.92);margin-bottom:40px;font-weight:300">Ben Parrish answers the phone himself, drives the truck himself, and does the work himself. Same-day in most cases — including Sundays. No dispatcher, no apprentice rotation.</p>
-    <div style="display:flex;gap:14px;flex-wrap:wrap">
-      <a href="tel:+1 404-804-9510" style="padding:18px 36px;background:#C85A3A;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px">📞 Call · (404) 804-9510</a>
-      <a href="#services" style="padding:18px 36px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;text-decoration:none;font-weight:600;font-size:16px">Services</a>
-    </div>
-  </div>
-</section>
-
-
-<section style="background:#FAF4EC;color:#2A1B0E;border-bottom:1px solid rgba(42,27,14,.1)">
-  <div class="proc-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;min-height:62vh">
-    <div data-motion="parallax-cover" style="background:url('assets/office.jpg') center/cover;min-height:420px;position:relative;overflow:hidden">
-      <img src="assets/office.jpg" alt="Inside the Messiah Heating office in Decatur, Georgia" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
-    </div>
-    <div style="padding:clamp(48px,8vw,120px) clamp(32px,6vw,96px);display:flex;flex-direction:column;justify-content:center;background:#FAF4EC">
-      <div class="eyebrow" style="display:inline-flex;align-items:center;gap:14px;color:#C85A3A;font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:32px">
-        <span style="display:inline-block;width:36px;height:1px;background:#C85A3A"></span>
-        Real business · real office
-      </div>
-      <p data-motion="split-line-reveal" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(26px,3vw,42px);font-weight:600;line-height:1.22;letter-spacing:-0.01em;margin:0 0 28px;color:#2A1B0E">317 W Ponce de Leon Ave, Decatur. The same desk Ben&#39;s been answering the phone from for 18 years.</p>
-      <div style="font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:#5C4A3C">— No call center. No after-hours service.</div>
+    <div class="hero-meta">
+      <span><span class="check">✓</span> Flat-rate quote before any work</span>
+      <span><span class="check">✓</span> Open 7 days · 9 to 5</span>
+      <span><span class="check">✓</span> 18 years owner-operated</span>
     </div>
   </div>
 </section>
-<style>@media(max-width:900px){.proc-grid{grid-template-columns:1fr !important}.proc-grid > div:first-child{min-height:340px !important}}</style>
 
-
-<section id="services" style="padding:100px 0;background:#2A1B0E;color:#fff">
+<!-- SERVICES -->
+<section class="services" id="services">
   <div class="wrap">
-    <div class="eyebrow" style="color:#C85A3A;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:24px">▌ What we do</div>
-    <h2 style="font-family:&#39;Lora&#39;, serif;font-size:clamp(36px, 5vw, 64px);font-weight:600;line-height:1;margin-bottom:24px;text-transform:none">What Ben <em>actually</em> does.</h2>
-    <p style="font-size:18px;max-width:680px;color:rgba(255,255,255,.75);margin-bottom:48px">Owner-operated. Ben answers the phone, Ben shows up, Ben does the work. No dispatcher, no apprentice rotation.</p>
-    <div data-motion="reveal-up" class="svc-bold-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)">
+    <div class="eyebrow"><span class="bar"></span>What Ben does</div>
+    <h2 class="section-h">Residential HVAC, <em>start to finish.</em></h2>
+    <p class="section-sub">Owner-operated since 2008. The person who quotes you on the phone is the person who shows up at the door and signs the invoice.</p>
+    <div class="svc-grid">
 
-      <div class="svc-hero" style="background:#2A1B0E;padding:48px 40px;display:flex;flex-direction:column;justify-content:space-between;min-height:340px;grid-column:span 2;grid-row:span 2;border-right:1px solid rgba(255,255,255,.08)">
+      <div class="svc-tile hero-tile">
         <div>
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:13px;font-weight:700;color:#C85A3A;margin-bottom:18px;text-transform:uppercase;letter-spacing:.24em">▌ The big one</div>
-          <h3 style="font-family:&#39;Lora&#39;, serif;font-size:clamp(32px,4vw,52px);font-weight:600;color:#fff;margin-bottom:20px;line-height:1.05;letter-spacing:-0.01em">Full system replacement.</h3>
-          <p style="color:rgba(255,255,255,.85);font-size:17px;line-height:1.6;max-width:540px">When your 15+ year old unit is past it, Ben handles the swap in a single day. Same hands from quote to walk-through. He shows you the new thermostat before he leaves and answers the phone for a year after.</p>
-        </div>
-        <div style="font-size:13px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.16em;font-weight:600;margin-top:32px">Get a flat quote before any wrench moves →</div>
-      </div>
-
-      <div style="background:#2A1B0E;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:170px">
-        <div>
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:17px;font-weight:700;color:#C85A3A;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">AC repair</div>
-          <div style="color:rgba(255,255,255,.78);font-size:15px;line-height:1.6">Not cooling, frozen coil, weak airflow. Diagnosis is on-site, flat-rate quote before any work starts.</div>
+          <div class="icon">⚙</div>
+          <h3>Full system replacement.</h3>
+          <p>When your 15+ year old unit is past it, Ben handles the swap in a single day. Same hands from quote to walk-through. He shows you the new thermostat before he leaves and answers the phone for a year after.</p>
+          <div class="badge">★ Interest-free financing available</div>
         </div>
       </div>
 
-      <div style="background:#2A1B0E;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:170px">
-        <div>
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:17px;font-weight:700;color:#C85A3A;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Furnace &amp; heat</div>
-          <div style="color:rgba(255,255,255,.78);font-size:15px;line-height:1.6">Short-cycling, no ignition, cold air from the vents. Gas and electric residential systems.</div>
-        </div>
+      <div class="svc-tile">
+        <div class="icon">❄</div>
+        <h3>AC repair</h3>
+        <p>Not cooling, frozen coil, weak airflow. Same-day in most cases. Flat-rate quote before any wrench moves.</p>
       </div>
 
-      <div style="background:#2A1B0E;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:170px">
-        <div>
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:17px;font-weight:700;color:#C85A3A;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Sundays + weekends</div>
-          <div style="color:rgba(255,255,255,.78);font-size:15px;line-height:1.6">Most Decatur HVAC shops shut Friday at 5. Ben answers 7 days a week, 9 to 5.</div>
-        </div>
+      <div class="svc-tile">
+        <div class="icon">🔥</div>
+        <h3>Furnace &amp; heat</h3>
+        <p>Short-cycling, no ignition, cold vents. Gas and electric residential systems — diagnosis on-site.</p>
       </div>
 
-      <div style="background:#2A1B0E;padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between;min-height:170px">
-        <div>
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:17px;font-weight:700;color:#C85A3A;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Tune-ups</div>
-          <div style="color:rgba(255,255,255,.78);font-size:15px;line-height:1.6">Pre-summer or pre-winter. After 18 years on Atlanta systems Ben knows what fails first.</div>
-        </div>
+      <div class="svc-tile">
+        <div class="icon">📅</div>
+        <h3>Sundays + weekends</h3>
+        <p>Most Decatur HVAC shops shut Friday at 5. Ben answers 7 days a week, 9 to 5 — no weekend surcharge.</p>
+      </div>
+
+      <div class="svc-tile">
+        <div class="icon">🛠</div>
+        <h3>Tune-ups</h3>
+        <p>Pre-summer or pre-winter. After 18 years on Atlanta systems Ben knows what fails first.</p>
       </div>
 
     </div>
   </div>
 </section>
-<style>
-@media(max-width:900px){.svc-bold-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}.svc-hero{grid-column:span 2 !important;grid-row:auto !important;min-height:280px !important}}
-@media(max-width:600px){.svc-bold-grid{grid-template-columns:1fr !important}.svc-hero{grid-column:auto !important}}
-</style>
 
-
-<section style="padding:96px 0;background:#1B1208;color:#fff;border-top:1px solid rgba(255,255,255,.06)">
+<!-- REVIEWS -->
+<section class="reviews" id="reviews">
   <div class="wrap">
-    <div class="eyebrow" style="color:#C85A3A;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:24px">▌ What Ben doesn&#39;t do</div>
-    <h2 style="font-family:&#39;Lora&#39;, serif;font-size:clamp(34px,4.6vw,58px);font-weight:600;line-height:1.05;letter-spacing:-0.01em;margin-bottom:48px;max-width:880px">Most HVAC complaints aren&#39;t about the repair. They&#39;re about <em style="color:#C85A3A">the games shops play around the repair.</em></h2>
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px">
+    <div class="reviews-head">
       <div>
-        <div style="font-family:&#39;Lora&#39;, serif;font-size:48px;line-height:1;color:#C85A3A;font-weight:600;margin-bottom:14px">✕</div>
-        <h3 style="font-family:&#39;Lora&#39;, serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">A different tech every visit.</h3>
-        <p style="color:rgba(255,255,255,.7);font-size:15px;line-height:1.6">It&#39;s Ben on the phone, in the truck, and on the invoice. The person who quoted you is the person who shows up.</p>
+        <div class="eyebrow"><span class="bar"></span>Real Google reviews · not cherry-picked</div>
+        <h2 class="section-h">What Ben's customers <em>actually said</em>.</h2>
+        <p class="section-sub" style="margin-bottom:24px">No fakes. No "highlights." Ben earned 4.6 stars across 45 reviews — most positive, a few not. Read all of them on Google, including the 1-stars.</p>
       </div>
-      <div>
-        <div style="font-family:&#39;Lora&#39;, serif;font-size:48px;line-height:1;color:#C85A3A;font-weight:600;margin-bottom:14px">✕</div>
-        <h3 style="font-family:&#39;Lora&#39;, serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Pushing a $10K replacement on a $400 fix.</h3>
-        <p style="color:rgba(255,255,255,.7);font-size:15px;line-height:1.6">If your system has years left, Ben will tell you that and repair it. He&#39;d rather have you call him again in 2030 than oversell you today.</p>
+      <div style="padding-top:36px">
+        <div class="reviews-rating">
+          <div>
+            <div class="stars">★★★★★</div>
+            <div class="count">on Google · 45 reviews</div>
+          </div>
+          <div class="num">4.6</div>
+        </div>
+        <a class="reviews-link" href="https://www.google.com/search?q=Messiah+Heating+and+Air+Conditioning+Decatur+GA+reviews" target="_blank" rel="noopener">Read all 45 reviews →</a>
       </div>
-      <div>
-        <div style="font-family:&#39;Lora&#39;, serif;font-size:48px;line-height:1;color:#C85A3A;font-weight:600;margin-bottom:14px">✕</div>
-        <h3 style="font-family:&#39;Lora&#39;, serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:10px">Surprise line-items on the invoice.</h3>
-        <p style="color:rgba(255,255,255,.7);font-size:15px;line-height:1.6">If a charge wasn&#39;t agreed to on the phone before work started, it&#39;s not on the bill. See the guarantee below — it has teeth.</p>
+    </div>
+
+    <div class="reviews-grid">
+
+      <div class="review-card">
+        <span class="gquote">"</span>
+        <div class="stars">★★★★★</div>
+        <p class="quote">Ben always answers the phone. He says he will be there within the hour and he is. He's always pleasant, efficient. Can't say enough nice things about Ben and this company.</p>
+        <div class="meta">— <strong>Catherine Jarman Rouzer</strong><br>Local Guide · 30 reviews · Google</div>
+      </div>
+
+      <div class="review-card">
+        <span class="gquote">"</span>
+        <div class="stars">★★★★★</div>
+        <p class="quote">My AC was out for over 2 weeks, my home warranty company could not get anyone to repair. Messiah was able to repair within 1 hour. I was very happy with their service. Great job.</p>
+        <div class="meta">— <strong>Monica Conover</strong><br>13 reviews · Google</div>
+      </div>
+
+      <div class="review-card">
+        <span class="gquote">"</span>
+        <div class="stars">★★★★★</div>
+        <p class="quote">Friday afternoon I got home and the AC was out. After calling several companies — no one until Monday or tomorrow with a high weekend rate — I called Messiah. Within 2 hours they came out, fixed it, and we are cool. Thank you.</p>
+        <div class="meta">— <strong>Neville Simpson</strong><br>Local Guide · 19 reviews · Google</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- WHAT WE DON'T DO -->
+<section class="wwdd">
+  <div class="wrap">
+    <div class="eyebrow"><span class="bar"></span>What Ben doesn't do</div>
+    <h2 class="section-h">Most HVAC complaints aren't about the repair. They're about <em>the games shops play around the repair.</em></h2>
+    <div class="wwdd-grid">
+      <div class="wwdd-item">
+        <div class="x">✕</div>
+        <h3>A different tech every visit.</h3>
+        <p>It's Ben on the phone, in the truck, and on the invoice. The person who quoted you is the person who shows up.</p>
+      </div>
+      <div class="wwdd-item">
+        <div class="x">✕</div>
+        <h3>Pushing a $10K replacement on a $400 fix.</h3>
+        <p>If your system has years left, Ben will tell you that and repair it. He'd rather you call him again in 2030 than oversell you today.</p>
+      </div>
+      <div class="wwdd-item">
+        <div class="x">✕</div>
+        <h3>Surprise line items on the invoice.</h3>
+        <p>If a charge wasn't agreed to on the phone before work started, it's not on the bill. The guarantee below has teeth.</p>
       </div>
     </div>
   </div>
 </section>
-<style>@media(max-width:760px){section[style*="background:#1B1208"] div[style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr !important}}</style>
 
+<!-- GUARANTEE -->
+<section class="guarantee">
+  <div class="wrap">
+    <div class="seal" aria-hidden="true">&ldquo;</div>
+    <div class="body">
+      <div class="lbl">The Messiah Guarantee</div>
+      <p>The price Ben quotes on the phone is the price you pay. If the final invoice is a dollar more, <em>the overage is on Ben.</em></p>
+    </div>
+  </div>
+</section>
 
+<!-- STATS -->
+<section class="stats">
+  <div class="wrap">
+    <div class="eyebrow"><span class="bar"></span>By the numbers</div>
+    <h2 class="section-h">18 years. One guy. <em>4.6 stars.</em></h2>
+    <div class="stats-grid" style="margin-top:48px">
+      <div class="stat-hero">
+        <div class="num">18</div>
+        <div class="lbl">Years in Decatur</div>
+        <div class="sub">Owner-operated since 2008. Same desk, same phone, same hands the whole time.</div>
+      </div>
+      <div class="stat-list">
+        <div class="stat-row">
+          <div class="num">4.6<em>★</em></div>
+          <div>
+            <div class="lbl">Google rating</div>
+            <div class="sub">Across 45 real reviews — all of them on his Google listing, including the few negatives.</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="num">7</div>
+          <div>
+            <div class="lbl">Days a week</div>
+            <div class="sub">Open Sundays, 9 to 5. When most Decatur HVAC shops shut Friday at 5.</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="num">1</div>
+          <div>
+            <div class="lbl">Person on the call</div>
+            <div class="sub">Ben answers, Ben diagnoses, Ben fixes it. No dispatcher between you and the work.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-<section style="padding:80px 0;background:#C85A3A;color:#fff;overflow:hidden">
-  <div class="wrap" style="display:grid;grid-template-columns:160px 1fr;gap:48px;align-items:start;max-width:1180px">
-    <div data-motion="kerning-tighten" aria-hidden="true" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(120px,18vw,220px);line-height:.85;font-style:italic;opacity:.32;font-weight:600;margin-top:-20px">&ldquo;</div>
+<!-- BEHIND THE WORK -->
+<section class="behind">
+  <div class="behind-grid">
+    <div class="behind-photo">
+      <img src="assets/office.jpg" alt="Inside the Messiah Heating office in Decatur, Georgia, with the Messiah logo on the wall">
+    </div>
+    <div class="behind-body">
+      <div class="eyebrow"><span class="bar"></span>Real business · real office</div>
+      <p class="pull">317 W Ponce de Leon Ave, Decatur. <em>The same desk Ben's been answering the phone from for 18 years.</em></p>
+      <div class="meta">— No call center · no after-hours service</div>
+    </div>
+  </div>
+</section>
+
+<!-- FINANCING -->
+<section class="financing" id="financing">
+  <div class="wrap">
     <div>
-      <div style="font-family:&#39;Lora&#39;, serif;font-size:13px;font-style:italic;text-transform:uppercase;letter-spacing:.2em;margin-bottom:18px;font-weight:600;opacity:.85">Our guarantee</div>
-      <p data-motion="split-line-reveal" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(28px,3.6vw,46px);font-weight:600;line-height:1.18;letter-spacing:-0.005em">The price Ben quotes on the phone is the price you pay. If the final invoice is a dollar more, <em>the overage is on Ben.</em></p>
+      <div class="lbl">Interest-free financing</div>
+      <h2>$0 down. $0 interest. <em>New system, today.</em></h2>
+      <p>When a 20-year-old system fails in July, "wait and save" isn't an option. Messiah offers interest-free financing on full system replacements — installed by Ben, walked through with you before he leaves, supported for a year after.</p>
+      <div class="points">
+        <span><span class="check">✓</span> Amana certified install</span>
+        <span><span class="check">✓</span> Same-day swap in most cases</span>
+        <span><span class="check">✓</span> Year-one support included</span>
+      </div>
+    </div>
+    <div class="fin-photo">
+      <img src="assets/sign.jpg" alt="Messiah Heating Amana Interest-Free Financing sign">
     </div>
   </div>
 </section>
-<style>@media(max-width:720px){section[style*="grid-template-columns:160px 1fr"] > .wrap{grid-template-columns:1fr !important;gap:8px !important}}</style>
 
-
-
-
-
-
-<section id="gallery" class="gallery-stats" style="padding:120px 0;background:#FAF4EC;color:#2A1B0E;border-top:1px solid rgba(42,27,14,.1);border-bottom:1px solid rgba(42,27,14,.1);position:relative;overflow:hidden">
+<!-- CTA -->
+<section class="cta-final" id="contact">
   <div class="wrap">
-    <div class="eyebrow" data-motion="kerning-tighten" style="display:inline-flex;align-items:center;gap:14px;color:#C85A3A;font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:48px">
-      <span style="display:inline-block;width:36px;height:1px;background:#C85A3A"></span>
-      By the numbers
-    </div>
-
-    
-    <div data-motion="reveal-up" style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:60px 80px;align-items:start;margin-bottom:40px;padding-bottom:60px;border-bottom:1px solid rgba(42,27,14,.1)">
-      <div>
-        <div style="font-family:&#39;Lora&#39;, serif;font-size:clamp(120px,22vw,300px);font-weight:600;line-height:.82;color:#C85A3A;letter-spacing:-0.045em;margin-bottom:18px">18</div>
-        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#2A1B0E">Years in Decatur</div>
-        <div style="font-size:16px;color:#5C4A3C;margin-top:8px;line-height:1.5">Owner-operated since 2008. Same hands the whole time.</div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:36px;padding-top:24px">
-
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline">
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:clamp(56px,7vw,100px);font-weight:600;line-height:.85;color:#2A1B0E;letter-spacing:-0.02em">4.6<span style="font-size:.55em;color:#C85A3A">★</span></div>
-          <div>
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#C85A3A;margin-bottom:6px">Google rating</div>
-            <div style="font-size:14px;color:#5C4A3C;line-height:1.5">across 45 reviews</div>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline">
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:clamp(56px,7vw,100px);font-weight:600;line-height:.85;color:#2A1B0E;letter-spacing:-0.02em">7</div>
-          <div>
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#C85A3A;margin-bottom:6px">Days a week</div>
-            <div style="font-size:14px;color:#5C4A3C;line-height:1.5">Open Sundays, 9 to 5 — when most Decatur HVAC shops shut Friday at 5.</div>
-          </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:baseline">
-          <div style="font-family:&#39;Lora&#39;, serif;font-size:clamp(56px,7vw,100px);font-weight:600;line-height:.85;color:#2A1B0E;letter-spacing:-0.02em">1</div>
-          <div>
-            <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#C85A3A;margin-bottom:6px">Person on the call</div>
-            <div style="font-size:14px;color:#5C4A3C;line-height:1.5">Ben answers, Ben diagnoses, Ben fixes it. No dispatcher in between.</div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-    
-
-    
-    
-    
-  </div>
-</section>
-
-<style>@media(max-width:900px){.gallery-stats div[style*="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)"]{grid-template-columns:1fr !important;gap:36px !important}}</style>
-
-
-
-
-
-
-
-
-
-<section id="reviews" style="padding:120px 0;background:#FFFFFF;color:#2A1B0E">
-  <div class="wrap">
-    <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:60px 80px;align-items:start;margin-bottom:48px">
-      <div>
-        <div class="eyebrow" style="color:#C85A3A;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:20px">★ 4.6 · 45 reviews on Google</div>
-        <h2 data-motion="split-line-reveal" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(40px,5.6vw,76px);font-weight:600;line-height:1.0;margin:0;letter-spacing:-0.01em;text-transform:none">What Ben&#39;s customers <em>actually said</em>.</h2>
-        <p style="margin-top:24px;font-size:16px;color:#5C4A3C;max-width:480px;line-height:1.55">No cherry-picked highlights. No fakes. Read all 45 reviews — including the four 1-star ones — on Google.</p>
-        <a href="https://www.google.com/search?q=Messiah+Heating+and+Air+Conditioning+Decatur+GA+reviews" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;margin-top:20px;padding:14px 24px;background:#2A1B0E;color:#fff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:.04em;border-radius:999px">See all 45 Google reviews →</a>
-      </div>
-      
-      <div style="border-left:3px solid #C85A3A;padding:8px 0 8px 28px;align-self:stretch;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-family:&#39;Lora&#39;, serif;font-size:13px;font-style:italic;text-transform:uppercase;letter-spacing:.2em;margin-bottom:14px;font-weight:600;color:#C85A3A">Why no cherry-picked quotes</div>
-        <p style="font-size:16px;line-height:1.7;color:#2A1B0E;margin:0">Every HVAC site picks the three nicest 5-star reviews and pastes them in. So we won&#39;t. Ben earned 4.6 stars across 45 calls — 41 of them positive, four not. Read all of it on Google, including what didn&#39;t go well.</p>
-      </div>
-
-    </div>
-
-  </div>
-</section>
-
-<style>@media(max-width:900px){#reviews div[style*="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)"]{grid-template-columns:1fr !important;gap:32px !important}#reviews blockquote{font-size:22px !important}}</style>
-
-<section id="contact" style="padding:120px 0;text-align:center;background:#FAF4EC;color:#2A1B0E">
-  <div class="wrap">
-    <h2 style="font-family:&#39;Lora&#39;, serif;font-size:clamp(36px,5vw,72px);font-weight:600;margin-bottom:24px;line-height:1.05;letter-spacing:-0.01em">Call Ben.<br><em style="font-style:italic;color:#C85A3A">He&#39;ll pick up.</em></h2>
-    <p style="font-size:19px;color:#5C4A3C;max-width:600px;margin:0 auto 40px;font-weight:300">(404) 804-9510 — direct to Ben. Or text a photo of the unit and he&#39;ll tell you what he&#39;s looking at.</p>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
-      <a href="tel:+1 404-804-9510" style="padding:18px 36px;background:#2A1B0E;color:#fff;border-radius:999px;text-decoration:none;font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:10px" aria-label="Call Messiah Heating &amp; Air Conditioning">📞 Tap to call · (404) 804-9510</a>
-      <a href="sms:+1 404-804-9510?&body=Hi%20Ben%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" style="padding:18px 36px;background:transparent;color:#2A1B0E;border:1.5px solid rgba(42,27,14,.1);border-radius:999px;text-decoration:none;font-weight:600;font-size:16px" aria-label="Text Messiah Heating &amp; Air Conditioning">💬 Text Ben a photo</a>
+    <h2>Call Ben.<br><em>He'll pick up.</em></h2>
+    <p><strong>(404) 804-9510</strong> — direct to Ben. Or text a photo of the unit and he'll tell you what he's looking at.</p>
+    <div class="buttons">
+      <a href="tel:+14048049510" class="primary">📞 Call (404) 804-9510</a>
+      <a href="sms:+14048049510?&body=Hi%20Ben%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="secondary">💬 Text Ben a photo</a>
     </div>
   </div>
 </section>
+
 </main>
 
-
 <div class="sticky-cta" role="region" aria-label="Quick contact">
-  <a href="tel:+1 404-804-9510" class="cta-call" aria-label="Call Messiah Heating &amp; Air Conditioning">📞 Call now</a>
-  <a href="sms:+1 404-804-9510?&body=Hi%20Ben%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text" aria-label="Text Ben a photo">💬 Text a photo</a>
+  <a href="tel:+14048049510" class="cta-call">📞 Call now</a>
+  <a href="sms:+14048049510?&body=Hi%20Ben%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text">💬 Text a photo</a>
 </div>
 
-<footer><div class="wrap">
-<div class="foot-grid">
-<div><div class="logo">Messiah Heating &amp; Air Conditioning</div><p style="margin-top:14px;max-width:300px">Owner-operated HVAC in Decatur since 2007. Ben Parrish answers the phone himself — no dispatcher, no call center.</p></div>
-<div><h5>Visit</h5><p>317 W Ponce de Leon Ave, Decatur, GA 30030</p><p>Decatur, GA</p></div>
-<div><h5>Contact</h5><a href="tel:+1 404-804-9510">(404) 804-9510</a><a href="sms:+1 404-804-9510">Text us</a></div>
-</div>
-
-<div style="margin-bottom:24px;padding:16px 0;border-top:1px dashed rgba(42,27,14,.1);border-bottom:1px dashed rgba(42,27,14,.1);font-size:13px;color:#5C4A3C">
-  <strong style="color:#2A1B0E;text-transform:uppercase;letter-spacing:.08em;font-size:11px;margin-right:14px">Areas we serve</strong>
-  Decatur · Avondale Estates · Druid Hills · Kirkwood · East Atlanta · Tucker
-</div>
-
-<div style="padding-top:30px;border-top:1px solid rgba(42,27,14,.1);display:flex;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:8px">
-<div>© 2026 Messiah Heating &amp; Air Conditioning</div>
-<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span>4.6★ across 45 Google reviews</span></div>
-</div>
-</div></footer>
-
-
-
-<script>
-(function(){
-  try {
-    var orig = document.title;
-    var industry = 'hvac';
-    var copy = {
-      plumber: '👋 still need a plumber?',
-      hvac: '👋 still need ac help?',
-      radiator: '👋 still need a radiator shop?',
-      landscape: '👋 still need a landscaper?',
-      septic: '👋 still need septic help?',
-    };
-    var away = copy[industry] || '👋 come back!';
-    document.addEventListener('visibilitychange', function(){
-      document.title = document.hidden ? away : orig;
-    });
-  } catch (_) {}
-})();
-</script>
-
-
-<script>
-(function(){
-  try {
-    var s = 'color:#0a0a0a;background:#f4d03f;padding:6px 10px;font:600 12px/1.4 ui-monospace;border-radius:4px';
-    var m = 'color:#666;font:12px/1.4 ui-monospace';
-    console.log('%c ▲ nova ', s, '%c  built in atlanta · made for Messiah Heating &amp; Air Conditioning', m);
-    console.log('%cseeing this? we build sites like this for trades. nova.build/work', m);
-  } catch (_) {}
-})();
-</script>
-
-
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/gsap.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/ScrollTrigger.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.13/dist/SplitText.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.3/dist/lenis.min.js" defer></script>
-<script defer>
-window.addEventListener('load', function(){
-
-
-gsap.registerPlugin(ScrollTrigger);
-const _reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const _touch  = matchMedia('(hover: none) and (pointer: coarse)').matches;
-
-// Lenis smooth-scroll only on non-touch, non-reduced-motion contexts
-if (!_reduce && !_touch && typeof Lenis !== 'undefined') {
-  const lenis = new Lenis({ lerp: 0.1, smoothWheel: true, syncTouch: false });
-  function _raf(t){ lenis.raf(t); requestAnimationFrame(_raf); }
-  requestAnimationFrame(_raf);
-  lenis.on('scroll', ScrollTrigger.update);
-  gsap.ticker.add(t => lenis.raf(t * 1000));
-  gsap.ticker.lagSmoothing(0);
-}
-
-const _REG = {};
-function registerMotion(name, fn) { _REG[name] = fn; }
-
-// ===== 12 presets =====
-
-registerMotion('reveal-up', (el) => {
-  gsap.from(el.children, {
-    y: 60, opacity: 0, duration: 0.8, stagger: 0.08,
-    ease: 'power3.out',
-    scrollTrigger: { trigger: el, start: 'top 80%', toggleActions: 'play none none reverse' }
-  });
-});
-
-registerMotion('split-line-reveal', (el) => {
-  if (typeof SplitText === 'undefined') {
-    gsap.from(el, { y: 30, opacity: 0, duration: 0.8, ease: 'power3.out',
-      scrollTrigger: { trigger: el, start: 'top 85%' } });
-    return;
-  }
-  const split = SplitText.create(el, { type: 'lines', mask: 'lines' });
-  gsap.from(split.lines, {
-    yPercent: 110, duration: 1.0, stagger: 0.1, ease: 'power4.out',
-    scrollTrigger: { trigger: el, start: 'top 80%' }
-  });
-});
-
-registerMotion('kerning-tighten', (el) => {
-  gsap.from(el, {
-    letterSpacing: '0.4em', opacity: 0, duration: 1.2, ease: 'expo.out',
-    scrollTrigger: { trigger: el, start: 'top 85%' }
-  });
-});
-
-registerMotion('parallax-cover', (el) => {
-  const img = el.querySelector('img');
-  if (!img) return;
-  gsap.to(img, {
-    yPercent: -20, ease: 'none',
-    scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true }
-  });
-});
-
-registerMotion('pin-scrub-steps', (el) => {
-  const steps = el.querySelectorAll('[data-step]');
-  if (steps.length < 2) return;
-  ScrollTrigger.create({
-    trigger: el, start: 'top top', end: () => `+=${steps.length * 100}%`,
-    pin: true, scrub: 1
-  });
-  steps.forEach((s, i) => {
-    gsap.from(s, {
-      opacity: 0, y: 40,
-      scrollTrigger: { trigger: el, start: () => `top+=${i*100}% top`, end: `+=100%`, scrub: 1 }
-    });
-  });
-});
-
-registerMotion('marquee-scrub', (el) => {
-  const inner = el.querySelector('[data-marquee-track]');
-  if (!inner) return;
-  const tl = gsap.to(inner, { xPercent: -50, repeat: -1, duration: 20, ease: 'linear' });
-  ScrollTrigger.create({
-    trigger: el, start: 'top bottom', end: 'bottom top',
-    onUpdate: self => tl.timeScale(1 + Math.abs(self.getVelocity()) / 2000)
-  });
-});
-
-registerMotion('mask-clip-reveal', (el) => {
-  gsap.from(el, {
-    clipPath: 'inset(0 50% 0 50%)', duration: 1.2, ease: 'power4.inOut',
-    scrollTrigger: { trigger: el, start: 'top 75%' }
-  });
-});
-
-registerMotion('image-stack-tilt', (el) => {
-  const cards = el.querySelectorAll('[data-card]');
-  cards.forEach((c, i) => gsap.set(c, { rotate: (i-1)*-4, y: (i-1)*20 }));
-  gsap.to(cards, {
-    rotate: 0, y: 0, stagger: 0.15, ease: 'expo.out',
-    scrollTrigger: { trigger: el, start: 'top 70%' }
-  });
-});
-
-registerMotion('counter-scrub', (el) => {
-  const target = parseFloat(el.dataset.to || el.textContent || '0');
-  if (!isFinite(target)) return;
-  const obj = { n: 0 };
-  gsap.to(obj, {
-    n: target, duration: 2, ease: 'power1.out',
-    onUpdate() { el.textContent = Math.round(obj.n).toLocaleString(); },
-    scrollTrigger: { trigger: el, start: 'top 85%' }
-  });
-});
-
-registerMotion('sticky-caption', (el) => {
-  // CSS handles the sticky; we cascade the right column's children
-  const right = el.querySelector('[data-cascade]');
-  if (!right) return;
-  gsap.from(right.children, {
-    y: 60, opacity: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out',
-    scrollTrigger: { trigger: right, start: 'top 80%' }
-  });
-});
-
-registerMotion('cursor-magnetic', (el) => {
-  if (_touch) return;
-  const label = el.querySelector('[data-magnet-label]') || el;
-  el.addEventListener('mousemove', (e) => {
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left - r.width/2) * 0.25;
-    const y = (e.clientY - r.top - r.height/2) * 0.25;
-    gsap.to(el,   { x, y, duration: 0.6, ease: 'power3.out' });
-    gsap.to(label, { x: -x*0.4, y: -y*0.4, duration: 0.6, ease: 'power3.out' });
-  });
-  el.addEventListener('mouseleave', () => {
-    gsap.to(el,   { x: 0, y: 0, duration: 0.5, ease: 'power3.out' });
-    gsap.to(label, { x: 0, y: 0, duration: 0.5, ease: 'power3.out' });
-  });
-});
-
-registerMotion('hover-tilt-card', (el) => {
-  if (_touch) return;
-  el.style.transformStyle = 'preserve-3d';
-  el.style.transition = 'transform 0.6s cubic-bezier(.23,1,.32,1)';
-  el.addEventListener('mousemove', (e) => {
-    const r = el.getBoundingClientRect();
-    const rx = (e.clientY - r.top - r.height/2) / r.height * -10;
-    const ry = (e.clientX - r.left - r.width/2) / r.width * 10;
-    el.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-  });
-  el.addEventListener('mouseleave', () => {
-    el.style.transform = '';
-  });
-});
-
-// ===== Init: scan + wire =====
-function _initMotion() {
-  if (_reduce) {
-    document.querySelectorAll('[data-motion]').forEach(el => {
-      gsap.set(el, { opacity: 1, clearProps: 'transform' });
-    });
-    return;
-  }
-  document.querySelectorAll('[data-motion]').forEach(el => {
-    const name = el.dataset.motion;
-    if (_REG[name]) _REG[name](el);
-  });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _initMotion);
-} else {
-  _initMotion();
-}
-
-});
-</script>
-
-
-<script>
-(function(){
-  try {
-    var slug = location.pathname.split('/').filter(Boolean)[0] || location.hostname.split('.')[0];
-    var origin = location.origin;
-    var fired = { view: false, engaged: false };
-    function send(event, extra) {
-      if (fired[event]) return;
-      fired[event] = true;
-      var url = origin + '/api/track?slug=' + encodeURIComponent(slug) + '&event=' + event + (extra || '');
-      try {
-        if (navigator.sendBeacon) { navigator.sendBeacon(url); }
-        else { var img = new Image(); img.src = url; }
-      } catch (_) {}
-    }
-    send('view');
-    var start = Date.now();
-    var maxScrollPct = 0;
-    function onScroll() {
-      var docH = document.documentElement.scrollHeight - window.innerHeight;
-      if (docH <= 0) return;
-      var pct = Math.min(100, Math.round((window.scrollY / docH) * 100));
-      if (pct > maxScrollPct) maxScrollPct = pct;
-      maybeFire();
-    }
-    function maybeFire() {
-      if (fired.engaged) return;
-      var dwell = Date.now() - start;
-      if (dwell >= 30000 && maxScrollPct >= 50) {
-        send('engaged', '&dwell_ms=' + dwell + '&scroll_pct=' + maxScrollPct);
-      }
-    }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    setInterval(maybeFire, 5000);
-    window.addEventListener('beforeunload', function(){
-      if (!fired.engaged) {
-        var dwell = Date.now() - start;
-        if (dwell >= 20000 && maxScrollPct >= 30) {
-          send('engaged', '&dwell_ms=' + dwell + '&scroll_pct=' + maxScrollPct);
-        }
-      }
-    });
-  } catch (_) {}
-})();
-</script>
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="brand-oval">M</div>
+        <div class="foot-brand-name">Messiah Heating &amp; Air Conditioning</div>
+        <p>Owner-operated HVAC in Decatur, GA since 2008. Ben Parrish answers the phone himself — no dispatcher, no call center, no after-hours service.</p>
+      </div>
+      <div>
+        <h5>Visit</h5>
+        <p>317 W Ponce de Leon Ave<br>Decatur, GA 30030</p>
+      </div>
+      <div>
+        <h5>Contact</h5>
+        <a href="tel:+14048049510">(404) 804-9510</a>
+        <a href="sms:+14048049510">Text a photo</a>
+      </div>
+      <div>
+        <h5>Hours</h5>
+        <p>Mon–Sun · 9am – 5pm<br><span style="color:var(--gold)">★ Sundays open</span></p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div>© 2026 Messiah Heating &amp; Air Conditioning · Owner-operated since 2008</div>
+      <div>4.6 ★ across 45 Google reviews</div>
+    </div>
+  </div>
+</footer>
 
 </body>
 </html>
