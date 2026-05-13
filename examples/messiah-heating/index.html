@@ -121,7 +121,7 @@ footer{padding:60px 0 90px;border-top:1px solid rgba(42,27,14,.1);font-size:14px
 
 <main id="main">
 
-<section class="hero hero-full-bleed" style="padding:80px 0 60px;background:linear-gradient(rgba(0,0,0,.28) 0%,rgba(0,0,0,.55) 85%),url('https://lh3.googleusercontent.com/gps-cs-s/APNQkAFsn3IHyssoKzwXB1-G5fp_01BVEI3co2gfEvWY8b3oZQtXhbRN2-kCkkxLO1_TuTm9dXJLBJWGrJ5SJonBZPV6wAT5jpR1uG8tdri6rqgMVqdob') center/cover;color:#fff">
+<section class="hero hero-full-bleed" style="padding:80px 0 60px;background:linear-gradient(rgba(0,0,0,.32) 0%,rgba(0,0,0,.62) 85%),url('assets/truck.jpg') center 30%/cover;color:#fff;min-height:78vh;display:flex;align-items:center">
   <div class="wrap">
     <div class="eyebrow" style="color:#fff;opacity:.85;font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin-bottom:24px">
       Decatur, GA · HVAC
@@ -138,7 +138,22 @@ footer{padding:60px 0 90px;border-top:1px solid rgba(42,27,14,.1);font-size:14px
 </section>
 
 
-
+<section style="background:#FAF4EC;color:#2A1B0E;border-bottom:1px solid rgba(42,27,14,.1)">
+  <div class="proc-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;min-height:62vh">
+    <div data-motion="parallax-cover" style="background:url('assets/office.jpg') center/cover;min-height:420px;position:relative;overflow:hidden">
+      <img src="assets/office.jpg" alt="Inside the Messiah Heating office in Decatur, Georgia" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">
+    </div>
+    <div style="padding:clamp(48px,8vw,120px) clamp(32px,6vw,96px);display:flex;flex-direction:column;justify-content:center;background:#FAF4EC">
+      <div class="eyebrow" style="display:inline-flex;align-items:center;gap:14px;color:#C85A3A;font-size:11px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;margin-bottom:32px">
+        <span style="display:inline-block;width:36px;height:1px;background:#C85A3A"></span>
+        Real business · real office
+      </div>
+      <p data-motion="split-line-reveal" style="font-family:&#39;Lora&#39;, serif;font-size:clamp(26px,3vw,42px);font-weight:600;line-height:1.22;letter-spacing:-0.01em;margin:0 0 28px;color:#2A1B0E">317 W Ponce de Leon Ave, Decatur. The same desk Ben&#39;s been answering the phone from for 18 years.</p>
+      <div style="font-size:13px;letter-spacing:.18em;text-transform:uppercase;font-weight:600;color:#5C4A3C">— No call center. No after-hours service.</div>
+    </div>
+  </div>
+</section>
+<style>@media(max-width:900px){.proc-grid{grid-template-columns:1fr !important}.proc-grid > div:first-child{min-height:340px !important}}</style>
 
 
 <section id="services" style="padding:100px 0;background:#2A1B0E;color:#fff">
