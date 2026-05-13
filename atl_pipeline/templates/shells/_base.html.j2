@@ -98,7 +98,7 @@ body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }
 {% block sticky_cta %}
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call">📞 Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text">💬 Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text">💬 Text a photo</a>
 </div>
 {% endblock %}
 
@@ -139,7 +139,7 @@ body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }
 {% raw %}<style>@media(max-width:900px){.foot-grid{grid-template-columns:1fr !important;gap:32px !important}}</style>{% endraw %}
 {% endblock %}
 
-<div class="demo-tag">{{ business.name }}</div>
+{% if copy.demo_tag %}<div class="demo-tag">{{ business.name }}</div>{% endif %}
 
 {# Tab-blur title swap — Stripe trick. #}
 {% raw %}<script>

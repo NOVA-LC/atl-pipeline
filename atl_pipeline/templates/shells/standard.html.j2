@@ -123,8 +123,7 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
     {% if business.rating %}<span class="ts-item"><span class="ts-star">★</span> <strong>{{ business.rating }}</strong> on Google</span>{% endif %}
     {% if business.reviews %}{% if business.rating %}<span class="ts-dot">·</span>{% endif %}<span class="ts-item"><strong>{{ business.reviews }}</strong> reviews</span>{% endif %}
     {% if business.years %}<span class="ts-dot">·</span><span class="ts-item"><strong>{{ business.years }} years</strong> serving {{ business.city }}</span>{% endif %}
-    {% if copy.license_number %}<span class="ts-dot">·</span><span class="ts-item">Licensed · Insured · <strong>#{{ copy.license_number }}</strong></span>
-    {% else %}<span class="ts-dot">·</span><span class="ts-item">Licensed &amp; Insured</span>{% endif %}
+    {% if copy.license_number %}<span class="ts-dot">·</span><span class="ts-item">Licensed · Insured · <strong>#{{ copy.license_number }}</strong></span>{% endif %}
   </div>
 </div>
 {% endif %}
@@ -215,7 +214,7 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
    Two buttons: call + text. Text falls back to call if SMS not supported on device. #}
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call" aria-label="Call {{ business.name }}">📞 Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
 </div>
 
 <footer><div class="wrap">
@@ -236,7 +235,7 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
 </div>
 </div></footer>
 
-<div class="demo-tag">{{ business.name }}</div>
+{% if copy.demo_tag %}<div class="demo-tag">{{ business.name }}</div>{% endif %}
 
 {# Tab-blur title swap — the "👋 Come back!" Stripe trick. Cold visitors Cmd-Tab
    away to compare; this pulls them back. Vertical-aware copy. #}
@@ -266,7 +265,7 @@ footer{padding:60px 0 90px;border-top:1px solid {{ tokens.palette.border }};font
   try {
     var s = 'color:#0a0a0a;background:#f4d03f;padding:6px 10px;font:600 12px/1.4 ui-monospace;border-radius:4px';
     var m = 'color:#666;font:12px/1.4 ui-monospace';
-    console.log('%c ▲ nova ', s, '%c  built in atlanta · hand-tuned for {% endraw %}{{ business.name }}{% raw %}', m);
+    console.log('%c ▲ nova ', s, '%c  built in atlanta · made for{% endraw %}{{ business.name }}{% raw %}', m);
     console.log('%cseeing this? we build sites like this for trades. nova.build/work', m);
   } catch (_) {}
 })();

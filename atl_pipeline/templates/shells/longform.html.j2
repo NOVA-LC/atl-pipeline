@@ -117,8 +117,7 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
     {% if business.rating %}<span class="ts-item"><span class="ts-star">★</span> <strong>{{ business.rating }}</strong> <em>on Google</em></span>{% endif %}
     {% if business.reviews %}{% if business.rating %}<span class="ts-dot">·</span>{% endif %}<span class="ts-item"><strong>{{ business.reviews }}</strong> <em>reviews</em></span>{% endif %}
     {% if business.years %}<span class="ts-dot">·</span><span class="ts-item"><strong>{{ business.years }} years</strong> <em>serving {{ business.city }}</em></span>{% endif %}
-    {% if copy.license_number %}<span class="ts-dot">·</span><span class="ts-item"><em>Licensed · Insured · </em><strong>#{{ copy.license_number }}</strong></span>
-    {% else %}<span class="ts-dot">·</span><span class="ts-item"><em>Licensed &amp; Insured</em></span>{% endif %}
+    {% if copy.license_number %}<span class="ts-dot">·</span><span class="ts-item"><em>Licensed · Insured · </em><strong>#{{ copy.license_number }}</strong></span>{% endif %}
   </div>
 </div>
 {% endif %}
@@ -153,7 +152,7 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
 
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call" aria-label="Call {{ business.name }}">📞 Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text" aria-label="Text {{ business.name }}">💬 Text us</a>
 </div>
 
 <footer><div class="wrap">
@@ -177,7 +176,7 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
 </div>
 </div></footer>
 
-<div class="demo-tag">{{ business.name }}</div>
+{% if copy.demo_tag %}<div class="demo-tag">{{ business.name }}</div>{% endif %}
 
 {# Tab-blur title swap #}
 {% raw %}<script>
@@ -206,7 +205,7 @@ footer{padding:100px 0 100px;border-top:1px solid {{ tokens.palette.border }};fo
   try {
     var s = 'color:#0a0a0a;background:#f4d03f;padding:6px 10px;font:600 12px/1.4 ui-monospace;border-radius:4px';
     var m = 'color:#666;font:12px/1.4 ui-monospace';
-    console.log('%c ▲ nova ', s, '%c  built in atlanta · hand-tuned for {% endraw %}{{ business.name }}{% raw %}', m);
+    console.log('%c ▲ nova ', s, '%c  built in atlanta · made for{% endraw %}{{ business.name }}{% raw %}', m);
     console.log('%cseeing this? we build sites like this for trades. nova.build/work', m);
   } catch (_) {}
 })();

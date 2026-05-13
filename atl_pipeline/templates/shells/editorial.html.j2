@@ -235,7 +235,7 @@ nav.ed-nav{padding:24px 0;border-bottom:1px solid {{ tokens.palette.border }};ba
     <p style="font-family:{{ tokens.type.body_family }};font-size:18px;color:{{ tokens.palette.muted }};max-width:540px;margin:0 auto 40px">{{ copy.cta_sub }}</p>
     <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
       <a href="tel:{{ business.phone }}" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.bg }};background:{{ tokens.palette.ink }};padding:20px 36px">Call · {{ business.phone_display }}</a>
-      <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.ink }};padding:20px 36px;border:1px solid {{ tokens.palette.border }}">Text us a photo</a>
+      <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" style="font-family:{{ tokens.type.display_family }};font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:{{ tokens.palette.ink }};padding:20px 36px;border:1px solid {{ tokens.palette.border }}">Text us a photo</a>
     </div>
   </div>
 </section>
@@ -244,7 +244,7 @@ nav.ed-nav{padding:24px 0;border-bottom:1px solid {{ tokens.palette.border }};ba
 
 <div class="sticky-cta" role="region" aria-label="Quick contact">
   <a href="tel:{{ business.phone }}" class="cta-call">Call now</a>
-  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20saw%20your%20site" class="cta-text">Text us</a>
+  <a href="sms:{{ business.phone }}?&body=Hi%20{{ copy.owner_first_name|default('there', true)|urlencode }}%2C%20can%20you%20send%20a%20photo%20of%20the%20unit%3F" class="cta-text">Text us</a>
 </div>
 
 {# ─── Endmark footer — newspaper style: single column, signature mark ────── #}
@@ -284,7 +284,7 @@ nav.ed-nav{padding:24px 0;border-bottom:1px solid {{ tokens.palette.border }};ba
   </div>
 </footer>
 
-<div class="demo-tag">{{ business.name }}</div>
+{% if copy.demo_tag %}<div class="demo-tag">{{ business.name }}</div>{% endif %}
 
 {% raw %}<script>
 (function(){

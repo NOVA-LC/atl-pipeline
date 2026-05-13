@@ -10,7 +10,7 @@
   <div class="wrap">
     <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:60px 80px;align-items:start;margin-bottom:48px">
       <div>
-        <div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:20px">★ 4.9 · 187 reviews on Google</div>
+        {% if business.rating and business.reviews %}<div class="eyebrow" style="color:{{ tokens.palette.accent }};font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:20px">★ {{ business.rating }} · {{ business.reviews }} reviews on Google</div>{% endif %}
         <h2 data-motion="split-line-reveal" style="font-family:{{ tokens.type.display_family }};font-size:clamp(40px,5.6vw,76px);font-weight:{{ tokens.type.display_weight }};line-height:1.0;margin:0;letter-spacing:-0.01em;text-transform:{{ tokens.type.display_text_transform|default('none') }}">{{ copy.reviews_h|safe }}</h2>
       </div>
       {% if _hero_review %}
