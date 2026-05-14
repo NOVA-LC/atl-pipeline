@@ -7,6 +7,71 @@
 <meta name="description" content="Owner-operated HVAC in Decatur, GA. Ben Parrish answers the phone, drives the truck, does the work. Same-day repair, Sundays open, interest-free financing on system replacements.">
 <meta name="theme-color" content="#0E2454" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0A1733" media="(prefers-color-scheme: dark)">
+
+<!-- Open Graph / social -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Messiah Heating &amp; Air Conditioning — Decatur HVAC, Ben answers.">
+<meta property="og:description" content="Owner-operated since 2008. Ben Parrish answers the phone, drives the truck, does the work. Sundays open. Interest-free financing on system replacements.">
+<meta property="og:image" content="assets/truck.jpg"><!-- TODO: replace with absolute URL once deployed -->
+<meta property="og:image:width" content="1600">
+<meta property="og:image:height" content="1000">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Messiah Heating &amp; Air — Decatur HVAC, since 2008.">
+<meta name="twitter:description" content="Ben answers the phone, drives the truck, does the work. Decatur, GA.">
+<meta name="twitter:image" content="assets/truck.jpg">
+
+<!-- LocalBusiness structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HVACBusiness",
+  "name": "Messiah Heating & Air Conditioning",
+  "image": "assets/truck.jpg",
+  "@id": "https://messiah-heating.example/#business",
+  "url": "https://messiah-heating.example/",
+  "telephone": "+1-404-804-9510",
+  "priceRange": "$$",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "317 W Ponce de Leon Ave",
+    "addressLocality": "Decatur",
+    "addressRegion": "GA",
+    "postalCode": "30030",
+    "addressCountry": "US"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 33.7745,
+    "longitude": -84.2963
+  },
+  "openingHoursSpecification": [{
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "09:00",
+    "closes": "17:00"
+  }],
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.6",
+    "reviewCount": "45",
+    "bestRating": "5"
+  },
+  "areaServed": [
+    {"@type":"City","name":"Decatur, GA"},
+    {"@type":"City","name":"Avondale Estates, GA"},
+    {"@type":"City","name":"Druid Hills, GA"},
+    {"@type":"City","name":"Kirkwood, GA"},
+    {"@type":"City","name":"East Lake, GA"},
+    {"@type":"City","name":"Oakhurst, GA"},
+    {"@type":"City","name":"Scottdale, GA"},
+    {"@type":"City","name":"Tucker, GA"}
+  ],
+  "founder": {"@type":"Person","name":"Ben Parrish"},
+  "foundingDate": "2008",
+  "knowsAbout": ["HVAC repair","Air conditioning installation","Furnace repair","Heat pump installation","Smart thermostat installation"]
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%230E2454'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Georgia, serif' font-size='34' font-weight='700' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230E2454'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='sans-serif' font-size='34' font-weight='700' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
@@ -87,17 +152,22 @@ section{position:relative}
 .section-h em{font-style:italic;color:var(--navy)}
 .section-sub{font-size:18px;max-width:680px;color:var(--muted);margin-bottom:48px;line-height:1.6}
 
+/* ===== ICONS (inline SVG) ===== */
+.icon-svg{display:inline-block;width:24px;height:24px;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;fill:none}
+
 /* ===== SERVICES ===== */
 .services{padding:120px 0;background:var(--bg)}
 .svc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:24px}
 .svc-tile{background:var(--bg-alt);padding:36px 32px;border-radius:14px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,border-color .2s;display:flex;flex-direction:column;justify-content:space-between;min-height:230px;position:relative;overflow:hidden}
 .svc-tile:hover{transform:translateY(-4px);box-shadow:0 24px 50px -20px rgba(10,23,51,.25);border-color:rgba(14,36,84,.25)}
-.svc-tile .icon{width:48px;height:48px;background:var(--navy);color:#fff;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px;font-weight:700}
+.svc-tile .icon{width:48px;height:48px;background:var(--navy);color:#fff;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px}
+.svc-tile .icon .icon-svg{width:22px;height:22px}
 .svc-tile h3{font-family:var(--display);font-size:24px;font-weight:700;color:var(--ink);margin-bottom:10px;line-height:1.1;letter-spacing:-0.01em}
 .svc-tile p{font-size:15px;color:var(--muted);line-height:1.6}
 .svc-tile.hero-tile{grid-column:span 2;grid-row:span 2;background:linear-gradient(155deg,var(--navy) 0%,var(--navy-deep) 100%);color:#fff;border:none;padding:56px 48px;min-height:340px;position:relative}
 .svc-tile.hero-tile::before{content:"";position:absolute;top:0;right:0;width:280px;height:280px;background:radial-gradient(circle at top right,rgba(200,32,45,.25) 0%,transparent 70%);pointer-events:none}
-.svc-tile.hero-tile .icon{background:var(--red);color:#fff;width:56px;height:56px;font-size:26px;border-radius:12px}
+.svc-tile.hero-tile .icon{background:var(--red);color:#fff;width:56px;height:56px;border-radius:12px}
+.svc-tile.hero-tile .icon .icon-svg{width:28px;height:28px}
 .svc-tile.hero-tile h3{color:#fff;font-size:clamp(28px,3.4vw,46px);margin-bottom:18px}
 .svc-tile.hero-tile p{color:rgba(255,255,255,.85);font-size:17px;max-width:540px;line-height:1.65}
 .svc-tile.hero-tile .badge{margin-top:24px;display:inline-flex;align-items:center;gap:10px;padding:10px 18px;background:rgba(229,181,60,.18);border:1px solid rgba(229,181,60,.45);border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.04em;color:#FCE0B5;width:fit-content}
@@ -135,7 +205,6 @@ section{position:relative}
 /* ===== GUARANTEE ===== */
 .guarantee{padding:120px 0;background:var(--red);color:#fff;overflow:hidden}
 .guarantee .wrap{display:grid;grid-template-columns:1fr 4fr;gap:48px;align-items:center;max-width:1100px}
-.guarantee .seal{font-family:var(--display);font-size:clamp(140px,16vw,200px);line-height:.85;opacity:.92;font-style:italic;font-weight:700;color:#fff;letter-spacing:-0.04em}
 .guarantee .body .lbl{font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:700;opacity:.85;margin-bottom:18px}
 .guarantee .body p{font-family:var(--display);font-size:clamp(26px,3.4vw,42px);font-weight:600;line-height:1.2;letter-spacing:-0.01em}
 .guarantee .body p em{font-style:italic;color:#FCE0B5}
@@ -205,6 +274,30 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 .foot-brand p{margin-top:14px;max-width:320px;color:rgba(255,255,255,.65);line-height:1.65}
 .foot-bottom{padding-top:32px;border-top:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.55);flex-wrap:wrap;gap:8px}
 
+/* ===== HERO TAG (the small line under H1) ===== */
+.hero h1 .h1-tag{display:block;font-family:var(--body);font-style:normal;font-weight:600;font-size:.22em;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-top:28px;line-height:1.4}
+
+/* ===== ACCURATE 4.6 STARS ===== */
+.stars-46{display:inline-flex;align-items:center;gap:0;line-height:1}
+.stars-46 svg{display:block}
+
+/* ===== GUARANTEE SEAL (replaces decorative quote) ===== */
+.guarantee .seal-svg{width:clamp(180px,18vw,240px);height:auto;color:#fff;display:block}
+.guarantee .seal-svg .seal-ring{fill:none;stroke:currentColor}
+
+/* ===== MAP / DIRECTIONS ===== */
+.behind-map{position:relative;width:100%;aspect-ratio:16/7;margin-top:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg-alt)}
+.behind-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.25) contrast(.96)}
+.directions-link{display:inline-flex;align-items:center;gap:8px;margin-top:18px;font-size:14px;font-weight:600;color:var(--navy);text-decoration:none;letter-spacing:.01em}
+.directions-link:hover{color:var(--red)}
+.directions-link .arr{transition:transform .15s}
+.directions-link:hover .arr{transform:translate(2px,-2px)}
+
+/* ===== FOOTER SERVICE AREA + LICENSE ===== */
+.foot-service-area{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-top:8px}
+.foot-license{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;font-size:12px;letter-spacing:.06em;color:rgba(255,255,255,.85);font-weight:600}
+.foot-license .dot{width:6px;height:6px;border-radius:50%;background:#7CC576}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:1024px){
   .svc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -227,8 +320,8 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
   .hero{min-height:80vh}
   .trust-strip .wrap{gap:12px;font-size:12px}
   .foot-grid{grid-template-columns:1fr}
-  .guarantee .wrap{grid-template-columns:1fr;gap:24px;text-align:center}
-  .guarantee .seal{font-size:120px}
+  .guarantee .wrap{grid-template-columns:1fr;gap:24px;text-align:center;justify-items:center}
+  .guarantee .seal-svg{width:160px}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -274,8 +367,8 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 <!-- HERO -->
 <section class="hero">
   <div class="wrap">
-    <div class="hero-eyebrow"><span class="dot"></span>Same-day repair · Decatur HVAC</div>
-    <h1>AC + heat repair.<br><em>Ben answers.</em><br>Decatur, since 2008.</h1>
+    <div class="hero-eyebrow"><span class="dot"></span>Decatur · Since 2008 · Open Sunday</div>
+    <h1>AC + heat repair.<br><em>Ben answers.</em><span class="h1-tag">Owner-operated · Same-day in most cases</span></h1>
     <p class="hero-sub"><strong>Ben Parrish</strong> answers the phone himself, drives the truck himself, and does the work himself. Same-day repair in most cases — including Sundays. No dispatcher, no apprentice rotation, no surprise fees.</p>
     <div class="hero-cta">
       <a href="tel:+14048049510" class="primary">📞 Call (404) 804-9510</a>
@@ -299,35 +392,53 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 
       <div class="svc-tile hero-tile">
         <div>
-          <div class="icon">⚙</div>
+          <div class="icon" aria-hidden="true">
+            <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 10h18M3 15h18"/><path d="M7.5 5V3M16.5 5V3M7.5 21v-2M16.5 21v-2"/></svg>
+          </div>
           <h3>Full system replacement.</h3>
-          <p>When your 15+ year old unit is past it, Ben handles the swap in a single day. Same hands from quote to walk-through. He shows you the new thermostat before he leaves and answers the phone for a year after.</p>
+          <p>When your 15+ year old unit is past it, Ben handles the swap with same hands from quote to walk-through. He shows you the new thermostat before he leaves and answers the phone for a year after.</p>
           <div class="badge">★ Interest-free financing available</div>
         </div>
       </div>
 
       <div class="svc-tile">
-        <div class="icon">❄</div>
+        <div class="icon" aria-hidden="true">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/><path d="M12 5l-2 2M12 5l2 2M12 19l-2-2M12 19l2-2M5 12l2-2M5 12l2 2M19 12l-2-2M19 12l-2 2"/></svg>
+        </div>
         <h3>AC repair</h3>
         <p>Not cooling, frozen coil, weak airflow. Same-day in most cases. Flat-rate quote before any wrench moves.</p>
       </div>
 
       <div class="svc-tile">
-        <div class="icon">🔥</div>
+        <div class="icon" aria-hidden="true">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2c.5 3.5 3.5 5 3.5 9a3.5 3.5 0 11-7 0c0-2 1.5-3 1.5-5.5C10.5 6.5 11.5 5 12 2z"/><path d="M12 9c0 2-1.2 2.5-1.2 4a1.2 1.2 0 102.4 0c0-1-.6-1.5-1.2-2.5"/></svg>
+        </div>
         <h3>Furnace &amp; heat</h3>
         <p>Short-cycling, no ignition, cold vents. Gas and electric residential systems — diagnosis on-site.</p>
       </div>
 
       <div class="svc-tile">
-        <div class="icon">📅</div>
+        <div class="icon" aria-hidden="true">
+          <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r=".5" fill="currentColor" stroke="none"/><circle cx="12" cy="14.5" r=".5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="14.5" r=".5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="17.5" r=".5" fill="currentColor" stroke="none"/><circle cx="12" cy="17.5" r=".5" fill="currentColor" stroke="none"/></svg>
+        </div>
         <h3>Sundays + weekends</h3>
         <p>Most Decatur HVAC shops shut Friday at 5. Ben answers 7 days a week, 9 to 5 — no weekend surcharge.</p>
       </div>
 
       <div class="svc-tile">
-        <div class="icon">🛠</div>
+        <div class="icon" aria-hidden="true">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 00-5.4 5.4l-7 7 1.6 1.6 7-7a4 4 0 005.4-5.4l-2.4 2.4-1.6-1.6 2.4-2.4z"/></svg>
+        </div>
         <h3>Tune-ups</h3>
         <p>Pre-summer or pre-winter. After 18 years on Atlanta systems Ben knows what fails first.</p>
+      </div>
+
+      <div class="svc-tile">
+        <div class="icon" aria-hidden="true">
+          <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg>
+        </div>
+        <h3>Thermostats &amp; controls</h3>
+        <p>Nest, Ecobee, Honeywell — sized to your system and wired right. Ben programs it before he leaves.</p>
       </div>
 
     </div>
@@ -346,11 +457,27 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
       <div style="padding-top:36px">
         <div class="reviews-rating">
           <div>
-            <div class="stars">★★★★★</div>
+            <div class="stars-46" role="img" aria-label="4.6 out of 5 stars">
+              <svg width="148" height="26" viewBox="0 0 148 26" aria-hidden="true">
+                <defs>
+                  <symbol id="star" viewBox="0 0 26 26">
+                    <polygon points="13,2 16.1,9.6 24.3,10.2 18.1,15.5 20.1,23.5 13,19.2 5.9,23.5 7.9,15.5 1.7,10.2 9.9,9.6"/>
+                  </symbol>
+                  <clipPath id="clip46"><rect x="0" y="0" width="135.6" height="26"/></clipPath>
+                </defs>
+                <g fill="rgba(229,181,60,.22)">
+                  <use href="#star" x="0"/><use href="#star" x="30"/><use href="#star" x="60"/><use href="#star" x="90"/><use href="#star" x="120"/>
+                </g>
+                <g fill="#E5B53C" clip-path="url(#clip46)">
+                  <use href="#star" x="0"/><use href="#star" x="30"/><use href="#star" x="60"/><use href="#star" x="90"/><use href="#star" x="120"/>
+                </g>
+              </svg>
+            </div>
             <div class="count">on Google · 45 reviews</div>
           </div>
           <div class="num">4.6</div>
         </div>
+        <!-- TODO: replace with direct GBP review URL using Ben's place_id, e.g. https://search.google.com/local/reviews?placeid=<PLACE_ID> -->
         <a class="reviews-link" href="https://www.google.com/search?q=Messiah+Heating+and+Air+Conditioning+Decatur+GA+reviews" target="_blank" rel="noopener">Read all 45 reviews →</a>
       </div>
     </div>
@@ -410,7 +537,27 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 <!-- GUARANTEE -->
 <section class="guarantee">
   <div class="wrap">
-    <div class="seal" aria-hidden="true">&ldquo;</div>
+    <svg class="seal-svg" viewBox="0 0 200 200" aria-hidden="true" role="img">
+      <defs>
+        <!-- Top arc travels CW (sweep=1) from left-middle to right-middle = through TOP of circle.
+             At the top, path direction is +x (left-to-right), so text reads right-side up. -->
+        <path id="seal-arc-top" d="M 26,100 A 74,74 0 0,1 174,100" fill="none"/>
+      </defs>
+      <circle class="seal-ring" cx="100" cy="100" r="94" stroke-width="1.5" opacity=".55"/>
+      <circle class="seal-ring" cx="100" cy="100" r="86" stroke-width="0.75" opacity=".3"/>
+      <circle class="seal-ring" cx="100" cy="100" r="64" stroke-width="0.5" opacity=".35"/>
+      <text font-family="Inter, sans-serif" font-size="9.2" font-weight="700" letter-spacing="4.5" fill="currentColor">
+        <textPath href="#seal-arc-top" startOffset="50%" text-anchor="middle">QUOTED PRICE GUARANTEE</textPath>
+      </text>
+      <text x="100" y="95" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-style="italic" font-weight="700" font-size="40" fill="currentColor">Ben's</text>
+      <text x="100" y="121" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" letter-spacing="4" font-weight="700" fill="currentColor" opacity=".92">WORD</text>
+      <g opacity=".55">
+        <line x1="62" y1="134" x2="86" y2="134" stroke="currentColor" stroke-width="0.6"/>
+        <circle cx="100" cy="134" r="1.2" fill="currentColor" stroke="none"/>
+        <line x1="114" y1="134" x2="138" y2="134" stroke="currentColor" stroke-width="0.6"/>
+      </g>
+      <text x="100" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="8" letter-spacing="3.5" font-weight="700" fill="currentColor" opacity=".75">DECATUR · SINCE 2008</text>
+    </svg>
     <div class="body">
       <div class="lbl">The Messiah Guarantee</div>
       <p>The price Ben quotes on the phone is the price you pay. If the final invoice is a dollar more, <em>the overage is on Ben.</em></p>
@@ -445,10 +592,10 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
           </div>
         </div>
         <div class="stat-row">
-          <div class="num">1</div>
+          <div class="num">0</div>
           <div>
-            <div class="lbl">Person on the call</div>
-            <div class="sub">Ben answers, Ben diagnoses, Ben fixes it. No dispatcher between you and the work.</div>
+            <div class="lbl">Dispatchers</div>
+            <div class="sub">No call center, no rotating apprentice, no handoffs. Ben answers, Ben diagnoses, Ben fixes it — same hands the whole way.</div>
           </div>
         </div>
       </div>
@@ -466,6 +613,14 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
       <div class="eyebrow"><span class="bar"></span>Real business · real office</div>
       <p class="pull">317 W Ponce de Leon Ave, Decatur. <em>The same desk Ben's been answering the phone from for 18 years.</em></p>
       <div class="meta">— No call center · no after-hours service</div>
+      <div class="behind-map">
+        <iframe
+          src="https://www.google.com/maps?q=317+W+Ponce+de+Leon+Ave+Decatur+GA+30030&output=embed"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Messiah Heating office at 317 W Ponce de Leon Ave, Decatur, GA"></iframe>
+      </div>
+      <a class="directions-link" href="https://www.google.com/maps/dir/?api=1&destination=317+W+Ponce+de+Leon+Ave+Decatur+GA+30030" target="_blank" rel="noopener">Get directions <span class="arr">↗</span></a>
     </div>
   </div>
 </section>
@@ -477,9 +632,10 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
       <div class="lbl">Interest-free financing</div>
       <h2>$0 down. $0 interest. <em>New system, today.</em></h2>
       <p>When a 20-year-old system fails in July, "wait and save" isn't an option. Messiah offers interest-free financing on full system replacements — installed by Ben, walked through with you before he leaves, supported for a year after.</p>
+      <!-- TODO: confirm financing partner name (Synchrony / GreenSky / Wells Fargo) and add "Financing through [Partner]" line below for buyer credibility -->
       <div class="points">
         <span><span class="check">✓</span> Amana certified install</span>
-        <span><span class="check">✓</span> Same-day swap in most cases</span>
+        <span><span class="check">✓</span> Fast turnaround — often within 48 hours</span>
         <span><span class="check">✓</span> Year-one support included</span>
       </div>
     </div>
@@ -515,19 +671,26 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
         <div class="brand-oval">M</div>
         <div class="foot-brand-name">Messiah Heating &amp; Air Conditioning</div>
         <p>Owner-operated HVAC in Decatur, GA since 2008. Ben Parrish answers the phone himself — no dispatcher, no call center, no after-hours service.</p>
+        <!-- TODO: replace placeholder license # with Ben's actual GA Class II Conditioned Air Contractor license -->
+        <div class="foot-license"><span class="dot"></span>Licensed · Bonded · Insured · GA Lic. #CN-TODO</div>
       </div>
       <div>
         <h5>Visit</h5>
         <p>317 W Ponce de Leon Ave<br>Decatur, GA 30030</p>
+        <a href="https://www.google.com/maps/dir/?api=1&destination=317+W+Ponce+de+Leon+Ave+Decatur+GA+30030" target="_blank" rel="noopener">Get directions ↗</a>
+        <!-- TODO: replace with direct GBP URL using Ben's place_id -->
+        <a href="https://www.google.com/search?q=Messiah+Heating+and+Air+Conditioning+Decatur+GA" target="_blank" rel="noopener">Google Business Profile ↗</a>
       </div>
       <div>
         <h5>Contact</h5>
         <a href="tel:+14048049510">(404) 804-9510</a>
         <a href="sms:+14048049510">Text a photo</a>
+        <h5 style="margin-top:24px">Hours</h5>
+        <p>Mon–Sun · 9am – 5pm<br><span style="color:var(--gold)">★ Sundays open</span></p>
       </div>
       <div>
-        <h5>Hours</h5>
-        <p>Mon–Sun · 9am – 5pm<br><span style="color:var(--gold)">★ Sundays open</span></p>
+        <h5>Service area</h5>
+        <p class="foot-service-area">Decatur · Avondale Estates · Druid Hills · Kirkwood · East Lake · Oakhurst · Scottdale · North Decatur · Belvedere Park · Tucker</p>
       </div>
     </div>
     <div class="foot-bottom">
