@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="description" content="Peach State Plumbing — Marietta plumber since 1994. Flat-rate pricing, owner answers the phone." />
+<title>Peach State Plumbing · Marietta GA · Since 1994</title>
+<link rel="stylesheet" href="../../../design_system/primitives.css" />
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --fg: #1c1c1c;
+    --accent: #c73b1e;
+    --muted: rgba(28,28,28,0.65);
+    --line: rgba(28,28,28,0.12);
+    --font-display: 'Bebas Neue', 'Inter', -apple-system, sans-serif;
+    --font-body:    'Inter', -apple-system, sans-serif;
+  }
+  body { font-family: var(--font-body); }
+  .display { font-family: var(--font-display); letter-spacing: 0.01em; }
+
+  /* sticky call CTA */
+  .sticky-call {
+    position: fixed; top: var(--s-3); right: var(--s-3);
+    background: var(--accent); color: var(--bg);
+    padding: var(--s-2) var(--s-4);
+    border-radius: var(--r-pill);
+    font-weight: 700; text-decoration: none;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  }
+
+  /* hero */
+  header.hero {
+    min-height: 80vh;
+    display: grid; grid-template-columns: 5fr 7fr;
+    align-items: end;
+    padding: var(--s-7) var(--s-4) var(--s-5);
+    gap: var(--s-5);
+  }
+  header.hero .copy { grid-column: 1; }
+  header.hero .photo { grid-column: 2; align-self: stretch; }
+  header.hero .photo .placeholder {
+    width: 100%; height: 100%; min-height: 320px;
+    background: linear-gradient(135deg, #1c1c1c 0%, #3a2820 100%);
+    border-radius: var(--r-md);
+    position: relative;
+  }
+  header.hero h1 {
+    font-family: var(--font-display);
+    font-size: var(--t-display);
+    line-height: var(--lh-tight);
+    color: var(--fg);
+    margin-bottom: var(--s-4);
+  }
+  header.hero h1 .accent { color: var(--accent); }
+  header.hero p.sub {
+    font-size: var(--t-h3);
+    color: var(--muted);
+    margin-bottom: var(--s-5);
+    max-width: 36ch;
+  }
+
+  @media (max-width: 768px) {
+    header.hero { grid-template-columns: 1fr; min-height: auto; padding: var(--s-6) var(--s-3) var(--s-4); }
+    header.hero .copy, header.hero .photo { grid-column: 1; }
+    header.hero .photo { order: -1; }
+    header.hero .photo .placeholder { min-height: 240px; }
+    header.hero h1 { font-size: clamp(40px, 14vw, 64px); }
+  }
+
+  /* services */
+  section.services { padding: var(--s-7) 0; background: var(--bg); }
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
+  }
+  .service {
+    border-top: 2px solid var(--line);
+    padding-top: var(--s-3);
+  }
+  .service h3 { font-size: var(--t-h3); margin-bottom: var(--s-2); }
+  .service p { color: var(--muted); }
+
+  /* review */
+  section.review {
+    padding: var(--s-8) 0;
+    background: #1c1c1c;
+    color: #f5f0e8;
+  }
+  section.review blockquote {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 56px);
+    line-height: 1.15;
+    font-style: italic;
+    border-left: 3px solid var(--accent);
+    padding-left: var(--s-5);
+    max-width: 56ch;
+  }
+  section.review .attr {
+    color: rgba(245,240,232,0.7);
+    margin-top: var(--s-3);
+    font-size: var(--t-body);
+    font-style: normal;
+  }
+
+  /* CTA footer */
+  section.cta-final {
+    padding: var(--s-8) 0;
+    text-align: center;
+    background: var(--accent);
+    color: var(--bg);
+  }
+  section.cta-final h2 {
+    font-family: var(--font-display);
+    font-size: var(--t-h1);
+    margin-bottom: var(--s-4);
+  }
+  footer {
+    padding: var(--s-5) 0;
+    color: var(--muted);
+    font-size: 0.85em;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<a href="tel:+17705550101" class="sticky-call" aria-label="Call Peach State Plumbing">Call (770) 555-0101</a>
+
+<header class="hero">
+  <div class="copy container">
+    <div class="eyebrow">Marietta · GA · Est 1994</div>
+    <h1 class="display">Joey answers <br>his own phone. <span class="accent">Flat-rate pricing.</span></h1>
+    <p class="sub">32 years of plumbing in Marietta, Kennesaw, and Acworth. The price I quote is the price you pay.</p>
+    <a href="tel:+17705550101" class="button-primary">Call (770) 555-0101</a>
+  </div>
+  <div class="photo">
+    <div class="placeholder" role="img" aria-label="Peach State Plumbing service van"></div>
+  </div>
+</header>
+
+<section class="services">
+  <div class="container">
+    <div class="eyebrow" style="margin-bottom: var(--s-4)">What I fix</div>
+    <div class="services-grid">
+      <div class="service">
+        <h3>Slab leak detection</h3>
+        <p>32 years finding leaks others can't. Diagnostic in under an hour or it's free.</p>
+      </div>
+      <div class="service">
+        <h3>Water heater install</h3>
+        <p>Same-day in most cases. Tank, tankless, electric, gas.</p>
+      </div>
+      <div class="service">
+        <h3>Drain cleaning</h3>
+        <p>Hydro-jet for the hard ones. No diagnostic fee for repeat customers.</p>
+      </div>
+      <div class="service">
+        <h3>Sewer line repair</h3>
+        <p>Camera inspection first. You see what I see before any work happens.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="review">
+  <div class="container">
+    <blockquote>
+      "Joey diagnosed a slab leak in 10 minutes that another company quoted $4,500 to find. His repair: $1,890 flat. 32 years of doing this shows."
+      <div class="attr">— Linda M., Marietta</div>
+    </blockquote>
+  </div>
+</section>
+
+<section class="cta-final">
+  <div class="container">
+    <h2 class="display">Got water where it shouldn't be?</h2>
+    <p style="margin-bottom: var(--s-5); max-width: 40ch; margin-left: auto; margin-right: auto;">Call me. I'll tell you what's wrong before I tell you what it costs.</p>
+    <a href="tel:+17705550101" class="button-secondary" style="background: var(--bg); color: var(--accent); border-color: var(--bg);">Call (770) 555-0101</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    Peach State Plumbing · 1234 Cobb Pkwy, Marietta GA 30060 · <a href="tel:+17705550101" style="color: var(--muted);">(770) 555-0101</a>
+  </div>
+</footer>
+
+</body>
+</html>
