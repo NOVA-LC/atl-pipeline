@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 *.db
 demos_repo/
+
+build_agent/tests/_smoke_output/
