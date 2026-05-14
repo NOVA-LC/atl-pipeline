@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-marvell-tile-stone",
+  "source_url": "https://www.awwwards.com/sites/marvell-tile-stone",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["premium-craftsman", "documentary-photographic"],
+  "industry_fits": ["plumbing", "roofing"],
+  "what_works": "Immersive, uninterrupted scroll through full-bleed case-study photography of materials; the hero is one giant texture-forward image with a tiny restrained wordmark and label-grade type lockup in the corner. Reads as a premium materials supplier, not a marketing site.",
+  "what_does_not_translate": "The gesture-based cursor transitions and React/Next.js scroll choreography are overkill for a single-page contractor build — keep the composition, drop the JS.",
+  "palette_dominant": ["#E8E5DF", "#35311F", "#9C8A6B"],
+  "type_observations": "Likely a single neutral grotesk (e.g. Suisse / Inter) at small labels + giant pull-line; no display family, scale rhythm carries the hierarchy.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-adcker",
+  "source_url": "https://www.awwwards.com/sites/adcker",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["technical-minimal", "typographic-statement"],
+  "industry_fits": ["cleaning", "painting"],
+  "what_works": "Off-white shell with one disciplined display face doing all the work — large headline rests against generous whitespace, and the gallery loads with a single line transition. For a boutique cleaning crew or high-end painter, the spareness reads as 'we charge more for a reason.'",
+  "what_does_not_translate": "GSAP + BARBA.js page transitions are real engineering — keep the cream/charcoal restraint and the typographic confidence, render section changes as plain anchor jumps.",
+  "palette_dominant": ["#EFEDEA", "#191919", "#FFFFFF"],
+  "type_observations": "One serif display at hero scale (~120px clamp) + one neutral sans body; the page is essentially a one-typeface conversation.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

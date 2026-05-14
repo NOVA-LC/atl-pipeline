@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-t11",
+  "source_url": "https://www.awwwards.com/sites/t11",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["aggressive-bold", "modern-tech"],
+  "industry_fits": ["auto", "pest_control"],
+  "what_works": "Hero is a single looping silent video of work in motion behind oversized lockup type; portfolio thumbnails 'warp' on scroll into the next case. The video-as-hero pattern is exactly what a busy mobile mechanic or pest-control crew needs when they have phone footage but not editorial stills.",
+  "what_does_not_translate": "The 'list warp' transformation on portfolio entries is a JS-heavy custom interaction — keep the silent-loop hero and the dark charcoal/cream contrast, skip the warp.",
+  "palette_dominant": ["#222222", "#F5F5F5", "#FFFFFF"],
+  "type_observations": "One heavy grotesk display at 120-180px clamp; tiny mono-style labels for nav and metadata.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

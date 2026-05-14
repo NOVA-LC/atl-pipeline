@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-shed-design",
+  "source_url": "https://shed.design",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["technical-minimal", "typographic-statement"],
+  "industry_fits": ["electrical", "hvac", "plumbing"],
+  "what_works": "Dark-forward Swiss grid with placeholder SVGs revealing the underlying structure of the page — the skeleton IS the design. Project tiles drop in as content, but the grid remains visible as an honest architectural decision.",
+  "what_does_not_translate": "Dark placeholder-driven aesthetic reads agency-cool; for trades, lift the visible-grid honesty and disciplined whitespace, swap dark canvas for light.",
+  "palette_dominant": ["#000000", "#FFFFFF", "#181818", "#9C9C9C"],
+  "type_observations": "Single grotesk family, no decoration, hierarchy purely from size + position. The grid itself does the typographic work.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

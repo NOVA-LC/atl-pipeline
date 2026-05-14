@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-farm-minerals",
+  "source_url": "https://www.awwwards.com/sites/farm-minerals",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["neighborhood-local", "process-led"],
+  "industry_fits": ["landscaping", "pest_control"],
+  "what_works": "Sage-green and cream agricultural palette with illustrated diagrams replacing stock photography — every section walks through 'how it works on your soil' rather than 'about us.' A landscaper or lawn-treatment crew can lift the diagrammed-process structure verbatim and feel like a specialist, not a generalist.",
+  "what_does_not_translate": "The plant-growth scroll animations and corn-crop preloader are bespoke illustration work — the contractor build replaces those with three simple SVG icons in the same palette.",
+  "palette_dominant": ["#465626", "#F4EDE6", "#2A341A"],
+  "type_observations": "Single grotesk in two weights (medium display ~64px, regular body 16px); no decorative serif, the diagrams carry the personality.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

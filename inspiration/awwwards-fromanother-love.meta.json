@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-fromanother-love",
+  "source_url": "https://www.awwwards.com/sites/fromanother-love",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["rugged-editorial", "documentary-photographic"],
+  "industry_fits": ["auto", "painting"],
+  "what_works": "Artist-led agency portfolio with editorial pacing — hero is a single cinematic still with a tight one-line headline, then sections breathe at magazine-spread length. A body shop or pro painter with strong project photos gets a gallery that feels curated, not catalog.",
+  "what_does_not_translate": "Custom loading states and mouse-driven nav effects need an engineer; the contractor build should keep the pacing and crops but render navigation as a plain anchor list.",
+  "palette_dominant": ["#000000", "#F2F2F2", "#1A1A1A"],
+  "type_observations": "Editorial serif headline (Tiempos-esque) at display sizes paired with neutral grotesk body; high tracking on small caps eyebrows.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

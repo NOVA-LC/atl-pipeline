@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-portfolio-2025",
+  "source_url": "https://www.awwwards.com/sites/portfolio-2025",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["modern-tech", "typographic-statement", "technical-minimal"],
+  "industry_fits": ["electrical", "auto", "hvac", "plumbing"],
+  "what_works": "Numbered project grid (1-23) with monospace counters acts as a 'system at work' visual cue — same trick lets a younger contractor frame jobs as 'Job #047 / completed' rather than generic testimonials. Electric-blue link state is the only color in the layout.",
+  "what_does_not_translate": "Interaction-designer level micro-animations would tank Lighthouse on mobile — borrow the numbered system, skip the animations.",
+  "palette_dominant": ["#0A0A0A", "#FFFFFF", "#2D5BFF", "#7F7F7F"],
+  "type_observations": "Monospace numerals + grotesk body; numbers and labels are the same height as adjacent body text — the system reads as 'engineered', not 'designed'.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

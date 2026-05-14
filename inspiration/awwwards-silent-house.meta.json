@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-silent-house",
+  "source_url": "https://www.awwwards.com/sites/silent-house",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["high-touch-luxury", "process-led"],
+  "industry_fits": ["cleaning", "electrical"],
+  "what_works": "Pure black-on-white shell with a fullscreen menu overlay and project-detail pages that read like an architecture monograph. Translates beautifully for a high-touch service brand that wants to feel like 'the firm,' not 'the contractor.'",
+  "what_does_not_translate": "The fullscreen 3D intro animation and complex page-transition state machine will eat the build budget — keep the editorial restraint, skip the WebGL.",
+  "palette_dominant": ["#000000", "#FFFFFF", "#A8A8A8"],
+  "type_observations": "Single high-end serif or near-grotesk display at huge sizes against generous whitespace; body type is a small disciplined sans.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

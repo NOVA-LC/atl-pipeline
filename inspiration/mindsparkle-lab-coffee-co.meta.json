@@ -1,0 +1,13 @@
+{
+  "id": "mindsparkle-lab-coffee-co",
+  "source_url": "https://mindsparklemag.com/design/lab-coffee-co-branding/",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["technical-minimal", "testimonial-led"],
+  "industry_fits": ["hvac", "plumbing"],
+  "what_works": "Branding system built around a custom icon grid representing taste/smell variables — every product (or in our case, every service) gets a small diagrammed glyph, all rendered in matching stroke weight. Transplants beautifully for an HVAC tech or plumber who wants services to feel measured/diagnosed, not bulleted.",
+  "what_does_not_translate": "The silver metallic packaging substrate is offline brand material, not web — translate the icon-system idea to inline SVGs in one accent color.",
+  "palette_dominant": ["#C9C5BE", "#1A1A1A", "#FFFFFF"],
+  "type_observations": "Single ultra-clean grotesk in two weights; the icon stroke weight matches the type stroke weight for cohesion.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

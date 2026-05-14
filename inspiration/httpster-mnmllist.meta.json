@@ -1,0 +1,13 @@
+{
+  "id": "httpster-mnmllist",
+  "source_url": "https://mnmll.ist",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["modern-tech", "technical-minimal", "typographic-statement"],
+  "industry_fits": ["electrical", "hvac", "auto", "plumbing"],
+  "what_works": "Grid-aligned monospace labels sit alongside neutral sans body — every section reads like a spec sheet. The 'system / numbered / metadata' feel translates to 'we measure everything' for a technical trade.",
+  "what_does_not_translate": "Pure monochrome minimalism can feel cold for a service business — add one warm accent (warm-grey or muted blue) so it reads competent, not clinical.",
+  "palette_dominant": ["#FFFFFF", "#0A0A0A", "#6B6B6B", "#E6E6E6"],
+  "type_observations": "Monospace (JetBrains Mono / IBM Plex Mono style) for labels and metadata; neutral grotesk for paragraphs — type pairing carries the 'tech-credible' signal.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

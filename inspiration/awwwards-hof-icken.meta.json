@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-hof-icken",
+  "source_url": "https://www.awwwards.com/sites/hof-icken-organic-farming-and-agriculture",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["family-legacy", "neighborhood-local"],
+  "industry_fits": ["landscaping", "tree_service"],
+  "what_works": "Single-page fullscreen site with big background texture photography of the farm and a minimal type-only nav — no logo lockup, no marketing chrome, just 'this is who we are, this is where we work.' Translates exactly for a multi-generation landscaping or tree-service crew with strong field imagery.",
+  "what_does_not_translate": "Old-school full-screen-image-per-section pattern needs careful mobile crop choices — copy the spirit, but on mobile let the photos go 16:10 above text rather than fighting for full viewport.",
+  "palette_dominant": ["#3A4A2A", "#E8DFC9", "#1A1A14"],
+  "type_observations": "Single grotesk in light + regular at moderate scale (~56px display); zero decorative type, the photography carries the brand.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}
