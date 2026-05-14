@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dialer · MVP</title>
+<style>
+  :root {
+    --bg:#0a0a0f; --panel:#14141f; --line:#2a2a3e; --text:#e6e6ec;
+    --muted:#8a8aa0; --accent:#f97316; --green:#22c55e; --red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:32px;width:100%;max-width:480px}
+  h1{font-size:1.5rem;margin-bottom:4px}
+  .sub{color:var(--muted);font-size:.85rem;margin-bottom:24px}
+  label{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+  input{font-size:1.5rem;padding:14px 16px;width:100%;background:#0a0a14;color:#fff;border:1px solid var(--line);border-radius:10px;font-family:'SF Mono',Consolas,monospace;letter-spacing:1px}
+  input:focus{outline:none;border-color:var(--accent)}
+  .row{display:flex;gap:12px;margin-top:16px}
+  button{flex:1;font-size:1rem;padding:16px;border:none;border-radius:10px;cursor:pointer;font-weight:700;letter-spacing:.5px;text-transform:uppercase;transition:opacity .15s}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.call{background:var(--green);color:#000}
+  button.hang{background:var(--red);color:#fff}
+  .status{margin-top:20px;padding:12px 14px;background:#0a0a14;border:1px solid var(--line);border-radius:10px;font-size:.85rem;font-family:'SF Mono',Consolas,monospace;color:var(--muted);min-height:42px;display:flex;align-items:center}
+  .status.ok{color:var(--green);border-color:#1a4730}
+  .status.err{color:var(--red);border-color:#4a1e1e}
+  .meta{margin-top:16px;font-size:.7rem;color:#5a5a70;text-align:center}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:8px}
+  .dot.live{background:var(--green);box-shadow:0 0 8px var(--green)}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Dialer · MVP</h1>
+  <div class="sub">Twilio Voice in-browser. Verifies outbound call before we wire the lead list.</div>
+
+  <label for="number">Number to call (E.164, e.g. +14045551234)</label>
+  <input id="number" placeholder="+1" autofocus />
+
+  <div class="row">
+    <button id="call" class="call" disabled>Call</button>
+    <button id="hangup" class="hang" disabled>Hang up</button>
+  </div>
+
+  <div class="status" id="status"><span class="dot" id="dot"></span><span id="msg">Initializing…</span></div>
+
+  <div class="meta">Press <kbd>Enter</kbd> in the number field to call.</div>
+</div>
+
+<script src="https://unpkg.com/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  let device, activeCall, deviceReady = false;
+
+  function setStatus(msg, level = "") {
+    $("msg").textContent = msg;
+    const s = $("status");
+    s.className = "status" + (level ? " " + level : "");
+    $("dot").className = "dot" + (level === "ok" ? " live" : "");
+  }
+
+  function syncButtons() {
+    const to = toE164($("number").value);
+    $("call").disabled = !deviceReady || !!activeCall || !to;
+    $("hangup").disabled = !activeCall;
+  }
+
+  async function init() {
+    try {
+      setStatus("fetching access token…");
+      const r = await fetch("/token");
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${r.status}`);
+      }
+      const { token, identity } = await r.json();
+      setStatus("registering with Twilio…");
+      device = new Twilio.Device(token, { codecPreferences: ["opus", "pcmu"], logLevel: 1 });
+      device.on("registered", () => {
+        deviceReady = true;
+        setStatus(`ready · identity=${identity}`, "ok");
+        syncButtons();
+      });
+      device.on("error", e => {
+        deviceReady = false;
+        setStatus("device error: " + (e.message || e), "err");
+        syncButtons();
+      });
+      await device.register();
+    } catch (e) {
+      deviceReady = false;
+      setStatus("init failed: " + e.message, "err");
+      syncButtons();
+    }
+  }
+
+  function toE164(raw) {
+    const digits = (raw || "").replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.length === 10) return "+1" + digits;          // bare 10 → US
+    if (digits.length === 11 && digits[0] === "1") return "+" + digits;
+    if (digits.length >= 11) return "+" + digits;            // assume already has country code
+    return "";                                               // too short
+  }
+
+  async function makeCall() {
+    if (!deviceReady || !device) { setStatus("device not ready yet", "err"); return; }
+    const raw = $("number").value.trim();
+    if (!raw) { setStatus("enter a number first", "err"); return; }
+    const to = toE164(raw);
+    if (!to) { setStatus("invalid number — type 10 digits", "err"); return; }
+    $("number").value = to;
+    localStorage.setItem("dialer:lastNumber", to);
+    try {
+      setStatus("dialing " + to + "…");
+      activeCall = await device.connect({ params: { To: to } });
+      syncButtons();
+      activeCall.on("accept", () => setStatus("connected · " + to, "ok"));
+      activeCall.on("ringing", () => setStatus("ringing " + to + "…"));
+      const finishCall = msg => {
+        setStatus(msg);
+        activeCall = null;
+        syncButtons();
+      };
+      activeCall.on("disconnect", () => finishCall("call ended"));
+      activeCall.on("cancel", () => finishCall("call canceled"));
+      activeCall.on("reject", () => finishCall("call rejected"));
+      activeCall.on("error", e => {
+        setStatus("call error: " + (e.message || e), "err");
+        activeCall = null;
+        syncButtons();
+      });
+    } catch (e) {
+      setStatus("connect failed: " + e.message, "err");
+      activeCall = null;
+      syncButtons();
+    }
+  }
+
+  function hangUp() {
+    if (activeCall) activeCall.disconnect();
+  }
+
+  const savedNumber = localStorage.getItem("dialer:lastNumber");
+  if (savedNumber) $("number").value = savedNumber;
+
+  $("call").onclick = makeCall;
+  $("hangup").onclick = hangUp;
+  $("number").addEventListener("input", () => {
+    const raw = $("number").value.trim();
+    if (raw) localStorage.setItem("dialer:lastNumber", raw);
+    else localStorage.removeItem("dialer:lastNumber");
+    syncButtons();
+  });
+  $("number").addEventListener("keydown", e => { if (e.key === "Enter" && !$("call").disabled) makeCall(); });
+
+  syncButtons();
+  init();
+</script>
+</body>
+</html>

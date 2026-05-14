@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Brain-off Dialer</title>
+<style>
+  :root {
+    --bg:#0a0a0f; --panel:#14141f; --line:#2a2a3e; --text:#e6e6ec;
+    --muted:#8a8aa0; --accent:#f97316; --green:#22c55e; --red:#ef4444;
+    --blue:#3b82f6; --purple:#a855f7; --yellow:#eab308;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:16px}
+  .layout{display:grid;grid-template-columns:280px 1fr 320px;gap:16px;max-width:1500px;margin:0 auto;height:calc(100vh - 32px)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto}
+  h2{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
+  /* ── header bar ───────────────────────────────────────────────────────── */
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;grid-column:1 / -1}
+  .header h1{font-size:1.1rem}
+  .header h1 span{color:var(--accent)}
+  .controls{display:flex;gap:8px;align-items:center;font-size:.8rem}
+  .badge{padding:4px 10px;border-radius:999px;background:#0a0a14;border:1px solid var(--line);font-size:.7rem;color:var(--muted);font-family:'SF Mono',Consolas,monospace}
+  .badge.live{color:var(--green);border-color:#1a4730}
+  .badge.err{color:var(--red);border-color:#4a1e1e}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
+  .dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
+  /* ── left: queue ──────────────────────────────────────────────────────── */
+  .queue-item{padding:10px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;border-left:3px solid transparent;background:#0a0a14;font-size:.85rem}
+  .queue-item:hover{background:#1d1d2c}
+  .queue-item.current{border-left-color:var(--accent);background:#1d1d2c}
+  .queue-item.dialing{box-shadow:0 0 0 1px rgba(34,197,94,.35),0 0 18px rgba(34,197,94,.1)}
+  .queue-item.done{opacity:.4}
+  .queue-item .biz{font-weight:600}
+  .queue-item .meta{font-size:.7rem;color:var(--muted);margin-top:2px}
+  .queue-expanded{display:none;margin-top:8px;padding-top:8px;border-top:1px solid #2a2a3e;color:var(--muted);font-size:.72rem;line-height:1.5}
+  .queue-item.current .queue-expanded{display:block}
+  .queue-now{display:inline-flex;gap:6px;align-items:center;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.7px;font-size:.65rem}
+  .queue-item .code{display:inline-block;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .code.no_answer{background:#1e293b;color:#94a3b8}
+  .code.voicemail{background:#3b3b1a;color:var(--yellow)}
+  .code.callback{background:#1e3a8a;color:#93c5fd}
+  .code.not_interested{background:#4a1e1e;color:#fca5a5}
+  .code.interested{background:#14532d;color:#86efac}
+  .code.dnc{background:#3f0a0a;color:#fecaca}
+  .code.skip{background:#374151;color:#9ca3af}
+  /* ── center: current lead ─────────────────────────────────────────────── */
+  .lead-card{display:flex;flex-direction:column;height:100%}
+  .biz-name{font-size:2rem;font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
+  .biz-sub{color:var(--muted);font-size:.95rem;margin-bottom:20px}
+  .phone-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+  .phone-chip{padding:8px 14px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:1rem;cursor:pointer;transition:all .15s}
+  .phone-chip:hover{border-color:var(--accent)}
+  .phone-chip.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+  .talking{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:20px}
+  .talking-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+  .talking ul{list-style:none}
+  .talking li{padding:4px 0;font-size:.95rem;border-bottom:1px solid #1a1a2e}
+  .talking li:last-child{border-bottom:none}
+  .talking li::before{content:"▸ ";color:var(--accent)}
+  .demo-link{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;color:var(--blue);text-decoration:none;font-size:.85rem;margin-bottom:24px}
+  .demo-link:hover{border-color:var(--blue)}
+  .notes-panel{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 16px}
+  .notes-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .notes-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .note-save-state{font-size:.7rem;color:var(--muted)}
+  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .notes-panel input,.notes-panel textarea{width:100%;background:#111120;border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:.85rem;padding:10px 11px;outline:none}
+  .notes-panel input:focus,.notes-panel textarea:focus{border-color:var(--accent)}
+  .notes-panel textarea{min-height:92px;resize:vertical;line-height:1.45}
+  .note-save-row{display:flex;justify-content:flex-end;margin-top:8px}
+  .btn-note{border:1px solid var(--line);background:#1a1a2e;color:var(--text);border-radius:7px;padding:8px 12px;font-size:.78rem;cursor:pointer}
+  .btn-note:hover{border-color:var(--accent)}
+  .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:auto}
+  .action{padding:14px 8px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;font-size:.8rem}
+  .action:hover{transform:translateY(-1px)}
+  .action .kbd{display:inline-block;background:#1a1a2e;padding:2px 6px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;margin-right:4px;color:var(--muted)}
+  .action.no_answer:hover{border-color:#94a3b8;color:#94a3b8}
+  .action.voicemail:hover{border-color:var(--yellow);color:var(--yellow)}
+  .action.callback:hover{border-color:var(--blue);color:var(--blue)}
+  .action.not_interested:hover{border-color:var(--red);color:var(--red)}
+  .action.interested:hover{border-color:var(--green);color:var(--green)}
+  .action.build{grid-column:1 / -1;border-color:#274a35;background:linear-gradient(135deg,#102015,#0a0a14);color:#baf7cf;font-weight:700}
+  .action.build:hover{border-color:var(--green);color:#dcffe8}
+  .action.dnc:hover{border-color:#fecaca;color:#fecaca}
+  .build-status{margin:10px 0 14px;padding:10px 12px;border:1px solid #274a35;border-radius:8px;background:#0b1710;color:#baf7cf;font-size:.78rem}
+  .build-status a{color:var(--green);font-weight:700;text-decoration:none}
+  .call-row{display:flex;gap:8px;margin-bottom:16px}
+  .call-row button{flex:1;padding:18px;border:none;border-radius:10px;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:opacity .15s}
+  .call-row button:disabled{opacity:.3;cursor:not-allowed}
+  .btn-call{background:var(--green);color:#000}
+  .btn-hang{background:var(--red);color:#fff}
+  .btn-pause{background:#374151;color:#fff;flex:0 0 110px !important}
+  .btn-pause.paused{background:var(--yellow);color:#000}
+  .dtmf-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:-6px 0 16px;padding:12px;border:1px solid #20452f;border-radius:10px;background:#07130c}
+  .dtmf-head{grid-column:1 / -1;display:flex;justify-content:space-between;color:#86efac;font-size:.72rem;text-transform:uppercase;letter-spacing:1px}
+  .dtmf-btn{border:1px solid #27543a;background:#0d1f14;color:#dcffe8;border-radius:8px;padding:12px;font-size:1rem;font-weight:800;cursor:pointer}
+  .dtmf-btn:hover{border-color:var(--green);background:#13361f}
+  .post-call{margin:-4px 0 16px;padding:14px;border:1px solid #3c3320;border-radius:10px;background:#171105}
+  .post-call h3{font-size:.86rem;margin-bottom:5px;color:#facc15}
+  .post-call p{font-size:.8rem;color:#d6c8a0;line-height:1.45;margin-bottom:10px}
+  .post-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .post-actions button{border:1px solid #4c3c19;background:#241a08;color:#fde68a;border-radius:8px;padding:10px 8px;font-size:.78rem;cursor:pointer}
+  .post-actions button:hover{border-color:#eab308}
+  .ivr-suggestion{margin:-4px 0 16px;padding:13px;border:1px solid #3c3320;border-radius:10px;background:#171105;color:#fde68a}
+  .ivr-suggestion strong{display:block;margin-bottom:5px}
+  .ivr-suggestion p{font-size:.78rem;line-height:1.45;color:#d6c8a0;margin-bottom:10px}
+  .ivr-suggestion button{border:1px solid #eab308;background:#312409;color:#fde68a;border-radius:8px;padding:10px 12px;font-weight:800;cursor:pointer}
+  /* ── right: session stats + dispositions ──────────────────────────────── */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .stat{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .stat .v{font-size:1.5rem;font-weight:700}
+  .stat .l{font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+  .stat.green .v{color:var(--green)}
+  .stat.blue .v{color:var(--blue)}
+  .disp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a2e;font-size:.8rem}
+  .disp-row:last-child{border-bottom:none}
+  .disp-row .b{color:var(--muted);font-size:.7rem}
+  .build-row{padding:9px 0;border-bottom:1px solid #1a1a2e;font-size:.8rem}
+  .build-row:last-child{border-bottom:none}
+  .build-row .b{color:var(--muted);font-size:.72rem;margin-top:2px}
+  .build-row a{color:var(--green);text-decoration:none;font-weight:700}
+  .event-row{padding:8px 0;border-bottom:1px solid #1a1a2e;font-size:.78rem;line-height:1.35}
+  .event-row:last-child{border-bottom:none}
+  .event-row .t{color:var(--muted);font-size:.68rem;margin-bottom:2px}
+  .event-row.warn{color:#fde68a}
+  .event-row.err{color:#fca5a5}
+  .event-row.ok{color:#bbf7d0}
+  .build-pill{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#172033;color:#93c5fd;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px}
+  .build-pill.done{background:#14532d;color:#86efac}
+  .build-pill.error{background:#4a1e1e;color:#fca5a5}
+  kbd{display:inline-block;background:#1a1a2e;padding:1px 5px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Brain-off <span>Dialer</span></h1>
+  <div class="controls">
+    <span class="badge" id="from-badge">FROM ?</span>
+    <span class="badge" id="src-badge">SRC ?</span>
+    <span class="badge" id="device-badge"><span class="dot" id="device-dot"></span><span id="device-msg">init…</span></span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: queue ─────────────────────────────────────────────────────── -->
+  <div class="panel">
+    <h2>Queue · <span id="queue-progress">0 / 0</span></h2>
+    <div id="queue"></div>
+  </div>
+
+  <!-- CENTER: current lead ────────────────────────────────────────────── -->
+  <div class="panel lead-card" id="lead-card">
+    <div id="lead-content"><div class="empty">Loading queue…</div></div>
+  </div>
+
+  <!-- RIGHT: session ──────────────────────────────────────────────────── -->
+  <div class="panel">
+    <h2>Session</h2>
+    <div class="stats">
+      <div class="stat"><div class="l">Dialed</div><div class="v" id="stat-dialed">0</div></div>
+      <div class="stat green"><div class="l">Interested</div><div class="v" id="stat-interested">0</div></div>
+      <div class="stat blue"><div class="l">Callbacks</div><div class="v" id="stat-callback">0</div></div>
+      <div class="stat"><div class="l">No Ans/VM</div><div class="v" id="stat-noans">0</div></div>
+    </div>
+    <h2>Call Events</h2>
+    <div id="call-events" style="margin-bottom:16px"></div>
+    <h2>Builds</h2>
+    <div id="builds" style="margin-bottom:16px"></div>
+    <h2>Shortcuts</h2>
+    <div style="font-size:.78rem;line-height:1.9;color:var(--muted);margin-bottom:16px">
+      <div><kbd>Space</kbd> pause / resume auto-advance</div>
+      <div><kbd>Enter</kbd> call selected phone</div>
+      <div><kbd>1</kbd> no answer · <kbd>2</kbd> voicemail</div>
+      <div><kbd>3</kbd> callback · <kbd>4</kbd> not interested</div>
+      <div><kbd>5</kbd> interested · <kbd>B</kbd> interested + build</div>
+      <div><kbd>D</kbd> DNC</div>
+      <div><kbd>Esc</kbd> skip · <kbd>←/→</kbd> prev/next lead</div>
+    </div>
+    <h2>Recent</h2>
+    <div id="recent"></div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// ── state ────────────────────────────────────────────────────────────────
+const state = {
+  leads: [],
+  dispositions: {},     // lead_id → [{phone, code, at}]
+  notes: {},
+  idx: 0,
+  phoneIdx: 0,
+  device: null,
+  call: null,
+  paused: false,
+  autoAdvanceTimer: null,
+  noteSaveTimer: null,
+  postCall: null,
+  callStartedAt: null,
+  lastCallError: "",
+  sessionId: (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+  ivrSince: 0,
+  ivrTimer: null,
+  ivrSuggestion: null,
+  dialingLeadId: null,
+  buildJobs: {},
+  callEvents: [],
+};
+
+function fmtPhone(e) {
+  const d = (e || "").replace(/\D/g, "").slice(-10);
+  return d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : e;
+}
+
+function setDeviceStatus(msg, level) {
+  $("device-msg").textContent = msg;
+  $("device-badge").className = "badge" + (level ? " " + level : "");
+  $("device-dot").className = "dot" + (level === "live" ? " live" : "");
+}
+
+function fmtDuration(ms) {
+  const s = Math.max(0, Math.round((ms || 0) / 1000));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+function logCallEvent(message, level = "") {
+  state.callEvents.unshift({
+    message,
+    level,
+    at: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }),
+  });
+  state.callEvents = state.callEvents.slice(0, 10);
+  renderCallEvents();
+}
+
+// ── load queue ───────────────────────────────────────────────────────────
+async function loadQueue() {
+  const r = await fetch("/leads");
+  const d = await r.json();
+  state.leads = d.leads;
+  state.dispositions = d.dispositions || {};
+  state.notes = d.notes || {};
+  $("from-badge").textContent = "FROM " + d.from_number;
+  $("src-badge").textContent  = "SRC "  + d.source.toUpperCase();
+  if (d.source === "mock") $("src-badge").className = "badge err";
+  else $("src-badge").className = "badge live";
+  renderAll();
+  focusCurrentLead("auto");
+}
+
+// ── render ───────────────────────────────────────────────────────────────
+function renderAll() { renderQueue(); renderCurrent(); renderStats(); renderRecent(); renderBuilds(); renderCallEvents(); }
+
+function renderQueue() {
+  const el = $("queue");
+  $("queue-progress").textContent = `${state.idx + 1} / ${state.leads.length}`;
+  if (!state.leads.length) { el.innerHTML = '<div class="empty">No leads</div>'; return; }
+  el.innerHTML = state.leads.map((l, i) => {
+    const disps = state.dispositions[l.id] || [];
+    const last  = disps.length ? disps[disps.length-1].code : null;
+    const cls   = ["queue-item"];
+    if (i === state.idx) cls.push("current");
+    if (state.dialingLeadId === l.id) cls.push("dialing");
+    if (last && last !== "skip") cls.push("done");
+    const codeHtml = last ? `<span class="code ${last}">${last.replace("_"," ")}</span>` : "";
+    const job = state.buildJobs[l.id];
+    const note = state.notes[l.id] || {};
+    const jobHtml = job ? `<div>Build: <span class="build-pill ${job.status}">${job.status}</span></div>` : "";
+    const noteBits = [note.email, note.callback_at, note.note ? "note saved" : ""].filter(Boolean).map(escapeHtml).join(" · ");
+    const noteHtml = noteBits ? `<div>${noteBits}</div>` : "";
+    const queuePhoneIdx = i === state.idx ? state.phoneIdx : 0;
+    const nowHtml = state.dialingLeadId === l.id ? `<div class="queue-now"><span class="dot live"></span>dialing now</div>` : "";
+    return `<div id="queue-item-${i}" class="${cls.join(" ")}" aria-expanded="${i === state.idx}" onclick="goTo(${i})">
+      <div class="biz">${l.business_name}${codeHtml}</div>
+      <div class="queue-expanded">
+        ${nowHtml}
+        <div>${escapeHtml(l.category || "local business")} · ${fmtPhone(l.phones[state.phoneIdx] || l.phones[0])}</div>
+        ${l.owner_name ? `<div>Ask for ${escapeHtml(l.owner_name)}</div>` : ""}
+        ${noteHtml}
+        ${jobHtml}
+      </div>
+      <div class="meta">${l.city || ""} · ${l.phones.length} phone${l.phones.length>1?"s":""}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderCurrent() {
+  const lead = state.leads[state.idx];
+  const el = $("lead-content");
+  if (!lead) { el.innerHTML = '<div class="empty">No lead selected</div>'; return; }
+  const rating = lead.rating ? `★ ${lead.rating} · ${lead.reviews || 0} reviews` : "";
+  const sub = [lead.category, [lead.city, lead.state].filter(Boolean).join(", "), rating].filter(Boolean).join(" · ");
+  const phones = lead.phones.map((p, i) => `
+    <div class="phone-chip ${i === state.phoneIdx ? "active" : ""}" onclick="selectPhone(${i})">${fmtPhone(p)}</div>
+  `).join("");
+  const points = (lead.talking_points || []).map(t => `<li>${escapeHtml(t)}</li>`).join("");
+  const demo = lead.vercel_url ? `<a class="demo-link" href="${lead.vercel_url}" target="_blank">↗ Open demo · ${lead.business_name}</a>` : "";
+  const owner = lead.owner_name ? `<div style="color:var(--accent);font-size:1rem;margin-bottom:4px">Ask for ${lead.owner_name}</div>` : "";
+  const job = state.buildJobs[lead.id];
+  const savedNote = state.notes[lead.id] || {};
+  const buildStatus = job ? `<div class="build-status">${escapeHtml(job.message || job.status)} ${job.url ? `<a href="${job.url}" target="_blank">Open preview</a>` : ""}</div>` : "";
+  const dtmf = state.call ? `
+    <div class="dtmf-panel">
+      <div class="dtmf-head"><span>Phone keypad</span><span>keyboard digits send tones</span></div>
+      ${["1","2","3","4","5","6","7","8","9","*","0","#"].map(d => `<button class="dtmf-btn" type="button" onclick="sendDtmf('${d}')">${d}</button>`).join("")}
+    </div>
+  ` : "";
+  const pc = state.postCall && state.postCall.leadId === lead.id ? state.postCall : null;
+  const ivrSuggestion = state.call && state.ivrSuggestion ? `
+    <div class="ivr-suggestion">
+      <strong>IVR Copilot suggests pressing ${escapeHtml(state.ivrSuggestion.digit)}</strong>
+      <p>${escapeHtml(state.ivrSuggestion.transcript || state.ivrSuggestion.message || "")}</p>
+      <button type="button" onclick="useIvrSuggestion()">Press ${escapeHtml(state.ivrSuggestion.digit)}</button>
+    </div>
+  ` : "";
+  const postCallPrompt = pc ? `
+    <div class="post-call">
+      <h3>Call ended - what happened?</h3>
+      <p>${escapeHtml(pc.message)} Auto-advance will mark this as no answer in 6.5 seconds unless you choose below.</p>
+      <div class="post-actions">
+        <button type="button" onclick="resolvePostCall('no_answer')">No answer</button>
+        <button type="button" onclick="resolvePostCall('voicemail')">Machine / VM</button>
+        <button type="button" onclick="resolvePostCall('skip')">Skip</button>
+      </div>
+    </div>
+  ` : "";
+  el.innerHTML = `
+    <div>
+      ${owner}
+      <div class="biz-name">${escapeHtml(lead.business_name)}</div>
+      <div class="biz-sub">${escapeHtml(sub)}</div>
+      <div class="phone-row">${phones}</div>
+      ${points ? `<div class="talking"><div class="talking-title">Talking points</div><ul>${points}</ul></div>` : ""}
+      ${demo}
+      ${buildStatus}
+      <div class="notes-panel">
+        <div class="notes-head">
+          <div class="notes-title">Call notes</div>
+          <div class="note-save-state" id="note-save-state">${savedNote.updated_at ? "saved" : "empty"}</div>
+        </div>
+        <div class="notes-grid">
+          <input id="note-email" type="email" autocomplete="email" placeholder="email they give you" value="${escapeHtml(savedNote.email || "")}">
+          <input id="note-callback" type="text" autocomplete="off" placeholder="callback time, ex: Fri 2pm" value="${escapeHtml(savedNote.callback_at || "")}">
+        </div>
+        <textarea id="note-body" placeholder="notes, objections, decision maker, budget, what to send...">${escapeHtml(savedNote.note || "")}</textarea>
+        <div class="note-save-row"><button class="btn-note" id="btn-save-note" type="button">Save note</button></div>
+      </div>
+    </div>
+    <div>
+      <div class="call-row">
+        <button class="btn-call" id="btn-call">Call · Enter</button>
+        <button class="btn-hang"  id="btn-hang" disabled>Hang Up</button>
+        <button class="btn-pause" id="btn-pause">Pause</button>
+      </div>
+      ${dtmf}
+      ${ivrSuggestion}
+      ${postCallPrompt}
+      <div class="actions">
+        <div class="action no_answer"      onclick="disposeAndNext('no_answer')"><span class="kbd">1</span> No answer</div>
+        <div class="action voicemail"      onclick="disposeAndNext('voicemail')"><span class="kbd">2</span> Voicemail</div>
+        <div class="action callback"       onclick="disposeAndNext('callback')"><span class="kbd">3</span> Callback</div>
+        <div class="action not_interested" onclick="disposeAndNext('not_interested')"><span class="kbd">4</span> Not interested</div>
+        <div class="action interested"     onclick="disposeAndNext('interested')"><span class="kbd">5</span> Interested</div>
+        <div class="action build"          onclick="interestedAndBuild()"><span class="kbd">B</span> They answered + interested · start building</div>
+        <div class="action dnc"            onclick="disposeAndNext('dnc')"><span class="kbd">D</span> DNC</div>
+      </div>
+    </div>
+  `;
+  $("btn-call").onclick = () => makeCall();
+  $("btn-hang").onclick = hangUp;
+  $("btn-pause").onclick = togglePause;
+  $("btn-pause").textContent = state.paused ? "Paused" : "Pause";
+  $("btn-pause").className = "btn-pause" + (state.paused ? " paused" : "");
+  initNoteEditor(lead);
+}
+
+function renderStats() {
+  const flat = Object.values(state.dispositions).flat();
+  const count = c => flat.filter(d => d.code === c).length;
+  $("stat-dialed").textContent = flat.filter(d => d.code !== "skip").length;
+  $("stat-interested").textContent = count("interested");
+  $("stat-callback").textContent = count("callback");
+  $("stat-noans").textContent = count("no_answer") + count("voicemail");
+}
+
+function renderRecent() {
+  const flat = Object.entries(state.dispositions).flatMap(([id, ds]) =>
+    ds.map(d => ({ ...d, biz: (state.leads.find(l => l.id === id) || {}).business_name || id }))
+  ).sort((a, b) => (b.at || "").localeCompare(a.at || "")).slice(0, 8);
+  if (!flat.length) { $("recent").innerHTML = '<div class="empty" style="padding:8px 0">no calls yet</div>'; return; }
+  $("recent").innerHTML = flat.map(d => `
+    <div class="disp-row">
+      <span>${escapeHtml(d.biz)} <span class="b">${fmtPhone(d.phone)}</span></span>
+      <span class="code ${d.code}">${d.code.replace("_"," ")}</span>
+    </div>
+  `).join("");
+}
+
+function renderBuilds() {
+  const jobs = Object.values(state.buildJobs).sort((a, b) => (b.started_at || "").localeCompare(a.started_at || "")).slice(0, 6);
+  if (!jobs.length) {
+    $("builds").innerHTML = '<div class="empty" style="padding:8px 0">no builds yet</div>';
+    return;
+  }
+  $("builds").innerHTML = jobs.map(j => `
+    <div class="build-row">
+      <div>${escapeHtml(j.business_name)} <span class="build-pill ${j.status}">${j.status}</span></div>
+      <div class="b">${escapeHtml(j.message || "")}</div>
+      ${j.url ? `<a href="${j.url}" target="_blank">Open preview</a>` : ""}
+    </div>
+  `).join("");
+}
+
+function renderCallEvents() {
+  const el = $("call-events");
+  if (!el) return;
+  if (!state.callEvents.length) {
+    el.innerHTML = '<div class="empty" style="padding:8px 0">no auto moves yet</div>';
+    return;
+  }
+  el.innerHTML = state.callEvents.map(e => `
+    <div class="event-row ${e.level || ""}">
+      <div class="t">${escapeHtml(e.at)}</div>
+      <div>${escapeHtml(e.message)}</div>
+    </div>
+  `).join("");
+}
+
+function escapeHtml(s) { return (s+"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// ── navigation ────────────────────────────────────────────────────────────
+function initNoteEditor(lead) {
+  const email = $("note-email");
+  const callback = $("note-callback");
+  const body = $("note-body");
+  const saveBtn = $("btn-save-note");
+  if (!email || !callback || !body || !saveBtn) return;
+
+  const syncLocal = () => {
+    state.notes[lead.id] = {
+      ...(state.notes[lead.id] || {}),
+      lead_id: lead.id,
+      phone: lead.phones[state.phoneIdx] || "",
+      email: email.value,
+      callback_at: callback.value,
+      note: body.value,
+    };
+    setNoteSaveState("unsaved");
+    clearTimeout(state.noteSaveTimer);
+    state.noteSaveTimer = setTimeout(() => saveLeadNote(lead.id), 900);
+  };
+
+  email.oninput = syncLocal;
+  callback.oninput = syncLocal;
+  body.oninput = syncLocal;
+  saveBtn.onclick = () => {
+    syncLocal();
+    saveLeadNote(lead.id, true);
+  };
+}
+
+function setNoteSaveState(text) {
+  const el = $("note-save-state");
+  if (el) el.textContent = text;
+}
+
+async function saveLeadNote(leadId, explicit = false) {
+  const note = state.notes[leadId];
+  if (!note) return;
+  setNoteSaveState(explicit ? "saving..." : "autosaving...");
+  try {
+    const r = await fetch("/note", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    state.notes[leadId] = d.note;
+    setNoteSaveState("saved");
+    renderQueue();
+  } catch (e) {
+    setNoteSaveState("save failed");
+    console.error("note save failed", e);
+  }
+}
+
+function focusCurrentLead(behavior = "smooth") {
+  const item = document.getElementById(`queue-item-${state.idx}`);
+  if (item) item.scrollIntoView({ block: "nearest", behavior });
+}
+
+function goTo(i) {
+  if (i < 0 || i >= state.leads.length) return;
+  state.idx = i;
+  state.phoneIdx = 0;
+  renderAll();
+  focusCurrentLead();
+}
+function selectPhone(i) { state.phoneIdx = i; renderCurrent(); renderQueue(); focusCurrentLead(); }
+
+function nextLead() {
+  // Find next lead with no terminal disposition (or any if all done)
+  const skipped = [];
+  for (let off = 1; off <= state.leads.length; off++) {
+    const i = (state.idx + off) % state.leads.length;
+    const disps = state.dispositions[state.leads[i].id] || [];
+    const last  = disps.length ? disps[disps.length-1].code : null;
+    if (!last || last === "skip" || last === "no_answer" || last === "voicemail") {
+      if (skipped.length) {
+        logCallEvent(`Skipped ${skipped.length} lead${skipped.length > 1 ? "s" : ""} already marked terminal: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? "..." : ""}`, "warn");
+      }
+      goTo(i);
+      return true;
+    }
+    skipped.push(`${state.leads[i].business_name} (${last.replace("_", " ")})`);
+  }
+  if (skipped.length) logCallEvent(`Queue exhausted. Every remaining lead already has a terminal disposition.`, "warn");
+  return false; // everyone has terminal disposition
+}
+
+// ── call ─────────────────────────────────────────────────────────────────
+async function makeCall() {
+  const lead = state.leads[state.idx];
+  if (!lead) return;
+  const to = lead.phones[state.phoneIdx];
+  if (!to) return;
+  if (!state.device) { setDeviceStatus("device not ready", "err"); return; }
+  try {
+    state.postCall = null;
+    state.lastCallError = "";
+    state.callStartedAt = Date.now();
+    state.ivrSuggestion = null;
+    state.ivrSince = 0;
+    state.dialingLeadId = lead.id;
+    renderQueue();
+    focusCurrentLead();
+    setDeviceStatus("dialing " + fmtPhone(to) + "…");
+    state.call = await state.device.connect({ params: { To: to, SessionId: state.sessionId } });
+    startIvrPolling();
+    renderCurrent();
+    $("btn-call").disabled = true;
+    $("btn-hang").disabled = false;
+    state.call.on("accept",     () => setDeviceStatus("connected · " + fmtPhone(to), "live"));
+    state.call.on("ringing",    () => setDeviceStatus("ringing " + fmtPhone(to) + "…"));
+    state.call.on("disconnect", () => {
+      setDeviceStatus("call ended");
+      $("btn-call").disabled = false;
+      $("btn-hang").disabled = true;
+      state.call = null;
+      state.dialingLeadId = null;
+      setTimeout(stopIvrPolling, 2500);
+      renderQueue();
+      // Auto-advance unless paused or a disposition was already pressed
+      if (!state.paused) scheduleAutoAdvance();
+      else renderCurrent();
+    });
+    state.call.on("error", e => { state.lastCallError = e.message || String(e); setDeviceStatus("call error: " + state.lastCallError, "err"); state.dialingLeadId = null; renderQueue(); });
+  } catch (e) {
+    setDeviceStatus("connect failed: " + e.message, "err");
+    state.postCall = null;
+    state.callStartedAt = null;
+    stopIvrPolling();
+    state.dialingLeadId = null;
+    renderQueue();
+    $("btn-call").disabled = false;
+    $("btn-hang").disabled = true;
+  }
+}
+
+function hangUp() { if (state.call) state.call.disconnect(); }
+
+function sendDtmf(digit) {
+  if (!state.call) return;
+  if (typeof state.call.sendDigits !== "function") {
+    setDeviceStatus("DTMF unavailable in this browser call", "err");
+    return;
+  }
+  state.call.sendDigits(digit);
+  setDeviceStatus("sent phone key " + digit, "live");
+}
+
+function useIvrSuggestion() {
+  if (!state.ivrSuggestion) return;
+  const digit = state.ivrSuggestion.digit;
+  sendDtmf(digit);
+  logCallEvent(`You accepted IVR suggestion and pressed ${digit}.`, "ok");
+  state.ivrSuggestion = null;
+  renderCurrent();
+}
+
+function startIvrPolling() {
+  stopIvrPolling();
+  const poll = async () => {
+    try {
+      const r = await fetch(`/ivr/events?session_id=${encodeURIComponent(state.sessionId)}&since=${state.ivrSince}`);
+      const d = await r.json();
+      for (const event of d.events || []) handleIvrEvent(event);
+    } catch (e) {
+      console.error("ivr poll failed", e);
+    }
+    if (state.call) state.ivrTimer = setTimeout(poll, 900);
+  };
+  poll();
+}
+
+function stopIvrPolling() {
+  clearTimeout(state.ivrTimer);
+  state.ivrTimer = null;
+}
+
+function handleIvrEvent(event) {
+  state.ivrSince = Math.max(state.ivrSince, event.seq || 0);
+  if (event.message) logCallEvent(event.message, event.level || "");
+  if (event.kind !== "ivr_digit" || !event.digit) return;
+  state.ivrSuggestion = event;
+  renderCurrent();
+  if (event.auto_press) {
+    sendDtmf(event.digit);
+    logCallEvent(`IVR Copilot auto-pressed ${event.digit}.`, "ok");
+    state.ivrSuggestion = null;
+    renderCurrent();
+  }
+}
+
+function scheduleAutoAdvance() {
+  clearTimeout(state.autoAdvanceTimer);
+  const lead = state.leads[state.idx];
+  if (!lead) return;
+  const phone = lead.phones[state.phoneIdx];
+  const disps = state.dispositions[lead.id] || [];
+  const lastFor = [...disps].reverse().find(d => d.phone === phone && d.code !== "skip");
+  const continueQueue = code => {
+    state.postCall = null;
+    if ((code === "no_answer" || code === "voicemail") && advanceWithinLeadPhones()) {
+      autoDialAfterAdvance();
+      return;
+    }
+    nextLead();
+    autoDialAfterAdvance();
+  };
+  if (lastFor) {
+    logCallEvent(`Auto-advanced because ${lead.business_name} already had "${lastFor.code.replace("_", " ")}" for ${fmtPhone(phone)}.`, "ok");
+    continueQueue(lastFor.code);
+    return;
+  }
+
+  const duration = fmtDuration(Date.now() - (state.callStartedAt || Date.now()));
+  const reason = state.lastCallError
+    ? `Twilio reported: ${state.lastCallError}. Duration ${duration}.`
+    : `No disposition was captured. Twilio did not report a specific hangup reason. Duration ${duration}.`;
+  state.postCall = { leadId: lead.id, phone, message: reason };
+  logCallEvent(`Call ended for ${lead.business_name}. Waiting 6.5s for you to choose; otherwise it will mark no answer and advance. ${reason}`, "warn");
+  renderCurrent();
+  state.autoAdvanceTimer = setTimeout(() => {
+    state.postCall = null;
+    logCallEvent(`Auto-marked ${lead.business_name} as no answer after 6.5s because no disposition was selected. Then advanced to the next callable lead.`, "warn");
+    sendDisposition(lead.id, phone, "no_answer", "auto-set after post-call prompt").then(() => continueQueue("no_answer"));
+  }, 6500);
+}
+
+function autoDialAfterAdvance(delay = 500) {
+  if (state.paused || state.call) return;
+  setTimeout(() => {
+    if (!state.paused && !state.call) {
+      const lead = state.leads[state.idx];
+      if (lead) logCallEvent(`Auto-dialing next lead: ${lead.business_name}.`, "ok");
+      makeCall();
+    }
+  }, delay);
+}
+
+function advanceWithinLeadPhones() {
+  const lead = state.leads[state.idx];
+  if (state.phoneIdx + 1 < lead.phones.length) {
+    state.phoneIdx += 1;
+    renderCurrent();
+    renderQueue();
+    focusCurrentLead();
+    return true;
+  }
+  return false;
+}
+
+// ── disposition ──────────────────────────────────────────────────────────
+async function resolvePostCall(code) {
+  clearTimeout(state.autoAdvanceTimer);
+  const lead = state.leads[state.idx];
+  if (lead) logCallEvent(`You chose "${code.replace("_", " ")}" for ${lead.business_name}; advancing from the post-call prompt.`, "ok");
+  state.postCall = null;
+  await disposeAndNext(code);
+}
+
+async function sendDisposition(leadId, phone, code, note = "") {
+  // optimistic update
+  (state.dispositions[leadId] = state.dispositions[leadId] || []).push({
+    phone, code, note, at: new Date().toISOString()
+  });
+  renderAll();
+  try {
+    await fetch("/disposition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: leadId, phone, code, note }),
+    });
+  } catch (e) { console.error("disposition send failed", e); }
+}
+
+function activeBuild(job) {
+  return job && ["queued", "researching", "rendering"].includes(job.status);
+}
+
+async function startBuildForLead(lead) {
+  const existing = state.buildJobs[lead.id];
+  if (activeBuild(existing) || existing?.status === "done") return existing;
+  const tempJob = {
+    id: "pending-" + lead.id,
+    lead_id: lead.id,
+    business_name: lead.business_name,
+    status: "queued",
+    message: "Starting website build...",
+    started_at: new Date().toISOString(),
+  };
+  state.buildJobs[lead.id] = tempJob;
+  renderAll();
+  try {
+    const r = await fetch("/build", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead }),
+    });
+    const job = await r.json();
+    if (!r.ok) throw new Error(job.error || `HTTP ${r.status}`);
+    state.buildJobs[lead.id] = job;
+    renderAll();
+    pollBuild(job.id, lead.id);
+    return job;
+  } catch (e) {
+    state.buildJobs[lead.id] = { ...tempJob, status: "error", message: e.message };
+    renderAll();
+    return state.buildJobs[lead.id];
+  }
+}
+
+async function pollBuild(jobId, leadId) {
+  try {
+    const r = await fetch(`/build/${jobId}`);
+    const job = await r.json();
+    if (!r.ok) throw new Error(job.error || `HTTP ${r.status}`);
+    state.buildJobs[leadId || job.lead_id] = job;
+    renderAll();
+    if (["queued", "researching", "rendering"].includes(job.status)) {
+      setTimeout(() => pollBuild(jobId, leadId || job.lead_id), 2500);
+    }
+  } catch (e) {
+    console.error("build poll failed", e);
+  }
+}
+
+async function interestedAndBuild() {
+  clearTimeout(state.autoAdvanceTimer);
+  const lead = state.leads[state.idx];
+  if (!lead) return;
+  const phone = lead.phones[state.phoneIdx];
+  if (state.notes[lead.id]) {
+    clearTimeout(state.noteSaveTimer);
+    await saveLeadNote(lead.id);
+  }
+  const disps = state.dispositions[lead.id] || [];
+  const alreadyInterested = disps.some(d => d.phone === phone && d.code === "interested");
+  if (!alreadyInterested) await sendDisposition(lead.id, phone, "interested", "answered and asked for a website build");
+  await startBuildForLead(lead);
+
+  // If the call is still live, let Tyler finish talking; disconnect will advance.
+  if (state.call || state.paused) return;
+  if (!nextLead()) setDeviceStatus("queue exhausted");
+  else autoDialAfterAdvance(600);
+}
+
+async function disposeAndNext(code) {
+  clearTimeout(state.autoAdvanceTimer);
+  state.postCall = null;
+  const lead  = state.leads[state.idx];
+  const phone = lead.phones[state.phoneIdx];
+  if (state.notes[lead.id]) {
+    clearTimeout(state.noteSaveTimer);
+    await saveLeadNote(lead.id);
+  }
+  await sendDisposition(lead.id, phone, code);
+  logCallEvent(`Marked ${lead.business_name} as "${code.replace("_", " ")}" for ${fmtPhone(phone)}.`, code === "skip" ? "warn" : "ok");
+  if (state.call) {
+    logCallEvent(`Ending live call because you selected "${code.replace("_", " ")}".`, "warn");
+    state.call.disconnect();
+    return;
+  }
+  // If this lead has more phones AND code is no_answer/voicemail, try next phone
+  if ((code === "no_answer" || code === "voicemail") && advanceWithinLeadPhones()) return;
+  // Otherwise next lead
+  if (state.paused) return;
+  if (!nextLead()) setDeviceStatus("queue exhausted");
+  else autoDialAfterAdvance(400);
+}
+
+// ── pause ────────────────────────────────────────────────────────────────
+function togglePause() {
+  state.paused = !state.paused;
+  if (state.paused) clearTimeout(state.autoAdvanceTimer);
+  renderCurrent();
+}
+
+// ── keyboard ─────────────────────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (state.call && /^[0-9*#]$/.test(e.key)) { e.preventDefault(); sendDtmf(e.key); return; }
+  if (state.postCall) {
+    if (e.key === "1") { e.preventDefault(); resolvePostCall("no_answer"); return; }
+    if (e.key === "2") { e.preventDefault(); resolvePostCall("voicemail"); return; }
+    if (e.key === "Escape") { e.preventDefault(); resolvePostCall("skip"); return; }
+  }
+  if (e.key === " ") { e.preventDefault(); togglePause(); return; }
+  if (e.key === "Enter") { e.preventDefault(); if (!$("btn-call").disabled) makeCall(); return; }
+  if (e.key === "Escape") { e.preventDefault(); disposeAndNext("skip"); return; }
+  if (e.key === "ArrowLeft")  { e.preventDefault(); goTo(state.idx - 1); return; }
+  if (e.key === "ArrowRight") { e.preventDefault(); goTo(state.idx + 1); return; }
+  const map = {"1":"no_answer","2":"voicemail","3":"callback","4":"not_interested","5":"interested"};
+  if (map[e.key]) { e.preventDefault(); disposeAndNext(map[e.key]); return; }
+  if (e.key === "b" || e.key === "B") { e.preventDefault(); interestedAndBuild(); return; }
+  if (e.key === "d" || e.key === "D") { e.preventDefault(); disposeAndNext("dnc"); return; }
+});
+
+// ── init ────────────────────────────────────────────────────────────────
+async function initDevice() {
+  try {
+    setDeviceStatus("fetching access token…");
+    const r = await fetch("/token");
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `HTTP ${r.status}`); }
+    const { token } = await r.json();
+    setDeviceStatus("registering with Twilio…");
+    state.device = new Twilio.Device(token, { codecPreferences: ["opus", "pcmu"], logLevel: 1 });
+    state.device.on("registered", () => setDeviceStatus("ready", "live"));
+    state.device.on("error", e => setDeviceStatus("device error: " + (e.message || e), "err"));
+    await state.device.register();
+  } catch (e) { setDeviceStatus("init failed: " + e.message, "err"); }
+}
+
+loadQueue();
+initDevice();
+</script>
+</body>
+</html>
