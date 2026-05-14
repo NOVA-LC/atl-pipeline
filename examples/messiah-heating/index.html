@@ -323,6 +323,17 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
   .guarantee .wrap{grid-template-columns:1fr;gap:24px;text-align:center;justify-items:center}
   .guarantee .seal-svg{width:160px}
 }
+@media(max-width:520px){
+  .brand-tag{display:none}
+  .brand-name{font-size:15.5px;line-height:1.18;letter-spacing:-0.01em}
+  .brand-oval{width:40px;height:30px;font-size:16px}
+  nav.top{padding:10px 0}
+  .wrap{padding:0 18px}
+}
+@media(max-width:420px){
+  /* Sticky bottom CTA handles call/text on phone-sized screens — the nav CTA is redundant and overflows. */
+  .nav-cta{display:none}
+}
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
