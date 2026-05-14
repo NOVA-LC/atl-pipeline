@@ -5,7 +5,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "gunicorn --workers 1 --worker-class gthread --threads 16 --timeout 0 --bind 0.0.0.0:${PORT:-5050} server:app"
+# Shell form (`sh -c`) is required — Dockerfile-based services run start commands in exec form
+# which does not expand shell variables. Without this wrapper, ${PORT} is passed as a literal.
+startCommand = "/bin/sh -c 'exec gunicorn --workers 1 --worker-class gthread --threads 16 --timeout 0 --bind 0.0.0.0:${PORT:-5050} server:app'"
 healthcheckPath = "/healthz"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
