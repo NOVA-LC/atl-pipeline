@@ -245,4 +245,61 @@ def parse_all(raw_json):
         'years_in_business': years_in_business(raw),
         'claimed': claimed(raw),
         'verified': verified(raw),
+        'lat': geo_lat(raw),
+        'lon': geo_lon(raw),
+        'place_id': place_id(raw),
+        'postal_code': postal_code(raw),
     }
+
+
+def _num(v):
+    if v is None or v == '':
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def geo_lat(raw):
+    for k in ('latitude', 'lat', 'location_lat'):
+        v = _num(raw.get(k))
+        if v is not None:
+            return v
+    loc = raw.get('location') or raw.get('coordinates') or {}
+    if isinstance(loc, dict):
+        for k in ('lat', 'latitude'):
+            v = _num(loc.get(k))
+            if v is not None:
+                return v
+    return None
+
+
+def geo_lon(raw):
+    for k in ('longitude', 'lng', 'lon', 'location_lng'):
+        v = _num(raw.get(k))
+        if v is not None:
+            return v
+    loc = raw.get('location') or raw.get('coordinates') or {}
+    if isinstance(loc, dict):
+        for k in ('lng', 'lon', 'longitude'):
+            v = _num(loc.get(k))
+            if v is not None:
+                return v
+    return None
+
+
+def place_id(raw):
+    for k in ('place_id', 'google_id', 'placeId'):
+        v = raw.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return None
+
+
+def postal_code(raw):
+    for k in ('postal_code', 'zip', 'zipcode', 'postalCode'):
+        v = raw.get(k)
+        if isinstance(v, (str, int)) and str(v).strip():
+            return str(v).strip()
+    return None

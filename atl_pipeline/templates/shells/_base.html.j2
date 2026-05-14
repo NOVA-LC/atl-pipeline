@@ -33,6 +33,67 @@
 <link href="{{ tokens.type.google_font_link }}" rel="preload" as="style">
 <link href="{{ tokens.type.google_font_link }}" rel="stylesheet">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+{# Open Graph / Twitter — a real $5K agency ships these by default so links shared in SMS/Slack/iMessage don't look bare. #}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ business.name }}{% if copy.title_tagline %} — {{ copy.title_tagline }}{% endif %}">
+{% if copy.meta_description %}<meta property="og:description" content="{{ copy.meta_description }}">{% endif %}
+{% if images and images.hero_img %}<meta property="og:image" content="{{ images.hero_img }}">
+<meta name="twitter:image" content="{{ images.hero_img }}">{% endif %}
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ business.name }}{% if business.city %} — {{ business.city }}{% endif %}">
+{% if copy.meta_description %}<meta name="twitter:description" content="{{ copy.meta_description }}">{% endif %}
+
+{# LocalBusiness structured data — Google rich-results eligible. Fields that are
+   not yet captured for this lead are simply omitted; do not fabricate. #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": {% if industry == 'hvac' %}"HVACBusiness"{% elif industry == 'plumber' %}"Plumber"{% elif industry == 'electrician' %}"Electrician"{% elif industry == 'roofer' %}"RoofingContractor"{% else %}"LocalBusiness"{% endif %},
+  "name": {{ business.name|tojson }},
+  {% if images and images.hero_img %}"image": {{ images.hero_img|tojson }},{% endif %}
+  "telephone": {{ business.phone|tojson }},
+  "priceRange": "$$"
+  {%- if business.address or business.city %},
+  "address": {
+    "@type": "PostalAddress"
+    {%- if business.address %},"streetAddress": {{ business.address|tojson }}{% endif %}
+    {%- if business.city %},"addressLocality": {{ business.city|tojson }}{% endif %}
+    {%- if business.state %},"addressRegion": {{ business.state|tojson }}{% endif %}
+    {%- if business.zip %},"postalCode": {{ business.zip|tojson }}{% endif %}
+    ,"addressCountry": "US"
+  }
+  {%- endif %}
+  {%- if business.lat is not none and business.lon is not none %},
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": {{ business.lat }},
+    "longitude": {{ business.lon }}
+  }
+  {%- endif %}
+  {%- if business.hours %},
+  "openingHours": {{ business.hours|tojson }}
+  {%- endif %}
+  {%- if business.rating and business.reviews %},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{{ business.rating }}",
+    "reviewCount": "{{ business.reviews }}",
+    "bestRating": "5"
+  }
+  {%- endif %}
+  {%- if copy.neighborhoods %},
+  "areaServed": [
+    {%- for area in copy.neighborhoods %}{"@type":"City","name":{{ area|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}
+  ]
+  {%- endif %}
+  {%- if business.years %},
+  "foundingDate": "{{ year - (business.years|int) }}"
+  {%- endif %}
+}
+</script>
+
 {% block scripts_head %}{% endblock %}
 {% block head_extra %}{% endblock %}
 {% block shell_css %}
@@ -53,6 +114,8 @@ body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }
 .demo-tag{position:fixed;bottom:24px;right:24px;background:{{ tokens.palette.ink }};color:#fff;padding:14px 22px;border-radius:999px;font-size:13px;font-weight:500;z-index:100}
 .demo-tag::before{content:'DEMO · ';opacity:.6}
 @media(max-width:900px){.sticky-cta{display:flex}.demo-tag{bottom:84px;right:12px;padding:8px 14px;font-size:11px}}
+@media(max-width:520px){.wrap{padding:0 18px}.nav-brand-name{font-size:16.5px !important;letter-spacing:-0.01em !important}.nav-brand-tag{display:none !important}}
+@media(max-width:420px){.nav-tel-cta{display:none !important}/* sticky bottom CTA covers call action */}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}}
 @media print {.sticky-cta,.demo-tag,nav{display:none !important}}
 </style>
@@ -64,13 +127,13 @@ body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }
 {% block nav %}
 <nav style="position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:{{ tokens.palette.bg_blur|default('rgba(255,255,255,.88)') }};border-bottom:1px solid {{ tokens.palette.border }};padding:14px 0">
   <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-    <div style="font-family:{{ tokens.type.display_family }};font-weight:600;font-size:22px;color:{{ tokens.palette.ink }}">{{ business.name }}</div>
+    <div class="nav-brand-name" style="font-family:{{ tokens.type.display_family }};font-weight:600;font-size:22px;color:{{ tokens.palette.ink }}">{{ business.name }}</div>
     <div style="display:flex;gap:30px;font-size:14px;font-weight:500" class="nav-links-row">
       <a href="#services" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Services</a>
       {% if copy.reviews_list %}<a href="#reviews" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Reviews</a>{% endif %}
       <a href="#contact" style="color:{{ tokens.palette.ink }};text-decoration:none;opacity:.7">Contact</a>
     </div>
-    <a href="tel:{{ business.phone }}" style="padding:11px 22px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap">📞 {{ business.phone_display }}</a>
+    <a href="tel:{{ business.phone }}" class="nav-tel-cta" style="padding:11px 22px;background:{{ tokens.palette.ink }};color:#fff;border-radius:999px;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap">📞 {{ business.phone_display }}</a>
   </div>
 </nav>
 {% raw %}<style>@media(max-width:900px){.nav-links-row{display:none !important}}</style>{% endraw %}
@@ -80,7 +143,10 @@ body{font-family:{{ tokens.type.body_family }};background:{{ tokens.palette.bg }
 {% if business.rating or business.reviews or business.years or copy.license_number %}
 <div style="background:{{ tokens.palette.card_bg }};border-bottom:1px solid {{ tokens.palette.border }};padding:12px 0;font-size:13px;font-weight:500;color:{{ tokens.palette.muted }}">
   <div class="wrap" style="display:flex;gap:24px;align-items:center;justify-content:center;flex-wrap:wrap">
-    {% if business.rating %}<span style="display:inline-flex;align-items:center;gap:6px"><span style="color:#FBBF24;font-weight:700">★</span> <strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.rating }}</strong> on Google</span>{% endif %}
+    {% if business.rating %}<span style="display:inline-flex;align-items:center;gap:8px">
+      {% with rating=business.rating, width=92 %}{% include 'partials/stars.html.j2' %}{% endwith %}
+      <strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.rating }}</strong> on Google
+    </span>{% endif %}
     {% if business.reviews %}<span style="opacity:.3">·</span><span><strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.reviews }}</strong> reviews</span>{% endif %}
     {% if business.years %}<span style="opacity:.3">·</span><span><strong style="color:{{ tokens.palette.ink }};font-weight:700">{{ business.years }}</strong> years in {{ business.city }}</span>{% endif %}
     {% if copy.license_number %}<span style="opacity:.3">·</span><span>Licensed · Insured · <strong style="color:{{ tokens.palette.ink }};font-weight:700">#{{ copy.license_number }}</strong></span>{% endif %}

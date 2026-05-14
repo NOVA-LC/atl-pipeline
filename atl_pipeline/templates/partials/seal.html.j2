@@ -1,0 +1,42 @@
+{#- Circular SVG seal — replaces decorative curly-quote in guarantee sections.
+   Top arc text reads right-side up via textPath with sweep=1. Middle has
+   stacked italic headline + small uppercase label, divider line, bottom
+   straight banner.
+
+   Params:
+     headline   — main word in seal (italic display, e.g. "Ben's")
+     label      — uppercase small label under headline (e.g. "WORD" or "PROMISE")
+     top_text   — curved top arc text (e.g. "QUOTED PRICE GUARANTEE")
+     bottom_text — straight banner at bottom (e.g. "DECATUR · SINCE 2008")
+     size       — px width (default 200)
+     display_font — display font family (REQUIRED for proper italic)
+     color      — currentColor by default; pass to override
+-#}
+{%- set size = size|default(200) -%}
+{%- set display_font = display_font|default("'Playfair Display', Georgia, serif") -%}
+{%- set color = color|default('currentColor') -%}
+{%- set headline = headline|default("Our") -%}
+{%- set label = label|default('PROMISE') -%}
+{%- set top_text = top_text|default('QUOTED PRICE GUARANTEE') -%}
+{%- set _seal_uid = (range(1000, 9999)|random) -%}
+<svg class="seal-svg" width="{{ size }}" height="{{ size }}" viewBox="0 0 200 200" aria-hidden="true" role="img" style="color:{{ color }};display:block">
+  <defs>
+    <path id="seal-arc-top-{{ _seal_uid }}" d="M 26,100 A 74,74 0 0,1 174,100" fill="none"/>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/>
+  <circle cx="100" cy="100" r="86" fill="none" stroke="currentColor" stroke-width="0.75" opacity=".3"/>
+  <circle cx="100" cy="100" r="64" fill="none" stroke="currentColor" stroke-width="0.5" opacity=".35"/>
+  <text font-family="Inter, sans-serif" font-size="9.2" font-weight="700" letter-spacing="4.5" fill="currentColor">
+    <textPath href="#seal-arc-top-{{ _seal_uid }}" startOffset="50%" text-anchor="middle">{{ top_text }}</textPath>
+  </text>
+  <text x="100" y="95" text-anchor="middle" font-family="{{ display_font }}" font-style="italic" font-weight="700" font-size="40" fill="currentColor">{{ headline }}</text>
+  <text x="100" y="121" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" letter-spacing="4" font-weight="700" fill="currentColor" opacity=".92">{{ label }}</text>
+  {%- if bottom_text %}
+  <g opacity=".55">
+    <line x1="62" y1="134" x2="86" y2="134" stroke="currentColor" stroke-width="0.6"/>
+    <circle cx="100" cy="134" r="1.2" fill="currentColor" stroke="none"/>
+    <line x1="114" y1="134" x2="138" y2="134" stroke="currentColor" stroke-width="0.6"/>
+  </g>
+  <text x="100" y="152" text-anchor="middle" font-family="Inter, sans-serif" font-size="8" letter-spacing="3.5" font-weight="700" fill="currentColor" opacity=".75">{{ bottom_text }}</text>
+  {%- endif %}
+</svg>

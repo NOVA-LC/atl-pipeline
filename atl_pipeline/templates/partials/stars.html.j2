@@ -1,0 +1,33 @@
+{#- Accurate star rating SVG. Renders 5 stars with a clip-path so the gold fill
+   reflects the actual rating (4.6 = 92% of width filled). Replaces the visual
+   inconsistency of "★★★★★" next to "4.6" — a $10K-buyer tell.
+
+   Params:
+     rating   — float 0–5 (REQUIRED)
+     width    — total svg width in px (default 148)
+     color    — gold color hex (default #E5B53C)
+     dim      — empty/background star color (default rgba 22% opacity)
+     label    — aria-label override (default auto from rating)
+-#}
+{%- set rating = rating|float -%}
+{%- set width = width|default(148) -%}
+{%- set color = color|default('#E5B53C') -%}
+{%- set dim = dim|default('rgba(229,181,60,.22)') -%}
+{%- set star_w = 26 -%}
+{%- set gap = (width - star_w * 5) / 4 if width > star_w * 5 else 4 -%}
+{%- set pitch = star_w + gap -%}
+{%- set fill_w = ((rating / 5.0) * width)|round(2) -%}
+<div class="stars-rating" role="img" aria-label="{{ label|default(rating ~ ' out of 5 stars') }}" style="display:inline-flex;line-height:1">
+  <svg width="{{ width }}" height="{{ star_w }}" viewBox="0 0 {{ width }} {{ star_w }}" aria-hidden="true">
+    <defs>
+      <polygon id="star-shape-{{ rating|replace('.','') }}" points="13,2 16.1,9.6 24.3,10.2 18.1,15.5 20.1,23.5 13,19.2 5.9,23.5 7.9,15.5 1.7,10.2 9.9,9.6"/>
+      <clipPath id="clip-{{ rating|replace('.','') }}"><rect x="0" y="0" width="{{ fill_w }}" height="{{ star_w }}"/></clipPath>
+    </defs>
+    <g fill="{{ dim }}">
+      {%- for i in range(5) %}<use href="#star-shape-{{ rating|replace('.','') }}" x="{{ (i * pitch)|round(2) }}"/>{% endfor %}
+    </g>
+    <g fill="{{ color }}" clip-path="url(#clip-{{ rating|replace('.','') }})">
+      {%- for i in range(5) %}<use href="#star-shape-{{ rating|replace('.','') }}" x="{{ (i * pitch)|round(2) }}"/>{% endfor %}
+    </g>
+  </svg>
+</div>

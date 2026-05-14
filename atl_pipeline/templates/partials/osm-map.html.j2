@@ -1,0 +1,32 @@
+{#- OpenStreetMap iframe + Get-directions link. Gives a $10K-buyer site the
+   "real place" credibility lever. Renders nothing if lat/lon both missing.
+
+   Why OSM not Google Maps: Google's old `?output=embed` was deprecated and
+   now 404s. Modern Google Maps Embed iframe needs an API key. OSM embed is
+   key-free, no quota, no tracking, stable URL.
+
+   Required: lat, lon (floats)
+   Optional: address (str) — used in Get-directions link + iframe title
+            zoom (float) — controls bbox tightness; 0.005 = ~1mi box, default
+            label — accessible label for the iframe
+-#}
+{%- if lat is not none and lon is not none -%}
+{%- set zoom = zoom|default(0.005) -%}
+{%- set lat_f = lat|float -%}
+{%- set lon_f = lon|float -%}
+{%- set bbox = '%.4f,%.4f,%.4f,%.4f'|format(lon_f - zoom, lat_f - zoom, lon_f + zoom, lat_f + zoom) -%}
+{%- set dir_q = (address or (lat_f|string + ',' + lon_f|string))|urlencode -%}
+<div class="behind-map" style="position:relative;width:100%;aspect-ratio:16/7;margin-top:24px;border-radius:10px;overflow:hidden;border:1px solid rgba(0,0,0,.08);background:#F4F6FA">
+  <iframe
+    src="https://www.openstreetmap.org/export/embed.html?bbox={{ bbox|urlencode }}&amp;layer=mapnik&amp;marker={{ lat_f }}%2C{{ lon_f }}"
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+    title="{{ label|default('Map') }}"
+    style="position:absolute;inset:0;width:100%;height:100%;border:0;filter:grayscale(.25) contrast(.96)"></iframe>
+</div>
+{%- if address %}
+<a class="directions-link" href="https://www.google.com/maps/dir/?api=1&amp;destination={{ dir_q }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-size:14px;font-weight:600;text-decoration:none">
+  Get directions <span aria-hidden="true">↗</span>
+</a>
+{%- endif %}
+{%- endif -%}

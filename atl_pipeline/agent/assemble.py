@@ -501,6 +501,14 @@ def _build_business_ctx(lead: dict, osf_data: dict, research_brief: dict | None)
         'google_maps_url': lead.get('google_maps_url'),
         'years': years,
         'hours': hours,
+        # Molecular trust fields (lat/lon → map + schema geo; place_id → direct
+        # GBP review URL; zip → schema postalCode). Pulled from raw_outscraper,
+        # null if Outscraper didn't return them — templates must {% if %}-guard.
+        'lat': osf_data.get('lat'),
+        'lon': osf_data.get('lon'),
+        'place_id': osf_data.get('place_id'),
+        'zip': osf_data.get('postal_code'),
+        'working_hours': osf_data.get('working_hours'),
     }
 
 
