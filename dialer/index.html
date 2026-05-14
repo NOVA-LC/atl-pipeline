@@ -544,6 +544,21 @@ async function makeCall() {
     renderQueue();
     focusCurrentLead();
     setDeviceStatus("dialing " + fmtPhone(to) + "…");
+    // Tell backend agent which lead is being dialed so it has context
+    try {
+      fetch("/calls/active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          business_name: lead.business_name,
+          owner_name: lead.owner_name,
+          category: lead.category,
+          city: lead.city,
+          phone: to,
+        }),
+      }).catch(() => {});
+    } catch (_) {}
     state.call = await state.device.connect({ params: { To: to, SessionId: state.sessionId } });
     startIvrPolling();
     renderCurrent();
@@ -557,6 +572,7 @@ async function makeCall() {
       $("btn-hang").disabled = true;
       state.call = null;
       state.dialingLeadId = null;
+      try { fetch("/calls/clear", { method: "POST" }).catch(() => {}); } catch (_) {}
       setTimeout(stopIvrPolling, 2500);
       renderQueue();
       // Auto-advance unless paused or a disposition was already pressed
@@ -620,15 +636,70 @@ function stopIvrPolling() {
 function handleIvrEvent(event) {
   state.ivrSince = Math.max(state.ivrSince, event.seq || 0);
   if (event.message) logCallEvent(event.message, event.level || "");
+
+  // Agent: live human or gatekeeper — flash banner so Tyler stops navigating
+  if (event.kind === "alert") {
+    flashAgentAlert(event.message || event.reason || "Live person on the line");
+    return;
+  }
+
+  // Agent: detected voicemail — auto-mark + advance (still pauseable)
+  if (event.kind === "mark_voicemail") {
+    const lead = state.leads[state.idx];
+    if (lead) {
+      const phone = lead.phones[state.phoneIdx];
+      logCallEvent(`Agent marked ${lead.business_name} as voicemail. Hanging up.`, "warn");
+      sendDisposition(lead.id, phone, "voicemail", event.reason || "agent");
+      if (state.call) try { state.call.disconnect(); } catch (_) {}
+    }
+    return;
+  }
+
+  // Agent: silent tick or note — already logged via message; nothing else to do
+  if (event.kind === "agent_wait" || event.kind === "agent_note" || event.kind === "agent_error") {
+    return;
+  }
+
+  // IVR digit (from agent or regex)
   if (event.kind !== "ivr_digit" || !event.digit) return;
   state.ivrSuggestion = event;
   renderCurrent();
   if (event.auto_press) {
     sendDtmf(event.digit);
-    logCallEvent(`IVR Copilot auto-pressed ${event.digit}.`, "ok");
+    logCallEvent(`Auto-pressed ${event.digit}.`, "ok");
     state.ivrSuggestion = null;
     renderCurrent();
   }
+}
+
+function flashAgentAlert(message) {
+  let bar = document.getElementById("agent-alert");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "agent-alert";
+    bar.style.cssText =
+      "position:fixed;top:0;left:0;right:0;z-index:9999;background:#22c55e;color:#000;" +
+      "font-weight:700;font-size:1.1rem;padding:14px 20px;text-align:center;" +
+      "box-shadow:0 4px 20px rgba(34,197,94,.4);cursor:pointer;" +
+      "animation:agentAlertPulse 1s ease-in-out infinite alternate";
+    bar.onclick = () => bar.remove();
+    document.body.appendChild(bar);
+    if (!document.getElementById("agent-alert-style")) {
+      const s = document.createElement("style");
+      s.id = "agent-alert-style";
+      s.textContent = "@keyframes agentAlertPulse{from{filter:brightness(1)}to{filter:brightness(1.25)}}";
+      document.head.appendChild(s);
+    }
+  }
+  bar.textContent = "🔔  " + message + "  (click to dismiss)";
+  // Audible cue — short beep via Web Audio
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.08;
+    o.start(); setTimeout(() => { o.stop(); ctx.close(); }, 180);
+  } catch (_) {}
 }
 
 function scheduleAutoAdvance() {

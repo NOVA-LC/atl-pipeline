@@ -79,6 +79,18 @@ DASHBOARD_URL = os.environ.get(
 IVR_COPILOT_MODE = os.environ.get("IVR_COPILOT_MODE", "suggest").lower()  # off | suggest | auto
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 
+# Agent mode: when "agent" or "auto", Haiku reasons about each transcript chunk and
+# decides actions (press digit, alert Tyler, mark voicemail, etc). "regex" is the
+# legacy pattern-matching path. Default to "agent" if Anthropic credentials present.
+try:
+    import agent as call_agent
+except Exception as _ae:
+    call_agent = None
+IVR_AGENT_MODE = os.environ.get(
+    "IVR_AGENT_MODE",
+    "agent" if (call_agent is not None and os.environ.get("ANTHROPIC_API_KEY")) else "regex",
+).lower()  # agent | regex | off
+
 
 def _media_stream_url():
     explicit = os.environ.get("DIALER_MEDIA_STREAM_URL", "").strip()
@@ -345,7 +357,27 @@ def _handle_ivr_transcript(session_id, transcript, seen):
     if key in seen:
         return
     seen.add(key)
-    _add_ivr_event(session_id, kind="transcript", message=f"IVR heard: {cleaned}", transcript=cleaned)
+    _add_ivr_event(session_id, kind="transcript", message=f"Heard: {cleaned}", transcript=cleaned)
+
+    # Agent path — Haiku reasons about the call. Falls through to regex on error.
+    if IVR_AGENT_MODE in ("agent", "auto") and call_agent and call_agent.is_available():
+        try:
+            decision = call_agent.think(session_id, cleaned)
+        except Exception as e:
+            decision = {"action": "error", "reason": f"agent crashed: {e}"}
+        if decision and decision.get("action") not in (None, "error"):
+            _dispatch_agent_action(session_id, decision, cleaned)
+            return
+        elif decision and decision.get("action") == "error":
+            _add_ivr_event(
+                session_id,
+                kind="agent_error",
+                level="warn",
+                message=f"Agent error, falling back to regex: {decision.get('reason')}",
+            )
+        # else: agent rate-limited or returned nothing — fall through
+
+    # Regex fallback (legacy behavior, also used when IVR_AGENT_MODE=regex)
     choice = detect_ivr_digit(cleaned)
     if not choice:
         return
@@ -364,8 +396,72 @@ def _handle_ivr_transcript(session_id, transcript, seen):
         transcript=cleaned,
         reason=choice["window"],
         level="ok" if mode == "auto" else "warn",
-        message=f"IVR Copilot {'auto-pressing' if mode == 'auto' else 'suggests pressing'} {digit}: \"{cleaned}\"",
+        message=f"IVR Copilot {'auto-pressing' if mode == 'auto' else 'suggests pressing'} {digit} (regex): \"{cleaned}\"",
     )
+
+
+def _dispatch_agent_action(session_id, decision, transcript):
+    """Translate an agent decision into an IVR event the frontend will act on."""
+    action = decision.get("action")
+    arg    = decision.get("arg") or ""
+    reason = decision.get("reason") or ""
+
+    if action == "press_digit" and arg in tuple("0123456789*#"):
+        # Treat agent decisions as auto-press by default (it has higher confidence than regex).
+        auto = (IVR_AGENT_MODE == "auto") or (IVR_COPILOT_MODE == "auto")
+        _add_ivr_event(
+            session_id,
+            kind="ivr_digit",
+            digit=arg,
+            auto_press=auto,
+            mode="auto" if auto else "suggest",
+            transcript=transcript,
+            reason=reason,
+            level="ok",
+            message=f"Agent {'auto-pressing' if auto else 'suggests pressing'} {arg}: {reason}",
+        )
+    elif action == "wait":
+        # No-op event for the agent log so Tyler can see it's thinking.
+        _add_ivr_event(
+            session_id,
+            kind="agent_wait",
+            transcript=transcript,
+            reason=reason,
+            message=f"Agent: waiting — {reason}",
+        )
+    elif action == "alert_tyler":
+        _add_ivr_event(
+            session_id,
+            kind="alert",
+            level="alert",
+            transcript=transcript,
+            reason=reason,
+            message=arg or reason or "Agent alert",
+        )
+    elif action == "mark_voicemail":
+        _add_ivr_event(
+            session_id,
+            kind="mark_voicemail",
+            level="warn",
+            transcript=transcript,
+            reason=reason,
+            message=f"Agent detected voicemail: {reason}",
+        )
+    elif action == "note":
+        _add_ivr_event(
+            session_id,
+            kind="agent_note",
+            transcript=transcript,
+            reason=reason,
+            message=f"Agent note: {arg}",
+        )
+    else:
+        _add_ivr_event(
+            session_id,
+            kind="agent_error",
+            level="warn",
+            message=f"Agent returned unknown action: {decision}",
+        )
 
 
 def _deepgram_url():
@@ -434,6 +530,11 @@ def _bridge_twilio_to_deepgram(ws):
         if dg is not None:
             try:
                 dg.close()
+            except Exception:
+                pass
+        if call_agent and session_id:
+            try:
+                call_agent.reset_session(session_id)
             except Exception:
                 pass
 
@@ -903,7 +1004,30 @@ def healthz():
             "stream_url": bool(MEDIA_STREAM_URL),
             "websocket_server": bool(sock),
         },
+        "agent": {
+            "mode": IVR_AGENT_MODE,
+            "available": bool(call_agent and call_agent.is_available()),
+            "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        },
     })
+
+
+@app.route("/calls/active", methods=["POST"])
+def calls_active():
+    """Frontend tells us which lead is being dialed so the agent has context.
+    Body: {lead_id, business_name, owner_name, category, city, phone}
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    if call_agent:
+        call_agent.set_active_lead(data or None)
+    return jsonify({"ok": True, "active": data})
+
+
+@app.route("/calls/clear", methods=["POST"])
+def calls_clear():
+    if call_agent:
+        call_agent.set_active_lead(None)
+    return jsonify({"ok": True})
 
 
 @app.route("/token")
@@ -1004,6 +1128,8 @@ def ivr_events():
     return jsonify({
         "events": events,
         "mode": IVR_COPILOT_MODE,
+        "agent_mode": IVR_AGENT_MODE,
+        "agent_available": bool(call_agent and call_agent.is_available()),
         "enabled": bool(DEEPGRAM_API_KEY and MEDIA_STREAM_URL and sock),
         "stream_url": bool(MEDIA_STREAM_URL),
         "deepgram_key": bool(DEEPGRAM_API_KEY),
