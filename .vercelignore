@@ -1,0 +1,16 @@
+atl_pipeline/
+data/
+scripts/
+tests/
+*.py
+*.db
+requirements.txt
+Procfile
+entrypoint.sh
+railway.toml
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
