@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+*.db
+*.log
+builds/
+.git
+.gitignore
+HANDOFF.md
+single.html
+railway.json

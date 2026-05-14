@@ -648,51 +648,99 @@ def _script_context(category):
     }
 
 
-def _nepq_talking_points(lead, source_points=None):
-    """Create a quieter, question-led cold-call script from the lead data."""
+def _ei_talking_points(lead, source_points=None):
+    """Build a cold-call script using Tyler's Emotional Intelligence methodology.
+
+    Structure: Permission → Grounding (their current reality, honestly) →
+    Elevation (their lived desired reality) → Resolution (the Peace Bridge).
+    The salesperson is the Peace Architect — not a closer.
+
+    Reference: docs/EMOTIONAL_INTELLIGENCE_METHODOLOGY.md
+    """
     ctx = _script_context(lead.get("category"))
     name = lead.get("business_name") or "your business"
+    owner = (lead.get("owner_name") or "").strip()
+    first_name = owner.split()[0] if owner else ""
     city = lead.get("city") or "your area"
-    category = lead.get("category") or "local service"
+    category = (lead.get("category") or "").strip()
     rating = lead.get("rating")
     reviews = lead.get("reviews")
 
     proof_bits = []
     if rating and reviews:
-        proof_bits.append(f"{rating} stars with {reviews} Google reviews")
+        proof_bits.append(f"{rating}★ on Google · {reviews} reviews")
     elif rating:
-        proof_bits.append(f"{rating} star rating")
+        proof_bits.append(f"{rating}★ on Google")
     if city:
-        proof_bits.append(f"{city} market")
-    proof = " · ".join(proof_bits) if proof_bits else f"{city} {category}"
+        proof_bits.append(city)
+    if category:
+        proof_bits.append(category)
+    proof = " · ".join(proof_bits)
 
-    useful_source = []
-    for point in source_points or []:
-        if not point:
+    # Filter and keep only signal-bearing source points (no labels, no boilerplate)
+    extras = []
+    for p in source_points or []:
+        if not p:
             continue
-        if re.match(r"(ask|carrier|open|pitch|if interested|sms follow-up)\b", point, re.I):
+        if re.match(r"(ask|carrier|open|pitch|if interested|sms follow-up|nepq)\b", p, re.I):
             continue
-        if re.search(r"plumbers? without a site|nighttime calls|build websites", point, re.I):
+        if re.search(r"plumbers? without a site|nighttime calls|build websites", p, re.I):
             continue
-        if point not in useful_source:
-            useful_source.append(point)
+        if p not in extras:
+            extras.append(p)
+
+    you = f"{first_name}," if first_name else ""
+    biz_short = first_name or name
 
     points = [
-        "NEPQ opener: Hi, this is Tyler with Nova here in Atlanta. I know this is out of the blue - do you handle new customer calls, or is there someone better I should ask for?",
-        f"Permission: I had one quick question about {name}'s online presence. If it is not relevant, you can tell me and I will get out of your way.",
-        f"Research cue: {proof}. Category: {category}.",
-        f"Situation: Are most of your new {ctx['job']} coming from repeat/referral, Google, or people who already know you?",
-        f"Problem awareness: When {ctx['buyer']} check you out online before calling, do you feel your current web presence makes it easy for them to choose you?",
-        f"Problem awareness: Do you ever lose good-fit jobs simply because people cannot quickly see {ctx['proof']}?",
-        f"Consequence: Since {ctx['pain']}, what do you think that costs you in a busy month?",
-        "Solution awareness: If there were a simple page that made your reviews, photos, services, and quote path obvious in under 10 seconds, would that actually help, or not really?",
-        "Transition: Would it be useful if I built a no-cost preview from your public Google info and texted it over, just so you can see what I mean?",
-        "If interested: Great - what email should I send it to, and who besides you would need to look at it?",
-        "If busy: Totally fair. Before I let you go, is getting more new customer calls from Google even something you care about right now?",
+        # — Permission (not a pitch)
+        (f"Permission: Hey {you} this is Tyler with Nova here in Atlanta — I know this is out "
+         f"of the blue. Before I take any more of your time, are you the right person to talk "
+         f"to about how new customers find {name}?"),
+
+        # — Research cue the rep can glance at
+        f"Lead context: {proof or city}",
+
+        # — GROUNDING (their current reality, honestly)
+        (f"Grounding · Depth: Where are most of your new {ctx['job']} actually coming from "
+         f"right now? Repeat customers, referrals, Google, or somewhere else?"),
+        (f"Grounding · Depth (layer 2): When someone in {city} Googles a {category or 'local pro'} "
+         f"at 9 at night with a problem they need fixed — walk me through what they see for {biz_short}."),
+        (f"Grounding · Mirror: [Reflect their exact words back, then pause.] \"So you said "
+         f"{{their words}} — tell me more about that.\""),
+
+        # — ELEVATION (their lived future, not corporate goals)
+        (f"Elevation · Lived future: If every new lead this week could find you in five "
+         f"seconds and saw your reviews, photos, and a way to call instantly — walk me through "
+         f"what a normal Tuesday morning looks like."),
+        (f"Elevation · Absence test: If the online trust piece just vanished — if your site "
+         f"looked as good as your actual work — what's the first thing that's different about "
+         f"your week?"),
+
+        # — RESOLUTION (the Peace Bridge — not a close)
+        (f"Resolution · Alignment summary: You told me {{their current reality, their words}}. "
+         f"You want {{their desired reality, their words}}. The reason I called: I already "
+         f"built a preview of what your site could look like — pulled from your public Google "
+         f"info. Want to see it?"),
+        (f"Resolution · Peace check: How does that feel?  ← If peace, ask for email + send. "
+         f"If tension, return to Grounding — there's more honest inventory to do."),
+        (f"Resolution · Pathway: I'll text the link right now to this number. Take a look "
+         f"while we're on. If it feels right, we go from there. If it doesn't, I appreciate "
+         f"your time and I move on."),
+
+        # — Recovery line if they're rushed (still EI: peace, not pressure)
+        (f"If they're rushed: Totally fair. Before I let you go — is getting more new "
+         f"customer calls from people Googling at night even something you'd want right now? "
+         f"If yes, when's a quieter five minutes? If no, that's a real answer and I respect it."),
     ]
-    if useful_source:
-        points.insert(3, "Public proof: " + " · ".join(useful_source[:3]))
+
+    if extras:
+        points.insert(2, "Public proof: " + " · ".join(extras[:3]))
     return points
+
+
+# Back-compat alias — preserves the existing call site
+_nepq_talking_points = _ei_talking_points
 
 
 def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
