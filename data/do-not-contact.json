@@ -4,5 +4,29 @@
     "reason": "stop",
     "logged_at": "2026-05-13",
     "business_name": "Leo's Landscape Tree Service"
+  },
+  {
+    "phone": "4045791188",
+    "reason": "manual-remove",
+    "logged_at": "2026-05-14",
+    "business_name": "National Leak Detection"
+  },
+  {
+    "phone": "7704287120",
+    "reason": "manual-remove",
+    "logged_at": "2026-05-14",
+    "business_name": "Marietta Radiator Service"
+  },
+  {
+    "phone": "4703004122",
+    "reason": "manual-remove",
+    "logged_at": "2026-05-14",
+    "business_name": "ProXpress Plumbing Atlanta & Drain Cleaning"
+  },
+  {
+    "phone": "7703734609",
+    "reason": "manual-remove",
+    "logged_at": "2026-05-14",
+    "business_name": "Twins Roofing & Construction Inc."
   }
 ]
