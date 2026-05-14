@@ -403,7 +403,7 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 
       <div class="svc-tile">
         <div class="icon" aria-hidden="true">
-          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/><path d="M12 5l-2 2M12 5l2 2M12 19l-2-2M12 19l2-2M5 12l2-2M5 12l2 2M19 12l-2-2M19 12l-2 2"/></svg>
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M4 7l16 10"/><path d="M4 17L20 7"/><path d="M9 4l3-2 3 2"/><path d="M9 20l3 2 3-2"/><path d="M3 9l-1 3 1 3"/><path d="M21 9l1 3-1 3"/></svg>
         </div>
         <h3>AC repair</h3>
         <p>Not cooling, frozen coil, weak airflow. Same-day in most cases. Flat-rate quote before any wrench moves.</p>
@@ -411,7 +411,7 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
 
       <div class="svc-tile">
         <div class="icon" aria-hidden="true">
-          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2c.5 3.5 3.5 5 3.5 9a3.5 3.5 0 11-7 0c0-2 1.5-3 1.5-5.5C10.5 6.5 11.5 5 12 2z"/><path d="M12 9c0 2-1.2 2.5-1.2 4a1.2 1.2 0 102.4 0c0-1-.6-1.5-1.2-2.5"/></svg>
+          <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2c0 4-5 6-5 11a5 5 0 0010 0c0-3-2-4-2-6 0 1.5-1.5 2-3-5z"/><path d="M12 13c0 1.5-1.5 2.5-1.5 4a1.5 1.5 0 003 0c0-1.5-1.5-2.5-1.5-4z"/></svg>
         </div>
         <h3>Furnace &amp; heat</h3>
         <p>Short-cycling, no ignition, cold vents. Gas and electric residential systems — diagnosis on-site.</p>
@@ -460,16 +460,14 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
             <div class="stars-46" role="img" aria-label="4.6 out of 5 stars">
               <svg width="148" height="26" viewBox="0 0 148 26" aria-hidden="true">
                 <defs>
-                  <symbol id="star" viewBox="0 0 26 26">
-                    <polygon points="13,2 16.1,9.6 24.3,10.2 18.1,15.5 20.1,23.5 13,19.2 5.9,23.5 7.9,15.5 1.7,10.2 9.9,9.6"/>
-                  </symbol>
+                  <polygon id="star-shape" points="13,2 16.1,9.6 24.3,10.2 18.1,15.5 20.1,23.5 13,19.2 5.9,23.5 7.9,15.5 1.7,10.2 9.9,9.6"/>
                   <clipPath id="clip46"><rect x="0" y="0" width="135.6" height="26"/></clipPath>
                 </defs>
                 <g fill="rgba(229,181,60,.22)">
-                  <use href="#star" x="0"/><use href="#star" x="30"/><use href="#star" x="60"/><use href="#star" x="90"/><use href="#star" x="120"/>
+                  <use href="#star-shape"/><use href="#star-shape" x="30"/><use href="#star-shape" x="60"/><use href="#star-shape" x="90"/><use href="#star-shape" x="120"/>
                 </g>
                 <g fill="#E5B53C" clip-path="url(#clip46)">
-                  <use href="#star" x="0"/><use href="#star" x="30"/><use href="#star" x="60"/><use href="#star" x="90"/><use href="#star" x="120"/>
+                  <use href="#star-shape"/><use href="#star-shape" x="30"/><use href="#star-shape" x="60"/><use href="#star-shape" x="90"/><use href="#star-shape" x="120"/>
                 </g>
               </svg>
             </div>
@@ -614,11 +612,12 @@ footer{padding:80px 0 100px;background:var(--navy-deep);color:rgba(255,255,255,.
       <p class="pull">317 W Ponce de Leon Ave, Decatur. <em>The same desk Ben's been answering the phone from for 18 years.</em></p>
       <div class="meta">— No call center · no after-hours service</div>
       <div class="behind-map">
+        <!-- OpenStreetMap embed: no API key required, no quota, always loads. Pin at 317 W Ponce de Leon Ave. -->
         <iframe
-          src="https://www.google.com/maps?q=317+W+Ponce+de+Leon+Ave+Decatur+GA+30030&output=embed"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=-84.3045%2C33.7700%2C-84.2925%2C33.7800&amp;layer=mapnik&amp;marker=33.7747%2C-84.2986"
           loading="lazy"
           referrerpolicy="no-referrer-when-downgrade"
-          title="Messiah Heating office at 317 W Ponce de Leon Ave, Decatur, GA"></iframe>
+          title="Map: Messiah Heating at 317 W Ponce de Leon Ave, Decatur, GA"></iframe>
       </div>
       <a class="directions-link" href="https://www.google.com/maps/dir/?api=1&destination=317+W+Ponce+de+Leon+Ave+Decatur+GA+30030" target="_blank" rel="noopener">Get directions <span class="arr">↗</span></a>
     </div>
