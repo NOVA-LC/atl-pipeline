@@ -244,6 +244,9 @@ def _lead_for_build(raw):
         "google_maps_url": raw.get("google_maps_url") or raw.get("gmaps") or "",
         "talking_points": raw.get("talking_points") or [],
         "source_url": raw.get("source_url") or DIALER_CALL_DASHBOARD_URL,
+        # Pass cached Outscraper payload through to the researcher (Option C)
+        "gbp": raw.get("gbp") or raw.get("raw_outscraper") or None,
+        "existing_url": raw.get("existing_url") or raw.get("vercel_url") or "",
     }
 
 
@@ -984,10 +987,63 @@ _nepq_talking_points = _ei_talking_points
 
 
 def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
-    """Read Tyler's public call-sheet dashboard and map cards into dialer rows."""
+    """Read Tyler's public call-sheet dashboard and map cards into dialer rows.
+
+    Option B: prefer the lossless `leads.json` feed (full raw_outscraper per lead)
+    when available. Falls back to Option A (HTML + embedded LEADS json) and
+    finally to legacy HTML scraping.
+    """
+    # ── Option B: try leads.json first ──────────────────────────────────────
+    base = url.rstrip("/")
+    json_url = base if base.endswith(".json") else (base.rstrip("/") + "/leads.json")
+    try:
+        jr = requests.get(json_url, timeout=15)
+        if jr.status_code == 200 and "application/json" in jr.headers.get("Content-Type", ""):
+            payload = jr.json()
+            out_json = []
+            for idx, l in enumerate(payload.get("leads") or [], start=1):
+                phone = normalize_phone(l.get("phone") or "")
+                if not phone:
+                    continue
+                lead = {
+                    "id": f"json-{idx}-{phone[-10:]}",
+                    "business_name": l.get("business_name") or l.get("name") or phone,
+                    "owner_name": ((l.get("research_payload") or {}).get("owner_name") or "") if (l.get("research_payload") and (l.get("research_payload") or {}).get("owner_name") and (l.get("research_payload") or {}).get("owner_name").lower() != "unknown") else "",
+                    "category": l.get("category") or "",
+                    "city": l.get("city") or "",
+                    "state": l.get("state") or "GA",
+                    "phones_raw": [phone],
+                    "vercel_url": l.get("vercel_url") or "",
+                    "rating": l.get("rating"),
+                    "reviews": l.get("reviews") or 0,
+                    "gbp": l.get("gbp") or {},
+                    "existing_url": l.get("vercel_url") or "",
+                }
+                lead["talking_points"] = _nepq_talking_points(lead, [])
+                out_json.append(lead)
+            if out_json:
+                return out_json
+    except Exception:
+        pass
+
+    # ── Fallback: HTML scrape (with Option A's embedded JSON detection) ─────
     resp = requests.get(url, timeout=20)
     resp.raise_for_status()
-    cards = re.findall(r'<details class="card\b.*?</details>', resp.text, re.S | re.I)
+    html_body = resp.text
+
+    # First try the embedded JSON — fast + lossless
+    embedded = {}
+    m = re.search(r"const\s+LEADS\s*=\s*(\[.*?\])\s*;\s*\n", html_body, re.S)
+    if m:
+        try:
+            for c in json.loads(m.group(1)):
+                cid = str(c.get("id") or "")
+                if cid:
+                    embedded[cid] = c
+        except Exception:
+            embedded = {}
+
+    cards = re.findall(r'<details class="card\b.*?</details>', html_body, re.S | re.I)
     out = []
 
     for idx, card in enumerate(cards, start=1):
@@ -1040,6 +1096,15 @@ def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
         if sms_body:
             source_points.append("SMS follow-up is prewritten on the call dashboard.")
 
+        card_id_attr = _first(r'<details[^>]+data-id="([^"]+)"', card) or _first(r'<details[^>]+id="([^"]+)"', card)
+        emb = embedded.get(card_id_attr) if card_id_attr else None
+        # Try fuzzy match on business name as a fallback
+        if not emb and embedded:
+            for ec in embedded.values():
+                if str(ec.get("business", "")).strip().lower() == biz.strip().lower():
+                    emb = ec
+                    break
+
         lead = {
             "id": f"call-{idx}-{phone[-10:]}",
             "business_name": biz,
@@ -1048,10 +1113,13 @@ def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
             "city": city,
             "state": "GA",
             "phones_raw": [phone],
-            "vercel_url": "",
+            "vercel_url": (emb or {}).get("demo") or "",
             "rating": rating,
             "reviews": reviews,
         }
+        # Option A: embed cached GBP so the build agent never re-calls Outscraper
+        if emb and emb.get("gbp"):
+            lead["gbp"] = emb["gbp"]
         lead["talking_points"] = _nepq_talking_points(lead, source_points)
 
         out.append(lead)

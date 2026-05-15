@@ -106,6 +106,29 @@ def render_dashboard(leads, today=None, base_url=None):
         city = lead.get('city') or ''
         demo = lead.get('vercel_url') or ''
         gmaps = lead.get('google_maps_url') or ''
+        # ── Embed the FULL Outscraper payload (Option A) so the build agent
+        #    can reuse it instead of re-paying for the same place.
+        gbp_payload = {}
+        raw_str = lead.get('raw_outscraper')
+        if raw_str:
+            try:
+                gbp_payload = json.loads(raw_str) if isinstance(raw_str, str) else dict(raw_str)
+            except Exception:
+                gbp_payload = {}
+        # Lean a slim, dialer-friendly subset to keep page size sane.
+        gbp_subset = {}
+        if gbp_payload:
+            for k in (
+                'place_id', 'google_id', 'name', 'full_address', 'address',
+                'city', 'state', 'postal_code', 'country', 'phone', 'email_1',
+                'site', 'website', 'rating', 'reviews', 'reviews_count',
+                'photos_count', 'logo', 'photo', 'latitude', 'longitude',
+                'category', 'categories', 'subtypes', 'type', 'working_hours',
+                'owner_id', 'owner_title', 'description', 'verified',
+                'working_in', 'service_area', 'reviews_data', 'photos',
+            ):
+                if k in gbp_payload:
+                    gbp_subset[k] = gbp_payload[k]
         cards_data.append({
             'id': str(lead.get('id') or biz),
             'business': biz,
@@ -121,6 +144,8 @@ def render_dashboard(leads, today=None, base_url=None):
             'demo': demo,
             'gmaps': gmaps,
             'talking_points': _talking_points(research),
+            # Reused by dialer/build_agent — avoids re-paying Outscraper
+            'gbp': gbp_subset,
         })
 
     # Sort: phone-valid leads first, then by rating desc, then by reviews desc

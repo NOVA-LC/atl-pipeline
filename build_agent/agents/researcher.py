@@ -146,14 +146,36 @@ def research(lead: dict[str, Any]) -> dict[str, Any]:
     state = lead.get("state") or "GA"
     phone = lead.get("phone") or ""
     existing_url_hint = lead.get("existing_url") or ""
+    # Option C: accept pre-existing Outscraper data so we never re-pay for the
+    # same place. Sources:
+    #   1. lead["gbp"] / lead["raw_outscraper"] passed from /build callers
+    #   2. parsed_outscraper.json on disk (if the dialer dropped it there)
+    #   3. fall back to live Outscraper API
+    cached_gbp: dict[str, Any] | None = None
+    for cache_key in ("gbp", "raw_outscraper", "outscraper"):
+        v = lead.get(cache_key)
+        if isinstance(v, dict) and v:
+            cached_gbp = v
+            break
+        if isinstance(v, str) and v.strip():
+            try:
+                cached_gbp = json.loads(v)
+                break
+            except Exception:
+                pass
 
     # ── Step A: GBP lookup ──────────────────────────────────────────────────
-    gbp = outscraper.fetch_gbp(business_name, city, state) if business_name else None
-    if gbp:
-        tools_used.append("outscraper.fetch_gbp")
-        cost_estimate += outscraper.estimate_cost(places_fetched=1)
-    else:
-        fallbacks.append("outscraper.fetch_gbp returned None")
+    gbp: dict[str, Any] | None = None
+    if cached_gbp:
+        gbp = cached_gbp
+        tools_used.append("cached_gbp (no Outscraper call)")
+    elif business_name:
+        gbp = outscraper.fetch_gbp(business_name, city, state)
+        if gbp:
+            tools_used.append("outscraper.fetch_gbp")
+            cost_estimate += outscraper.estimate_cost(places_fetched=1)
+        else:
+            fallbacks.append("outscraper.fetch_gbp returned None")
 
     # ── Step B: existing site URL ──────────────────────────────────────────
     site_url = ""
@@ -189,12 +211,27 @@ def research(lead: dict[str, Any]) -> dict[str, Any]:
 
     # ── Step D: GBP photos ──────────────────────────────────────────────────
     photo_urls: list[str] = []
-    place_id = (gbp or {}).get("place_id") or (gbp or {}).get("google_id")
-    if place_id:
-        photo_urls = outscraper.fetch_gbp_photos(place_id, max_photos=15)
+    # First check the cached_gbp for embedded photos (raw_outscraper from pipeline.db)
+    if cached_gbp:
+        embedded = cached_gbp.get("photos") or cached_gbp.get("photos_sample") or []
+        if isinstance(embedded, list):
+            for ph in embedded[:15]:
+                if isinstance(ph, str):
+                    photo_urls.append(ph)
+                elif isinstance(ph, dict):
+                    url = ph.get("photo_url") or ph.get("original_photo_url") or ph.get("photo") or ph.get("url")
+                    if url:
+                        photo_urls.append(url)
         if photo_urls:
-            tools_used.append("outscraper.fetch_gbp_photos")
-            cost_estimate += outscraper.estimate_cost(photos_fetched=len(photo_urls))
+            tools_used.append("cached_gbp_photos (no Outscraper call)")
+    # Fall back to live Outscraper fetch only if cached payload had none
+    if not photo_urls:
+        place_id = (gbp or {}).get("place_id") or (gbp or {}).get("google_id")
+        if place_id:
+            photo_urls = outscraper.fetch_gbp_photos(place_id, max_photos=15)
+            if photo_urls:
+                tools_used.append("outscraper.fetch_gbp_photos")
+                cost_estimate += outscraper.estimate_cost(photos_fetched=len(photo_urls))
 
     # ── Step E: classify vertical ──────────────────────────────────────────
     gbp_categories = []

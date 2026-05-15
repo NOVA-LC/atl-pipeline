@@ -228,9 +228,34 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             dash_dir = Path(repo_path) / 'dashboard'
             dash_dir.mkdir(parents=True, exist_ok=True)
             (dash_dir / 'index.html').write_text(html, encoding='utf-8')
+            # Option B: also emit pure JSON so the dialer doesn't have to scrape HTML.
+            # This is the lossless feed — full raw_outscraper subset per lead.
+            try:
+                leads_json_payload = [
+                    {
+                        **{k: dict(r).get(k) for k in (
+                            'id', 'business_name', 'phone', 'rating', 'reviews',
+                            'category', 'city', 'state', 'vercel_url',
+                            'google_maps_url', 'email',
+                        )},
+                        'research_payload': json.loads(dict(r).get('research_payload') or '{}') if dict(r).get('research_payload') else {},
+                        'gbp': json.loads(dict(r).get('raw_outscraper') or '{}') if dict(r).get('raw_outscraper') else {},
+                    }
+                    for r in todays
+                ]
+                (dash_dir / 'leads.json').write_text(
+                    json.dumps({
+                        'generated_at': datetime.datetime.utcnow().isoformat() + 'Z',
+                        'count': len(leads_json_payload),
+                        'leads': leads_json_payload,
+                    }, indent=2, default=str),
+                    encoding='utf-8',
+                )
+            except Exception as e:
+                click.echo(f'  ! leads.json emit failed (non-fatal): {e}')
             # Commit + push as its own commit so it's clear in git history
             try:
-                subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html'])
+                subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html', 'dashboard/leads.json'])
                 # noop guard
                 r = subprocess.run(['git', '-C', repo_path, 'diff', '--cached', '--quiet'])
                 if r.returncode != 0:
