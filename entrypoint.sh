@@ -78,5 +78,15 @@ git config --global user.email "${RESEND_FROM_EMAIL:-tyler@gonenova.com}"
 git config --global user.name "${RESEND_FROM_NAME:-Tyler · Nova}"
 git config --global init.defaultBranch main
 
+# ── First, regenerate the dashboard from existing pipeline.db data.
+# This is idempotent + cheap, doesn't depend on Outscraper, and ensures the
+# dialer/build_agent always have a fresh leads.json feed even if the daily
+# pipeline fails later. (Bypassed via SKIP_REBUILD_DASHBOARD=1 if needed.)
+if [ "${SKIP_REBUILD_DASHBOARD:-0}" != "1" ]; then
+    echo ">> [entrypoint] rebuilding dashboard (lossless feed) from pipeline.db"
+    python -m atl_pipeline.cli rebuild-dashboard --lookback-days 30 --limit 300 || \
+        echo ">> [entrypoint] rebuild-dashboard failed (non-fatal — continuing to daily)"
+fi
+
 echo ">> [entrypoint] running daily pipeline"
 exec python -m atl_pipeline.cli daily
