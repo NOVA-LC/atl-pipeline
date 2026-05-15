@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "build_agent/schemas/research_brief.schema.json",
+  "title": "Research Brief",
+  "description": "Validated research output that feeds the builder. Every fact MUST have a source URL or be null. See SPEC §3.",
+  "type": "object",
+  "required": ["business", "owner", "brand", "industry_context", "build_unfit"],
+  "properties": {
+
+    "build_unfit": {
+      "type": "boolean",
+      "description": "True when no GBP AND no existing website — orchestrator pre-filter rejects these leads."
+    },
+
+    "business": {
+      "type": "object",
+      "required": ["name", "phone", "rating", "review_count"],
+      "properties": {
+        "name":              { "type": "string" },
+        "founded_year":      { "type": ["integer", "null"], "minimum": 1800, "maximum": 2100 },
+        "source_founded":    { "type": ["string", "null"], "format": "uri" },
+        "services":          { "type": "array", "items": { "type": "string" } },
+        "source_services":   { "type": ["string", "null"] },
+        "service_area":      { "type": "array", "items": { "type": "string" } },
+        "source_service_area": { "type": ["string", "null"] },
+        "license_number":    { "type": ["string", "null"] },
+        "source_license":    { "type": ["string", "null"] },
+        "real_reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["text", "rating", "source"],
+            "properties": {
+              "text":   { "type": "string" },
+              "author": { "type": ["string", "null"] },
+              "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+              "source": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "real_photos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url", "type", "source"],
+            "properties": {
+              "url":    { "type": "string", "format": "uri" },
+              "type":   { "type": "string", "enum": ["team", "truck", "job", "exterior", "process", "interior", "before_after", "other"] },
+              "alt":    { "type": ["string", "null"] },
+              "source": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "phone":         { "type": "string" },
+        "email":         { "type": ["string", "null"] },
+        "address":       { "type": ["string", "null"] },
+        "rating":        { "type": ["number", "null"], "minimum": 0, "maximum": 5 },
+        "review_count":  { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+
+    "owner": {
+      "type": "object",
+      "properties": {
+        "name":        { "type": ["string", "null"] },
+        "source_name": { "type": ["string", "null"] },
+        "voice_samples": {
+          "type": "array",
+          "description": "Quoted owner language extracted from GBP review responses or existing-site copy. Builder uses these to match tone.",
+          "items": {
+            "type": "object",
+            "required": ["text", "source"],
+            "properties": {
+              "text":   { "type": "string" },
+              "source": { "type": "string", "format": "uri" }
+            }
+          }
+        }
+      }
+    },
+
+    "brand": {
+      "type": "object",
+      "properties": {
+        "primary_color":   { "type": ["string", "null"], "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "secondary_color": { "type": ["string", "null"], "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "accent_color":    { "type": ["string", "null"], "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "palette_source":  { "type": ["string", "null"], "description": "Where the palette was extracted from — logo / van photo / existing site CSS / industry fallback." },
+        "logo_url":        { "type": ["string", "null"], "format": "uri" },
+        "source_logo":     { "type": ["string", "null"] },
+        "existing_site_url": { "type": ["string", "null"], "format": "uri" },
+        "fonts_in_use":    {
+          "type": "array",
+          "description": "Web fonts detected on existing site (if any).",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "industry_context": {
+      "type": "object",
+      "required": ["vertical"],
+      "properties": {
+        "vertical": {
+          "type": "string",
+          "enum": ["plumbing", "hvac", "landscaping", "roofing", "auto", "electrical", "painting", "cleaning", "pest_control", "tree_service", "mobile_mechanic", "general_trade", "other"]
+        },
+        "buyer_persona": {
+          "type": ["string", "null"],
+          "description": "One-line description of who buys, in what moment."
+        },
+        "winning_conversion_patterns": {
+          "type": "array",
+          "description": "Industry-specific patterns the builder should consider (e.g. 'emergency CTA sticky top-right', 'flat-rate-pricing badge'). Sourced from internal playbook, not hallucinated.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "_meta": {
+      "type": "object",
+      "description": "Internal — orchestrator + critic use this. Not rendered.",
+      "properties": {
+        "researched_at":  { "type": "string", "format": "date-time" },
+        "research_cost_usd": { "type": "number" },
+        "tools_used":     { "type": "array", "items": { "type": "string" } },
+        "fallbacks":      { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

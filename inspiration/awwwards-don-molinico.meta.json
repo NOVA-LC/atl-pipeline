@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-don-molinico",
+  "source_url": "https://www.awwwards.com/sites/don-molinico",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["aggressive-bold", "typographic-statement"],
+  "industry_fits": ["painting", "pest_control"],
+  "what_works": "A single saturated red (#D70321) carries the entire site — every hero, every CTA, every accent. The wordmark wraps the page like packaging. Translates directly to a painter or exterminator with a one-color brand identity who wants the page to feel like a product, not a service.",
+  "what_does_not_translate": "The Nuxt/GSAP animated product reveals on listing pages need a dev — copy the monochrome saturation and the wrapped wordmark, drop the animation layer.",
+  "palette_dominant": ["#D70321", "#FFFFFF", "#1A0306"],
+  "type_observations": "One condensed display grotesk at 'banner' weight + neutral sans body; aggressive scale jump between the two.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

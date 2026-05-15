@@ -1,0 +1,13 @@
+{
+  "id": "httpster-livesurface",
+  "source_url": "https://www.livesurface.com",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["modern-tech", "technical-minimal", "process-led"],
+  "industry_fits": ["electrical", "auto", "hvac", "mobile_mechanic"],
+  "what_works": "Software product hero leads with a clean three-feature triad ('Drag and Drop / Materials / Plus Surfaces') in a grid — translates directly to 'three services we do better than anyone' for a younger tech-savvy owner. Electric-blue CTA pops against neutral product imagery.",
+  "what_does_not_translate": "SaaS pricing-tier section doesn't map to a contractor — replace with a service-tier card grid using the same composition rules.",
+  "palette_dominant": ["#FFFFFF", "#0F172A", "#3B82F6", "#94A3B8"],
+  "type_observations": "Modern geometric sans (Inter / Söhne) at consistent weight; monospace tags for technical specs — single-family discipline keeps it clean.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

@@ -1,0 +1,13 @@
+{
+  "id": "httpster-bauhaus-clock",
+  "source_url": "https://bauhausclock.com",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["typographic-statement", "technical-minimal"],
+  "industry_fits": ["electrical", "hvac", "plumbing"],
+  "what_works": "A single geometric concept (Bauhaus-derived clock) carries the entire page — no scroll-noise, no testimonials, just the idea executed with discipline. Primary-color-only palette enforced with Bauhaus rigor.",
+  "what_does_not_translate": "Single-concept-as-entire-page works for a product, not a service business; the rigor (primary colors only, geometric type, no decoration) is what transfers as a discipline check.",
+  "palette_dominant": ["#E63946", "#1D3557", "#F1FAEE", "#FFB703"],
+  "type_observations": "Geometric sans (Futura/Avenir lineage) in heavy weight; pure typographic statement, no body-text rescue.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

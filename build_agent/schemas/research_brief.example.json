@@ -1,0 +1,71 @@
+{
+  "build_unfit": false,
+  "business": {
+    "name": "Peach State Plumbing",
+    "founded_year": 1994,
+    "source_founded": "https://www.google.com/maps/place/Peach+State+Plumbing",
+    "services": ["Slab leak detection", "Water heater install", "Drain cleaning", "Sewer line repair"],
+    "source_services": "https://www.google.com/maps/place/Peach+State+Plumbing",
+    "service_area": ["Marietta", "Kennesaw", "Acworth", "Smyrna"],
+    "source_service_area": "https://peachstateplumbingatl.com/service-area",
+    "license_number": null,
+    "source_license": null,
+    "real_reviews": [
+      {
+        "text": "Joey diagnosed a slab leak in 10 minutes that another company quoted $4,500 to find. His repair: $1,890 flat. 32 years of doing this shows.",
+        "author": "Linda M.",
+        "rating": 5,
+        "source": "https://www.google.com/maps/contrib/.../reviews"
+      }
+    ],
+    "real_photos": [
+      {
+        "url": "https://lh3.googleusercontent.com/p/peach-van-001",
+        "type": "truck",
+        "alt": "Peach State Plumbing service van in Marietta",
+        "source": "https://www.google.com/maps/place/Peach+State+Plumbing"
+      }
+    ],
+    "phone": "+17705550101",
+    "email": null,
+    "address": "1234 Cobb Pkwy, Marietta, GA 30060",
+    "rating": 4.8,
+    "review_count": 127
+  },
+  "owner": {
+    "name": "Joey Iverson",
+    "source_name": "https://peachstateplumbingatl.com/about",
+    "voice_samples": [
+      {
+        "text": "We don't quote one price over the phone and a different one in your driveway. Whatever I say, that's what it costs.",
+        "source": "https://peachstateplumbingatl.com/about"
+      }
+    ]
+  },
+  "brand": {
+    "primary_color": "#C73B1E",
+    "secondary_color": "#1C1C1C",
+    "accent_color": "#E8B931",
+    "palette_source": "extracted from van photo via k-means",
+    "logo_url": "https://peachstateplumbingatl.com/logo.png",
+    "source_logo": "https://peachstateplumbingatl.com",
+    "existing_site_url": "https://peachstateplumbingatl.com",
+    "fonts_in_use": ["Inter"]
+  },
+  "industry_context": {
+    "vertical": "plumbing",
+    "buyer_persona": "Homeowner with an active leak, slow drain, or water heater problem — researching at 9pm before calling tomorrow morning.",
+    "winning_conversion_patterns": [
+      "Sticky emergency phone CTA top-right",
+      "Flat-rate-pricing badge near the hero",
+      "Owner-answers-the-phone trust signal",
+      "Service-area page for local SEO"
+    ]
+  },
+  "_meta": {
+    "researched_at": "2026-05-14T19:42:00Z",
+    "research_cost_usd": 0.87,
+    "tools_used": ["outscraper.fetch_gbp", "existing_site_scraper.scrape", "brave.search", "palette.extract"],
+    "fallbacks": []
+  }
+}

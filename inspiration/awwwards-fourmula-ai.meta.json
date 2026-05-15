@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-fourmula-ai",
+  "source_url": "https://www.awwwards.com/sites/fourmula-ai",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["modern-tech", "typographic-statement"],
+  "industry_fits": ["pest_control", "cleaning"],
+  "what_works": "Near-black ground with a single saturated safety-orange accent and an oversized type-led hero — feels like industrial control software, not a service. For a pest-control company that wants to feel 'engineered,' this palette + scale pairing reads as competence, not aggression.",
+  "what_does_not_translate": "The Webflow-built generative platform demos and animated loaders need real engineering hours — keep the orange-on-near-black palette and the big disciplined type, drop the demo widgets.",
+  "palette_dominant": ["#020108", "#FF6B02", "#F0F0F0"],
+  "type_observations": "Single heavy grotesk at huge clamp (display ~140px) + a tight mono-style accent for labels; only two weights total.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

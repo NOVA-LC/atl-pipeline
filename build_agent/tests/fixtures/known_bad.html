@@ -1,0 +1,78 @@
+<!-- DELIBERATELY BROKEN. Used by Step 5 to verify the gates fire.
+     Violates: HTML validity, responsive (320px), a11y contrast, design system rules
+     (4+ colors, 3 fonts, emoji icons, stock photo URL, arbitrary spacing,
+     no real CTA target). -->
+<html>
+<head>
+<title>Acme Plumbing - the best plumber in town!!!</title>
+<style>
+  body {
+    font-family: "Comic Sans MS", "Brush Script MT", "Papyrus", sans-serif;
+    background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff0080);
+    color: #eeeeee;  /* low contrast against bright background — a11y fail */
+    width: 600px;  /* fixed width — horizontal scroll at 320px and 375px */
+    padding: 17px;  /* arbitrary spacing — design system rule violation */
+    margin-left: 23px;
+    margin-right: 41px;
+  }
+  h1 {
+    color: #ffff00;
+    font-size: 85.5px;  /* off-scale */
+    text-shadow: 4px 4px 0 #ff00ff, 8px 8px 0 #00ffff;  /* unrequested decoration */
+  }
+  .cta {
+    background: #ff00ff;
+    color: #ffffff;
+    padding: 13px 27px;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .stock-photo {
+    width: 500px;
+    height: 300px;
+    background-image: url('https://images.unsplash.com/photo-1234567890');
+  }
+</style>
+</head>
+<body>
+
+<!-- Multiple competing CTAs above the fold — rule violation -->
+<h1>🚰💧✨ THE #1 BEST PLUMBER IN THE WORLD!!! ✨💧🚰</h1>
+<p>Our team is committed to excellence and quality service for all your plumbing needs.</p>
+
+<!-- No real link target — rule violation -->
+<a href="#" class="cta">📞 CLICK HERE FOR INSTANT QUOTE!! 🔥</a>
+<a href="#" class="cta">💰 SAVE 50% TODAY ONLY!! 💰</a>
+<a href="javascript:void(0)" class="cta">⭐ BOOK NOW ⭐</a>
+
+<!-- Stock photo URL — rule violation -->
+<div class="stock-photo"></div>
+
+<h2>About <font color="orange">Us</font></h2>  <!-- deprecated tag, low contrast -->
+<p>We are the best plumbing company in the entire state of Georgia and possibly the world! Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+
+<!-- Image without alt text -->
+<img src="https://stock-images.example.com/plumber.jpg" width="500" height="400">
+
+<!-- Fake testimonial with first letter only -->
+<blockquote>
+  "Best service I've ever had!" — J.
+</blockquote>
+<blockquote>
+  "10/10 would recommend!!!" — A.
+</blockquote>
+
+<!-- Form with no labels — a11y fail -->
+<form>
+  <input type="text" placeholder="Name">
+  <input type="text" placeholder="Email">
+  <input type="text" placeholder="Phone">
+  <button>SUBMIT</button>
+</form>
+
+<!-- Unclosed div triggers HTML validation failure -->
+<div>
+<p>Footer area
+
+</body>
+</html>

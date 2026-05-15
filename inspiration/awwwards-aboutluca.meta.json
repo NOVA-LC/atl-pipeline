@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-aboutluca",
+  "source_url": "https://aboutluca.com",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["quiet-confidence", "typographic-statement", "technical-minimal"],
+  "industry_fits": ["cleaning", "landscaping", "painting", "electrical"],
+  "what_works": "Designer portfolio leads with one centered name and one CTA ('Let's talk') — the entire hero is two elements and a vast field of white. Numbered project grid below feels organized without grid-lines or borders. Translates to a calm, premium contractor splash that scrolls into a project list.",
+  "what_does_not_translate": "Loading-state intro animation isn't worth the perf cost on mobile — keep the centered hero composition, drop the intro choreography.",
+  "palette_dominant": ["#FFFFFF", "#1A1A1A", "#9E9E9E", "#EFEFEF"],
+  "type_observations": "Single contemporary sans family; hero name set at modest scale (not display-huge) — the restraint at hero size signals confidence more than a 200px headline would.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

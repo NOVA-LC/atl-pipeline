@@ -1,0 +1,13 @@
+{
+  "id": "httpster-the-index",
+  "source_url": "https://theindex.website",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["modern-tech", "technical-minimal", "process-led"],
+  "industry_fits": ["electrical", "hvac", "plumbing", "auto"],
+  "what_works": "Tabular directory layout with row-aligned thumbnails and metadata columns — feels like a database UI in the best way. For a tech-curious younger trade owner, this 'we run a tight operation' signal is exactly the right move.",
+  "what_does_not_translate": "The pure directory format flattens emotion — combine with one warmer hero section above so the page doesn't feel transactional.",
+  "palette_dominant": ["#FAFAFA", "#111111", "#2563EB", "#A3A3A3"],
+  "type_observations": "Grotesk display + monospace for row metadata; tight line heights, generous column gutters — the rhythm is spreadsheet, not magazine.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

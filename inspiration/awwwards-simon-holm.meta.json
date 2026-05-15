@@ -1,0 +1,13 @@
+{
+  "id": "awwwards-simon-holm",
+  "source_url": "https://www.simonholm.studio",
+  "captured_at": "2026-05-14",
+  "vibe_tags": ["technical-minimal", "typographic-statement"],
+  "industry_fits": ["electrical", "hvac", "plumbing"],
+  "what_works": "Numbered project carousel (01-05) borrows directly from Swiss editorial pagination — index becomes the navigation. Strict grid, generous whitespace, sans-serif throughout — nothing decorative survives.",
+  "what_does_not_translate": "Portfolio-carousel structure assumes a curated body of work; for contractors, the indexing pattern (01/02/03 as section markers) is what transfers.",
+  "palette_dominant": ["#FFFFFF", "#0A0A0A", "#B4B4B4", "#E5E5E5"],
+  "type_observations": "Single sans-serif family across the whole site — display, body, navigation. Hierarchy from size and weight only.",
+  "performed_well_count": 0,
+  "performed_poorly_count": 0
+}

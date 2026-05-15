@@ -139,6 +139,40 @@ def _db():
         note TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
+    # Per-call transcripts captured from Deepgram. One row per call session.
+    c.execute("""CREATE TABLE IF NOT EXISTS call_transcripts (
+        session_id     TEXT PRIMARY KEY,
+        lead_id        TEXT,
+        business_name  TEXT,
+        phone          TEXT,
+        transcript     TEXT NOT NULL DEFAULT '',
+        chunk_count    INTEGER DEFAULT 0,
+        started_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ended_at       TIMESTAMP
+    )""")
+    # AI summary generated post-call from the transcript.
+    c.execute("""CREATE TABLE IF NOT EXISTS call_summaries (
+        session_id          TEXT PRIMARY KEY,
+        lead_id             TEXT,
+        outcome             TEXT,
+        sentiment           TEXT,
+        key_objections      TEXT,    -- JSON list
+        follow_up_actions   TEXT,    -- JSON list
+        key_quotes          TEXT,    -- JSON list
+        suggested_disposition TEXT,
+        confidence          REAL,
+        model               TEXT,
+        cost_usd            REAL,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+    # Cached pre-call AI briefings — 3-bullet intel per lead, generated once
+    c.execute("""CREATE TABLE IF NOT EXISTS briefings (
+        lead_id       TEXT PRIMARY KEY,
+        bullets       TEXT NOT NULL,   -- JSON list
+        model         TEXT,
+        cost_usd      REAL,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
     return c
 
 
@@ -210,6 +244,9 @@ def _lead_for_build(raw):
         "google_maps_url": raw.get("google_maps_url") or raw.get("gmaps") or "",
         "talking_points": raw.get("talking_points") or [],
         "source_url": raw.get("source_url") or DIALER_CALL_DASHBOARD_URL,
+        # Pass cached Outscraper payload through to the researcher (Option C)
+        "gbp": raw.get("gbp") or raw.get("raw_outscraper") or None,
+        "existing_url": raw.get("existing_url") or raw.get("vercel_url") or "",
     }
 
 
@@ -349,6 +386,109 @@ def detect_ivr_digit(transcript):
     return best
 
 
+def _persist_transcript_chunk(session_id, chunk):
+    """Append a Deepgram transcript chunk to call_transcripts. Best-effort."""
+    if not session_id or not chunk:
+        return
+    try:
+        active = (call_agent.get_active_lead() if call_agent else {}) or {}
+        with _db() as c:
+            row = c.execute("SELECT transcript, chunk_count FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+            if row is None:
+                c.execute(
+                    "INSERT INTO call_transcripts (session_id, lead_id, business_name, phone, transcript, chunk_count) "
+                    "VALUES (?, ?, ?, ?, ?, 1)",
+                    (session_id, active.get("lead_id"), active.get("business_name"), active.get("phone"), chunk),
+                )
+            else:
+                existing = (row["transcript"] or "").rstrip()
+                joined = (existing + " " + chunk).strip()
+                c.execute(
+                    "UPDATE call_transcripts SET transcript = ?, chunk_count = chunk_count + 1 WHERE session_id = ?",
+                    (joined, session_id),
+                )
+            c.commit()
+    except Exception:
+        pass
+
+
+def _finalize_transcript(session_id):
+    """Mark the transcript as ended_at NOW + trigger async post-call summary."""
+    if not session_id:
+        return
+    try:
+        with _db() as c:
+            c.execute("UPDATE call_transcripts SET ended_at = CURRENT_TIMESTAMP WHERE session_id = ? AND ended_at IS NULL", (session_id,))
+            c.commit()
+    except Exception:
+        return
+    threading.Thread(target=_generate_call_summary, args=(session_id,), daemon=True).start()
+
+
+def _generate_call_summary(session_id):
+    """Read the transcript, ask Haiku for a structured post-call summary.
+    Persists to call_summaries. Idempotent — skips if a row already exists."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return
+    try:
+        with _db() as c:
+            t = c.execute("SELECT transcript, lead_id, business_name FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+            existing = c.execute("SELECT 1 FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+        if not t or existing:
+            return
+        transcript = (t["transcript"] or "").strip()
+        if len(transcript) < 40:
+            return  # too short to summarize
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        model = os.environ.get("CALL_SUMMARY_MODEL", "claude-haiku-4-5-20251001")
+        system = (
+            "You analyze cold-call phone transcripts for Tyler Brown's website-build cold outreach.\n"
+            "Tyler is on the line; the other speaker is a small business owner or gatekeeper.\n"
+            "Return STRICT JSON only — no prose, no fences."
+        )
+        user = (
+            "Transcript (verbatim Deepgram, may have ASR errors):\n"
+            f"```\n{transcript[:6000]}\n```\n\n"
+            "Business name (if known): " + (t["business_name"] or "unknown") + "\n\n"
+            "Return JSON with these keys exactly:\n"
+            "  outcome           : one of [booked, interested, callback, not_interested, dnc, voicemail, gatekeeper, no_decision]\n"
+            "  sentiment         : one of [positive, neutral, negative]\n"
+            "  key_objections    : list of strings, verbatim or close paraphrase\n"
+            "  follow_up_actions : list of imperative bullets ('text demo link Friday', 'email Joe at joe@...')\n"
+            "  key_quotes        : list of strings — the 1-3 most useful verbatim quotes\n"
+            "  suggested_disposition : one of [no_answer, voicemail, callback, not_interested, interested, dnc, skip]\n"
+            "  confidence        : float 0-1"
+        )
+        resp = client.messages.create(model=model, max_tokens=600, system=system,
+                                       messages=[{"role": "user", "content": user}])
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+        # strip fences if present
+        if text.startswith("```"):
+            text = re.sub(r"^```\w*\s*", "", text).rsplit("```", 1)[0].strip()
+        try:
+            data = json.loads(text)
+        except Exception:
+            return
+        usage = resp.usage
+        cost = round(getattr(usage, "input_tokens", 0) * 1.0 / 1_000_000 + getattr(usage, "output_tokens", 0) * 5.0 / 1_000_000, 4)
+        with _db() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO call_summaries (session_id, lead_id, outcome, sentiment, key_objections, follow_up_actions, key_quotes, suggested_disposition, confidence, model, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (session_id, t["lead_id"], data.get("outcome"), data.get("sentiment"),
+                 json.dumps(data.get("key_objections") or []),
+                 json.dumps(data.get("follow_up_actions") or []),
+                 json.dumps(data.get("key_quotes") or []),
+                 data.get("suggested_disposition"),
+                 float(data.get("confidence") or 0),
+                 model, cost),
+            )
+            c.commit()
+    except Exception:
+        pass
+
+
 def _handle_ivr_transcript(session_id, transcript, seen):
     cleaned = re.sub(r"\s+", " ", transcript or "").strip()
     if not cleaned:
@@ -358,6 +498,7 @@ def _handle_ivr_transcript(session_id, transcript, seen):
         return
     seen.add(key)
     _add_ivr_event(session_id, kind="transcript", message=f"Heard: {cleaned}", transcript=cleaned)
+    _persist_transcript_chunk(session_id, cleaned)
 
     # Agent path — Haiku reasons about the call. Falls through to regex on error.
     if IVR_AGENT_MODE in ("agent", "auto") and call_agent and call_agent.is_available():
@@ -522,6 +663,7 @@ def _bridge_twilio_to_deepgram(ws):
                     dg.send_binary(base64.b64decode(payload))
             elif event == "stop":
                 _add_ivr_event(session_id, kind="status", message="IVR Copilot audio stream stopped.")
+                _finalize_transcript(session_id)
                 break
     except Exception as e:
         _add_ivr_event(session_id, kind="error", level="err", message=f"IVR Copilot failed: {e}")
@@ -845,10 +987,63 @@ _nepq_talking_points = _ei_talking_points
 
 
 def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
-    """Read Tyler's public call-sheet dashboard and map cards into dialer rows."""
+    """Read Tyler's public call-sheet dashboard and map cards into dialer rows.
+
+    Option B: prefer the lossless `leads.json` feed (full raw_outscraper per lead)
+    when available. Falls back to Option A (HTML + embedded LEADS json) and
+    finally to legacy HTML scraping.
+    """
+    # ── Option B: try leads.json first ──────────────────────────────────────
+    base = url.rstrip("/")
+    json_url = base if base.endswith(".json") else (base.rstrip("/") + "/leads.json")
+    try:
+        jr = requests.get(json_url, timeout=15)
+        if jr.status_code == 200 and "application/json" in jr.headers.get("Content-Type", ""):
+            payload = jr.json()
+            out_json = []
+            for idx, l in enumerate(payload.get("leads") or [], start=1):
+                phone = normalize_phone(l.get("phone") or "")
+                if not phone:
+                    continue
+                lead = {
+                    "id": f"json-{idx}-{phone[-10:]}",
+                    "business_name": l.get("business_name") or l.get("name") or phone,
+                    "owner_name": ((l.get("research_payload") or {}).get("owner_name") or "") if (l.get("research_payload") and (l.get("research_payload") or {}).get("owner_name") and (l.get("research_payload") or {}).get("owner_name").lower() != "unknown") else "",
+                    "category": l.get("category") or "",
+                    "city": l.get("city") or "",
+                    "state": l.get("state") or "GA",
+                    "phones_raw": [phone],
+                    "vercel_url": l.get("vercel_url") or "",
+                    "rating": l.get("rating"),
+                    "reviews": l.get("reviews") or 0,
+                    "gbp": l.get("gbp") or {},
+                    "existing_url": l.get("vercel_url") or "",
+                }
+                lead["talking_points"] = _nepq_talking_points(lead, [])
+                out_json.append(lead)
+            if out_json:
+                return out_json
+    except Exception:
+        pass
+
+    # ── Fallback: HTML scrape (with Option A's embedded JSON detection) ─────
     resp = requests.get(url, timeout=20)
     resp.raise_for_status()
-    cards = re.findall(r'<details class="card\b.*?</details>', resp.text, re.S | re.I)
+    html_body = resp.text
+
+    # First try the embedded JSON — fast + lossless
+    embedded = {}
+    m = re.search(r"const\s+LEADS\s*=\s*(\[.*?\])\s*;\s*\n", html_body, re.S)
+    if m:
+        try:
+            for c in json.loads(m.group(1)):
+                cid = str(c.get("id") or "")
+                if cid:
+                    embedded[cid] = c
+        except Exception:
+            embedded = {}
+
+    cards = re.findall(r'<details class="card\b.*?</details>', html_body, re.S | re.I)
     out = []
 
     for idx, card in enumerate(cards, start=1):
@@ -901,6 +1096,15 @@ def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
         if sms_body:
             source_points.append("SMS follow-up is prewritten on the call dashboard.")
 
+        card_id_attr = _first(r'<details[^>]+data-id="([^"]+)"', card) or _first(r'<details[^>]+id="([^"]+)"', card)
+        emb = embedded.get(card_id_attr) if card_id_attr else None
+        # Try fuzzy match on business name as a fallback
+        if not emb and embedded:
+            for ec in embedded.values():
+                if str(ec.get("business", "")).strip().lower() == biz.strip().lower():
+                    emb = ec
+                    break
+
         lead = {
             "id": f"call-{idx}-{phone[-10:]}",
             "business_name": biz,
@@ -909,10 +1113,13 @@ def _load_call_dashboard_leads(url=DIALER_CALL_DASHBOARD_URL):
             "city": city,
             "state": "GA",
             "phones_raw": [phone],
-            "vercel_url": "",
+            "vercel_url": (emb or {}).get("demo") or "",
             "rating": rating,
             "reviews": reviews,
         }
+        # Option A: embed cached GBP so the build agent never re-calls Outscraper
+        if emb and emb.get("gbp"):
+            lead["gbp"] = emb["gbp"]
         lead["talking_points"] = _nepq_talking_points(lead, source_points)
 
         out.append(lead)
@@ -1010,6 +1217,223 @@ def healthz():
             "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
         },
     })
+
+
+@app.route("/status")
+def status_aggregator():
+    """Aggregated tool health for the dialer's status strip.
+    Each tool reports: {ok: bool, degraded: bool, msg: str, detail: str}."""
+    out = {}
+    out["lead_source"] = LEAD_SRC
+
+    # Twilio: account creds + from number + twiml app set
+    twilio_ok = all([ACCOUNT_SID, API_KEY_SID, API_KEY_SECRET, FROM_NUMBER, TWIML_APP_SID])
+    out["twilio"] = {
+        "ok": twilio_ok,
+        "degraded": False,
+        "msg": "Twilio Voice",
+        "detail": f"FROM {FROM_NUMBER}" if twilio_ok else "missing credentials",
+    }
+
+    # Deepgram: key + media stream URL configured
+    out["deepgram"] = {
+        "ok": bool(DEEPGRAM_API_KEY and MEDIA_STREAM_URL and sock),
+        "degraded": bool(DEEPGRAM_API_KEY) and not bool(MEDIA_STREAM_URL and sock),
+        "msg": "Deepgram STT",
+        "detail": "configured" if (DEEPGRAM_API_KEY and MEDIA_STREAM_URL) else "missing key or public URL",
+    }
+
+    # Anthropic: probe a 1-token call to verify capacity (cached 5min)
+    out["anthropic"] = _probe_anthropic()
+
+    # Outscraper: probe (cached 5min) — known to be past-due
+    out["outscraper"] = _probe_outscraper()
+
+    return jsonify(out)
+
+
+# Tiny LRU cache for probes — re-check each tool at most every 5 min
+_PROBE_CACHE = {}
+_PROBE_TTL = 300  # seconds
+
+
+def _probe_anthropic():
+    import time as _t
+    key = "anthropic"
+    cached = _PROBE_CACHE.get(key)
+    if cached and _t.time() - cached["at"] < _PROBE_TTL:
+        return cached["data"]
+    data = {"ok": False, "degraded": False, "msg": "Anthropic", "detail": "no key"}
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+        return data
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        # 1-token cheap probe to claude-haiku
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4,
+            messages=[{"role": "user", "content": "ok"}],
+        )
+        if resp and resp.content:
+            data = {"ok": True, "degraded": False, "msg": "Anthropic", "detail": "Sonnet+Haiku reachable"}
+    except Exception as e:
+        err = str(e)[:120]
+        # 529 overload → degraded (not dead)
+        if "529" in err or "overload" in err.lower():
+            data = {"ok": False, "degraded": True, "msg": "Anthropic", "detail": "overloaded (529)"}
+        else:
+            data = {"ok": False, "degraded": False, "msg": "Anthropic", "detail": err}
+    _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+    return data
+
+
+def _probe_outscraper():
+    import time as _t
+    key = "outscraper"
+    cached = _PROBE_CACHE.get(key)
+    if cached and _t.time() - cached["at"] < _PROBE_TTL:
+        return cached["data"]
+    data = {"ok": False, "degraded": False, "msg": "Outscraper", "detail": "no key"}
+    api_key = os.environ.get("OUTSCRAPER_API_KEY")
+    if not api_key:
+        _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+        return data
+    try:
+        r = requests.get(
+            "https://api.outscraper.cloud/maps/search-v3",
+            params={"query": "Acme, Atlanta, GA, USA", "limit": 1, "async": "false"},
+            headers={"X-API-KEY": api_key},
+            timeout=10,
+        )
+        body = r.json() if r.headers.get("Content-Type", "").startswith("application/json") else {}
+        if r.status_code == 200 and not body.get("error"):
+            data = {"ok": True, "degraded": False, "msg": "Outscraper", "detail": "API reachable"}
+        elif "past-due" in (body.get("errorMessage", "") or "").lower() or "credit" in (body.get("errorMessage", "") or "").lower():
+            data = {"ok": False, "degraded": True, "msg": "Outscraper", "detail": "account past-due — top up"}
+        else:
+            data = {"ok": False, "degraded": True, "msg": "Outscraper", "detail": (body.get("errorMessage") or f"http {r.status_code}")[:80]}
+    except Exception as e:
+        data = {"ok": False, "degraded": False, "msg": "Outscraper", "detail": str(e)[:120]}
+    _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+    return data
+
+
+# ─── pre-call AI briefing ───────────────────────────────────────────────────
+@app.route("/briefing", methods=["POST"])
+def briefing():
+    """Generate / fetch a 3-bullet pre-call briefing for a lead.
+    Cached in `briefings` table — first call is ~$0.001, repeats are free."""
+    data = request.get_json(force=True) or {}
+    lead_id = data.get("lead_id") or (data.get("lead") or {}).get("id")
+    if not lead_id:
+        return jsonify({"error": "lead_id required"}), 400
+    # Cached?
+    with _db() as c:
+        row = c.execute("SELECT bullets, created_at FROM briefings WHERE lead_id = ?", (lead_id,)).fetchone()
+    if row:
+        try:
+            return jsonify({"bullets": json.loads(row["bullets"]), "cached": True})
+        except Exception:
+            pass
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return jsonify({"bullets": [], "error": "no anthropic key"}), 200
+
+    lead = data.get("lead") or {}
+    biz = lead.get("business_name") or ""
+    cat = lead.get("category") or ""
+    city = lead.get("city") or ""
+    rating = lead.get("rating")
+    reviews = lead.get("reviews")
+    talking = lead.get("talking_points") or []
+    owner = lead.get("owner_name") or ""
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        model = os.environ.get("BRIEFING_MODEL", "claude-haiku-4-5-20251001")
+        system = (
+            "You write tight 3-bullet pre-call briefings for Tyler Brown, a cold-call rep at Nova, who builds free demo websites for local trade businesses in Atlanta. "
+            "Tyler is about to dial. He has 5 seconds to read your bullets before the line rings. Pull intel from the data given; do NOT invent. "
+            "Each bullet is one specific sentence: a hook, a leverage point, a thing to say. No generic advice."
+        )
+        user = (
+            f"BUSINESS: {biz}\n"
+            f"CATEGORY: {cat}\n"
+            f"LOCATION: {city}\n"
+            f"RATING: {rating} ({reviews} reviews)\n"
+            f"OWNER (if surfaced): {owner}\n"
+            f"EXISTING TALKING POINTS (raw): {talking[:8]}\n\n"
+            "Return JSON only: {\"bullets\": [\"...\", \"...\", \"...\"]} — exactly 3 bullets, max 14 words each."
+        )
+        resp = client.messages.create(model=model, max_tokens=250, system=system,
+                                       messages=[{"role": "user", "content": user}])
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```\w*\s*", "", text).rsplit("```", 1)[0].strip()
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return jsonify({"bullets": [], "error": f"parse failed: {text[:120]}"}), 200
+        bullets = parsed.get("bullets") or []
+        bullets = [str(b).strip() for b in bullets if b and isinstance(b, (str,))][:3]
+        if not bullets:
+            return jsonify({"bullets": []}), 200
+        usage = resp.usage
+        cost = round(getattr(usage, "input_tokens", 0) * 1.0 / 1_000_000 + getattr(usage, "output_tokens", 0) * 5.0 / 1_000_000, 5)
+        with _db() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO briefings (lead_id, bullets, model, cost_usd) VALUES (?, ?, ?, ?)",
+                (lead_id, json.dumps(bullets), model, cost),
+            )
+            c.commit()
+        return jsonify({"bullets": bullets, "cached": False, "cost": cost})
+    except Exception as e:
+        return jsonify({"bullets": [], "error": str(e)[:200]}), 200
+
+
+# ─── transcript + summary endpoints ─────────────────────────────────────────
+@app.route("/transcripts")
+def list_transcripts():
+    with _db() as c:
+        rows = c.execute(
+            "SELECT session_id, lead_id, business_name, phone, chunk_count, started_at, ended_at, length(transcript) AS len "
+            "FROM call_transcripts ORDER BY started_at DESC LIMIT 50"
+        ).fetchall()
+    return jsonify({"transcripts": [dict(r) for r in rows]})
+
+
+@app.route("/transcript/<session_id>")
+def get_transcript(session_id):
+    with _db() as c:
+        row = c.execute("SELECT * FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+        if not row:
+            return jsonify({"error": "not found"}), 404
+        summary = c.execute("SELECT * FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+    out = dict(row)
+    if summary:
+        s = dict(summary)
+        for k in ("key_objections", "follow_up_actions", "key_quotes"):
+            try: s[k] = json.loads(s[k] or "[]")
+            except Exception: s[k] = []
+        out["summary"] = s
+    return jsonify(out)
+
+
+@app.route("/summary/<session_id>")
+def get_summary(session_id):
+    with _db() as c:
+        row = c.execute("SELECT * FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "no summary yet"}), 404
+    out = dict(row)
+    for k in ("key_objections", "follow_up_actions", "key_quotes"):
+        try: out[k] = json.loads(out[k] or "[]")
+        except Exception: out[k] = []
+    return jsonify(out)
 
 
 @app.route("/calls/active", methods=["POST"])
@@ -1192,6 +1616,12 @@ def notes_list():
 
 @app.route("/build", methods=["POST"])
 def build_site():
+    """Triggered by the dialer's B = interested + build button.
+
+    Routes to the build_agent orchestrator (Steps 1-6 of SPEC) when available,
+    falls back to the legacy _run_build_job() when build_agent isn't installed
+    on this host (e.g. Railway prod, which currently doesn't ship Playwright).
+    """
     data = request.get_json(force=True) or {}
     lead = _lead_for_build(data.get("lead") or data)
     if not lead["business_name"]:
@@ -1209,11 +1639,21 @@ def build_site():
         "error": None,
         "started_at": _now_iso(),
         "updated_at": _now_iso(),
+        "events": [],         # streaming progress events for the dialer UI
+        "preview_url": None,
+        "rep_approved": False,
+        "rep_approved_at": None,
+        "feels_like_score": None,
+        "use_build_agent": _try_use_build_agent(),
     }
     with BUILD_LOCK:
         BUILD_JOBS[job_id] = job
 
-    thread = threading.Thread(target=_run_build_job, args=(job_id, lead), daemon=True)
+    if job["use_build_agent"]:
+        target = _run_build_agent_job
+    else:
+        target = _run_build_job
+    thread = threading.Thread(target=target, args=(job_id, lead), daemon=True)
     thread.start()
     return jsonify(job)
 
@@ -1225,6 +1665,174 @@ def build_status(job_id):
         if not job:
             return jsonify({"error": "build job not found"}), 404
         return jsonify(dict(job))
+
+
+@app.route("/build/<job_id>/approve", methods=["POST"])
+def build_approve(job_id):
+    """Rep clicks 'Send to Lead' — gates the lead-side SMS. Per SPEC §5."""
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "build job not found"}), 404
+        if not job.get("preview_url"):
+            return jsonify({"error": "no preview_url yet — build not complete"}), 400
+        job["rep_approved"] = True
+        job["rep_approved_at"] = _now_iso()
+    # Optional: send SMS to lead now. Reuses existing Twilio config.
+    try:
+        from twilio.rest import Client as TwilioClient
+        lead_phone = (job.get("lead_phone") or "").strip()
+        if FROM_NUMBER and lead_phone:
+            owner_first = (job.get("owner_first") or "there").strip()
+            body = (
+                f"hey {owner_first} — tyler with nova. built this preview while we "
+                f"were talking: {job['preview_url']} — take a look while we're on."
+            )
+            tw = TwilioClient(ACCOUNT_SID, os.environ.get("TWILIO_AUTH_TOKEN", ""))
+            sent = tw.messages.create(to=lead_phone, from_=FROM_NUMBER, body=body)
+            job["lead_sms_sid"] = sent.sid
+    except Exception as e:
+        job["lead_sms_error"] = str(e)
+    return jsonify(job)
+
+
+@app.route("/build/<job_id>/calibration", methods=["POST"])
+def build_calibration(job_id):
+    """Rep's 1-5 'feels like theirs' rating per SPEC §2. THE feedback engine."""
+    data = request.get_json(force=True) or {}
+    score = data.get("score")
+    note = (data.get("note") or "").strip()
+    try:
+        score_int = int(score)
+        assert 1 <= score_int <= 5
+    except Exception:
+        return jsonify({"error": "score must be int 1-5"}), 400
+
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "build job not found"}), 404
+        job["feels_like_score"] = score_int
+        job["feels_like_note"] = note
+
+    # Also write to build_agent's calibration table if the build_agent DB exists
+    try:
+        import sqlite3
+        from pathlib import Path as _P
+        cal_db = _P(os.environ.get("BUILD_AGENT_DB", str(_P(__file__).resolve().parents[1] / "build_agent" / "_data" / "build_agent.db")))
+        if cal_db.exists():
+            with sqlite3.connect(cal_db) as cc:
+                cc.execute(
+                    "INSERT OR REPLACE INTO build_calibration "
+                    "(build_id, lead_id, feels_like_score, feels_like_note, rated_at) "
+                    "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                    (job.get("agent_job_id") or job_id, job.get("lead_id", ""), score_int, note),
+                )
+    except Exception as e:
+        job["calibration_db_error"] = str(e)
+    return jsonify(job)
+
+
+def _try_use_build_agent() -> bool:
+    """Decide whether build_agent.orchestrator is importable + dependencies are met."""
+    if os.environ.get("DIALER_USE_LEGACY_BUILD") == "1":
+        return False
+    try:
+        import build_agent.orchestrator  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def _run_build_agent_job(job_id, lead):
+    """Hand the lead to build_agent.orchestrator with streaming progress callback."""
+    try:
+        import sys as _sys
+        atl_root = str(Path(__file__).resolve().parent.parent)
+        if atl_root not in _sys.path:
+            _sys.path.insert(0, atl_root)
+        from build_agent import orchestrator  # type: ignore
+    except Exception as e:
+        _job_update(job_id, status="error", message=f"build_agent unavailable: {e}", finished_at=_now_iso())
+        return
+
+    # Capture lead context for SMS-to-lead later (we don't auto-send; rep approves)
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if job:
+            job["lead_phone"] = lead.get("phone")
+            job["owner_first"] = (lead.get("owner_name") or "").split(" ")[0]
+
+    def progress(event: str, payload: dict):
+        with BUILD_LOCK:
+            j = BUILD_JOBS.get(job_id)
+            if not j:
+                return
+            evt = {"at": _now_iso(), "event": event, **payload}
+            j.setdefault("events", []).append(evt)
+            j["events"] = j["events"][-50:]
+            j["updated_at"] = _now_iso()
+            j["status"] = event
+            j["message"] = _pretty_event_message(event, payload)
+
+    try:
+        result = orchestrator.build(lead, progress=progress)
+        with BUILD_LOCK:
+            j = BUILD_JOBS.get(job_id) or {}
+            j["agent_job_id"] = result.get("job_id")
+            j["agent_result"] = result
+            if result.get("error"):
+                j["status"] = "error"
+                j["error"] = result["error"]
+                j["message"] = f"build failed: {result['error']}"
+            else:
+                # Preview URL — for v1 we serve from the local build_agent _data dir
+                j["preview_url"] = f"/build_agent_preview/{result['slug']}/index.html"
+                j["status"] = "completed"
+                j["message"] = (
+                    f"Site ready · code={result.get('code_score')} · "
+                    f"vision={result.get('vision_score')} · "
+                    f"${result.get('budget_used')} in {result.get('duration_sec')}s · "
+                    f"awaiting rep approval"
+                )
+                j["url"] = j["preview_url"]
+            j["finished_at"] = _now_iso()
+    except Exception as e:
+        _job_update(job_id, status="error", message=str(e), error=traceback.format_exc(limit=8), finished_at=_now_iso())
+
+
+def _pretty_event_message(event: str, payload: dict) -> str:
+    if event == "queued":
+        return "Queued."
+    if event == "researching":
+        return f"Researching {payload.get('business_name','...')} via GBP + existing site..."
+    if event == "gathering_assets":
+        return "Downloading prospect photos + extracting palette..."
+    if event == "picking_inspiration":
+        return "Picking inspiration refs from corpus..."
+    if event == "inspiration_picked":
+        return f"Picked refs: {', '.join(payload.get('ref_ids', []))}"
+    if event == "building_first_draft":
+        return "Sonnet writing first draft..."
+    if event == "critic_done":
+        return (
+            f"Iter {payload.get('iteration')} · code {payload.get('code_score')}/100 "
+            f"· vision {payload.get('vision_score')}/10 · "
+            f"${payload.get('budget_remaining'):.2f} left"
+        )
+    if event == "done":
+        return (
+            f"Done · code={payload.get('code_score')} vision={payload.get('vision_score')} "
+            f"({payload.get('ship_reason')})"
+        )
+    return event
+
+
+@app.route("/build_agent_preview/<path:filename>")
+def build_agent_preview(filename):
+    """Serve the built site (from build_agent/_data/builds/<slug>/...)."""
+    base = Path(os.environ.get("BUILD_AGENT_BUILDS_DIR", str(Path(__file__).resolve().parent.parent / "build_agent" / "_data" / "builds")))
+    return send_from_directory(str(base), filename)
 
 
 @app.route("/builds/<path:filename>")

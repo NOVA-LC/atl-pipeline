@@ -228,9 +228,34 @@ def run(xlsx, max_sends, skip_blog, dry_run):
             dash_dir = Path(repo_path) / 'dashboard'
             dash_dir.mkdir(parents=True, exist_ok=True)
             (dash_dir / 'index.html').write_text(html, encoding='utf-8')
+            # Option B: also emit pure JSON so the dialer doesn't have to scrape HTML.
+            # This is the lossless feed — full raw_outscraper subset per lead.
+            try:
+                leads_json_payload = [
+                    {
+                        **{k: dict(r).get(k) for k in (
+                            'id', 'business_name', 'phone', 'rating', 'reviews',
+                            'category', 'city', 'state', 'vercel_url',
+                            'google_maps_url', 'email',
+                        )},
+                        'research_payload': json.loads(dict(r).get('research_payload') or '{}') if dict(r).get('research_payload') else {},
+                        'gbp': json.loads(dict(r).get('raw_outscraper') or '{}') if dict(r).get('raw_outscraper') else {},
+                    }
+                    for r in todays
+                ]
+                (dash_dir / 'leads.json').write_text(
+                    json.dumps({
+                        'generated_at': datetime.datetime.utcnow().isoformat() + 'Z',
+                        'count': len(leads_json_payload),
+                        'leads': leads_json_payload,
+                    }, indent=2, default=str),
+                    encoding='utf-8',
+                )
+            except Exception as e:
+                click.echo(f'  ! leads.json emit failed (non-fatal): {e}')
             # Commit + push as its own commit so it's clear in git history
             try:
-                subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html'])
+                subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html', 'dashboard/leads.json'])
                 # noop guard
                 r = subprocess.run(['git', '-C', repo_path, 'diff', '--cached', '--quiet'])
                 if r.returncode != 0:
@@ -593,6 +618,103 @@ def status(limit):
                             FROM leads ORDER BY updated_at DESC LIMIT ?""", (limit,)).fetchall()
     for r in rows:
         click.echo(f"  {r['business_name'][:30]:30s} verify={r['verify_status'] or '-':9s} research={r['research_status'] or '-':6s} url={r['vercel_url'] or '-':40s} d1={r['email1_sent_at'] or '-'}")
+
+@cli.command('rebuild-dashboard')
+@click.option('--lookback-days', default=14, help='Pull leads updated in the last N days')
+@click.option('--limit', default=200)
+@click.option('--push/--no-push', default=True, help='Push to demos repo (set --no-push for dry-run)')
+def rebuild_dashboard(lookback_days, limit, push):
+    """Regenerate dashboard/index.html + dashboard/leads.json from pipeline.db
+    WITHOUT running the full daily pipeline. Use this to push fresh data to the
+    dialer/build_agent when Outscraper is down or the cron has been failing."""
+    env = _env()
+    repo_path = _ensure_demos_repo(env)
+    if not repo_path:
+        click.echo('  ! demos repo not available — set DEMOS_REPO_LOCAL or run inside the cron service')
+        return
+    base = (env.get('DEMOS_BASE_URL') or 'atlanta-demos.vercel.app').rstrip('/').replace('https://', '').replace('http://', '')
+
+    with db.conn() as c:
+        rows = c.execute(f"""SELECT * FROM leads
+                            WHERE updated_at > datetime('now', '-{int(lookback_days)} days')
+                              AND phone IS NOT NULL AND phone != ''
+                            ORDER BY rating DESC, reviews DESC
+                            LIMIT ?""", (limit,)).fetchall()
+    if not rows:
+        click.echo(f'  ! no leads in last {lookback_days} days — nothing to rebuild')
+        return
+    click.echo(f'  → rebuilding dashboard for {len(rows)} leads')
+
+    html = dashboard.render_dashboard([dict(r) for r in rows], base_url=f'https://{base}')
+    dash_dir = Path(repo_path) / 'dashboard'
+    dash_dir.mkdir(parents=True, exist_ok=True)
+    (dash_dir / 'index.html').write_text(html, encoding='utf-8')
+    click.echo(f'  ✓ wrote {dash_dir / "index.html"}')
+
+    # leads.json (Option B feed)
+    try:
+        leads_json_payload = [
+            {
+                **{k: dict(r).get(k) for k in (
+                    'id', 'business_name', 'phone', 'rating', 'reviews',
+                    'category', 'city', 'state', 'vercel_url',
+                    'google_maps_url', 'email',
+                )},
+                'research_payload': json.loads(dict(r).get('research_payload') or '{}') if dict(r).get('research_payload') else {},
+                'gbp': json.loads(dict(r).get('raw_outscraper') or '{}') if dict(r).get('raw_outscraper') else {},
+            }
+            for r in rows
+        ]
+        (dash_dir / 'leads.json').write_text(
+            json.dumps({
+                'generated_at': datetime.datetime.utcnow().isoformat() + 'Z',
+                'count': len(leads_json_payload),
+                'leads': leads_json_payload,
+            }, indent=2, default=str),
+            encoding='utf-8',
+        )
+        click.echo(f'  ✓ wrote {dash_dir / "leads.json"} ({len(leads_json_payload)} leads)')
+    except Exception as e:
+        click.echo(f'  ! leads.json failed: {e}')
+        return
+
+    if not push:
+        click.echo(f'  (skipping push — dry run)')
+        return
+    try:
+        subprocess.check_call(['git', '-C', repo_path, 'add', 'dashboard/index.html', 'dashboard/leads.json'])
+        r = subprocess.run(['git', '-C', repo_path, 'diff', '--cached', '--quiet'])
+        if r.returncode != 0:
+            subprocess.check_call(['git', '-C', repo_path, 'commit', '-m',
+                                   f'dashboard: rebuild from pipeline.db ({len(rows)} leads)'])
+            subprocess.check_call(['git', '-C', repo_path, 'push', 'origin', 'main'])
+            click.echo(f'  🎛  pushed: https://{base}/dashboard/  and  https://{base}/dashboard/leads.json')
+        else:
+            click.echo(f'  🎛  dashboard unchanged')
+    except Exception as e:
+        click.echo(f'  ! dashboard push failed: {e}')
+
+
+def _ensure_demos_repo(env):
+    """Clone the demos repo to DEMOS_REPO_LOCAL if needed; return its path or None."""
+    repo_local = env.get('DEMOS_REPO_LOCAL') or env.get('DEMOS_REPO_LOCAL_PATH') or '/data/demos_repo'
+    owner = env.get('GITHUB_OWNER') or 'NOVA-LC'
+    name = env.get('DEMOS_REPO_NAME') or 'atlanta-website-demos'
+    token = env.get('GITHUB_TOKEN')
+    if not Path(repo_local).exists() and token:
+        try:
+            url = f'https://{token}@github.com/{owner}/{name}.git'
+            Path(repo_local).parent.mkdir(parents=True, exist_ok=True)
+            subprocess.check_call(['git', 'clone', '--depth', '1', url, repo_local])
+        except Exception as e:
+            click.echo(f'  ! clone failed: {e}')
+            return None
+    return repo_local if Path(repo_local).exists() else None
+
+
+def _env():
+    return {k: os.environ.get(k) for k in os.environ}
+
 
 if __name__ == '__main__':
     cli()
