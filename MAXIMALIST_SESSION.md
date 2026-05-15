@@ -140,9 +140,61 @@ P0 only. Five items. Each one polished, not half-done.
 ## Progress log
 
 ### 14:00 Session start
-- Wrote this doc.
-- Audited current state.
-- Selected 5 P0 items.
-- Starting #1 (UI redesign) now.
+- Wrote this doc, audited current state, selected 5 P0 items.
 
-(Updates below as work lands…)
+### 14:30 P0 batch shipped (commit `0c50f70`)
+- **P0.1 Apple-quality CSS redesign**: design tokens, status strip in topbar
+  (5 live dots: Twilio / Deepgram / Sonnet / Outscraper / Device), focus-mode
+  (body[data-mode='calling'] collapses queue rail to 76px, hides labels,
+  pulses the active item), restrained palette, hairline borders, motion curve.
+- **P0.2 Transcript persistence**: new `call_transcripts` table; every
+  Deepgram chunk appended via `_persist_transcript_chunk`; finalized on
+  Media Stream 'stop'. GET /transcripts + GET /transcript/<id>.
+- **P0.3 Post-call AI summary**: new `call_summaries` table; Haiku reads
+  finalized transcript, returns strict JSON with outcome / sentiment /
+  key_objections / follow_up_actions / key_quotes / suggested_disposition /
+  confidence. Async on disconnect, idempotent. GET /summary/<id>.
+- **P0.4 Pre-call AI briefing**: new `briefings` table; POST /briefing
+  generates 3 sharp bullets via Haiku (~$0.0006 each, cached). Frontend
+  lazy-fetches via ensureBriefing(); renders inline above talking points
+  with skeleton loading state. Verified live: Joey/Acme returned three
+  specific, sourced bullets.
+- **P0.5 System status header**: GET /status with per-tool probes (Twilio,
+  Deepgram, Anthropic, Outscraper). 5-min in-memory cache. 529/past-due
+  → degraded (yellow), missing creds → error (red). Live verified: Anthropic
+  green ("Sonnet+Haiku reachable"), Outscraper amber ("account past-due —
+  top up"), Twilio green.
+
+### 15:00 P1 batch shipped (this commit)
+- **⌘K command palette**: full-screen overlay with blur backdrop, fuzzy
+  search across all 93 leads by name/phone/city/category, arrow-key nav,
+  enter to focus. Glass aesthetic (rgba + backdrop-filter). `⌘K to search`
+  pill in topbar so people discover it.
+- **Post-call summary card**: 8 seconds after a call disconnect, dialer
+  fetches /summary/<session_id> and renders a popover with: outcome pill,
+  sentiment chip (positive/neutral/negative color-coded), best verbatim
+  quote in italic with accent-bar, objections list, follow-up bullets in
+  green, and a one-click "Apply: <suggested_disposition>" button that
+  files the disposition + dismisses.
+- **Dialer UI loads clean**: 88,066 bytes, 200 OK.
+
+### Outstanding (deferred to next session)
+- Twilio AMD (auto-detect answering machine — needs TwiML changes + cost)
+- ElevenLabs voicemail drops (needs voice clone setup)
+- Build cost meter inline in build status banner (data is in build_jobs,
+  needs frontend polish)
+- Calibration dashboard page (would be a separate route /calibration)
+- End-of-day summary (cron job that emails/SMS a daily wrap)
+
+### What's true about the dialer now
+- Status of every tool is visible at a glance
+- Pre-call briefing surfaces specific intel about each lead before you dial
+- Every transcript is persisted; every call gets summarized; objections
+  and follow-up actions are extracted automatically
+- Cmd-K finds any lead instantly across 93 records
+- Focus mode auto-engages during live calls — fewer panels, less noise
+- Design uses tokens consistently; one accent at a time; hairline borders;
+  Apple-style motion curve
+- UX/UX still has rough edges (right rail panels not all restyled, some
+  legacy classes), but the bones are right and the daily-use flows
+  (search, dial, listen, summarize) are now polished
