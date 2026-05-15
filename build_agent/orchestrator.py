@@ -190,7 +190,16 @@ def build(lead: dict[str, Any], progress: ProgressFn = _noop) -> dict[str, Any]:
 
     # ── state setup ──
     business_name = lead["business_name"]
-    slug = _slugify(business_name)
+    base_slug = _slugify(business_name)
+    # Disambiguate slug on collision (rebuilds for the same business get -2, -3, ...)
+    slug = base_slug
+    with _db() as c:
+        n = 2
+        while c.execute("SELECT 1 FROM build_jobs WHERE slug = ?", (slug,)).fetchone():
+            slug = f"{base_slug}-{n}"
+            n += 1
+            if n > 999:
+                break
     job_id = uuid.uuid4().hex[:16]
     out_dir = BUILDS_DIR / slug
     out_dir.mkdir(parents=True, exist_ok=True)
