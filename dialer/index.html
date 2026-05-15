@@ -3,17 +3,631 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Brain-off Dialer</title>
+<title>Dialer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  /* ── design tokens ─────────────────────────────────────────────────────── */
   :root {
-    --bg:#0a0a0f; --panel:#14141f; --line:#2a2a3e; --text:#e6e6ec;
-    --muted:#8a8aa0; --accent:#f97316; --green:#22c55e; --red:#ef4444;
-    --blue:#3b82f6; --purple:#a855f7; --yellow:#eab308;
+    /* color — Apple dark mode lineage */
+    --bg:        #000000;
+    --panel:     #0c0c10;
+    --elevated:  #1c1c1e;
+    --hairline:  rgba(255,255,255,0.07);
+    --hairline-strong: rgba(255,255,255,0.13);
+    --text:      #f5f5f7;
+    --text-dim:  rgba(245,245,247,0.55);
+    --text-mute: rgba(245,245,247,0.32);
+
+    /* accent — one at a time, set on body[data-mode] */
+    --accent:        #0a84ff;  /* idle (Apple system blue) */
+    --accent-on:     #ffffff;
+    --accent-soft:   rgba(10,132,255,0.16);
+
+    --green:   #30d158;
+    --green-soft: rgba(48,209,88,0.16);
+    --yellow:  #ffd60a;
+    --orange:  #ff9f0a;
+    --red:     #ff453a;
+    --red-soft: rgba(255,69,58,0.18);
+
+    /* spacing — 4pt scale */
+    --s-1:  4px; --s-2:  8px; --s-3: 12px; --s-4: 16px; --s-5: 24px;
+    --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+
+    /* radii */
+    --r-2: 6px; --r-3: 10px; --r-4: 14px; --r-5: 20px; --r-pill: 999px;
+
+    /* type */
+    --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+    --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', sans-serif;
+    --font-mono:    ui-monospace, 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+
+    --t-hero:    clamp(28px, 3.2vw, 44px);
+    --t-h1:      clamp(20px, 2.2vw, 30px);
+    --t-h2:      18px;
+    --t-body:    15px;
+    --t-small:   13px;
+    --t-micro:   11px;
+
+    /* motion */
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-fast: 140ms;
+    --dur:      220ms;
+    --dur-slow: 380ms;
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);padding:16px}
-  .layout{display:grid;grid-template-columns:280px 1fr 320px;gap:16px;max-width:1500px;margin:0 auto;height:calc(100vh - 32px)}
+
+  /* ── reset / base ──────────────────────────────────────────────────────── */
+  *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    font-family: var(--font-body);
+    font-size: var(--t-body);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    padding: var(--s-4) var(--s-4) 0;
+    line-height: 1.45;
+  }
+  ::selection { background: var(--accent-soft); color: var(--text); }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  a { color: var(--accent); text-decoration: none; transition: opacity var(--dur) var(--ease); }
+  a:hover { opacity: 0.7; }
+  input, textarea { font: inherit; color: inherit; }
+  input:focus, textarea:focus, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: var(--r-2);
+    background: var(--elevated);
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    font-weight: 600;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.4);
+  }
+
+  /* ── header ────────────────────────────────────────────────────────────── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--s-3) var(--s-2);
+    margin-bottom: var(--s-4);
+  }
+  .topbar h1 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .topbar h1 .pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-left: var(--s-3);
+    padding: 2px 7px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+  }
+
+  .status-strip {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    font-size: var(--t-micro);
+    color: var(--text-mute);
+  }
+  .status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: opacity var(--dur) var(--ease);
+  }
+  .status-dot:hover { opacity: 0.7; }
+  .status-dot .pip {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-mute);
+    transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  .status-dot.ok  .pip { background: var(--green); box-shadow: 0 0 6px var(--green-soft); }
+  .status-dot.warn .pip { background: var(--yellow); }
+  .status-dot.err .pip { background: var(--red);   box-shadow: 0 0 6px var(--red-soft); }
+  .status-dot .label { text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* legacy header/badge classes kept for backwards-compat where JS sets text */
+  .header { display: none; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: var(--t-micro);
+    color: var(--text-dim);
+    padding: 2px 8px; border-radius: var(--r-pill);
+    border: 1px solid var(--hairline); background: var(--panel);
+  }
+  .badge.live { color: var(--green); border-color: rgba(48,209,88,0.3); }
+  .badge.err  { color: var(--red);   border-color: rgba(255,69,58,0.3); }
+  .controls { display: flex; gap: var(--s-2); align-items: center; }
+  .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background: var(--text-mute); }
+  .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green-soft); }
+
+  /* ── layout ────────────────────────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    gap: var(--s-4);
+    max-width: 1600px;
+    margin: 0 auto;
+    height: calc(100vh - 72px);
+    transition: grid-template-columns var(--dur-slow) var(--ease);
+  }
+  body[data-mode="calling"] .layout {
+    grid-template-columns: 76px 1fr 280px;
+  }
+  body[data-mode="calling"] .panel.queue-panel .panel-title,
+  body[data-mode="calling"] .panel.queue-panel .queue-item .meta,
+  body[data-mode="calling"] .panel.queue-panel .queue-item .biz { display: none; }
+  body[data-mode="calling"] .panel.queue-panel .queue-item { padding: var(--s-2); justify-content: center; min-height: 32px; }
+  body[data-mode="calling"] .panel.queue-panel .queue-item::after {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-mute);
+  }
+  body[data-mode="calling"] .panel.queue-panel .queue-item.current::after { background: var(--accent); }
+  body[data-mode="calling"] .panel.queue-panel .queue-item.done::after { background: rgba(245,245,247,0.18); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-4);
+    padding: var(--s-5);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(245,245,247,0.18) transparent;
+  }
+  .panel::-webkit-scrollbar { width: 8px; height: 8px; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(245,245,247,0.14); border-radius: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+
+  /* panel typography */
+  h2, .panel-title {
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-mute);
+    font-weight: 600;
+    margin-bottom: var(--s-3);
+  }
+
+  /* ── queue (left) ──────────────────────────────────────────────────────── */
+  .queue-panel { padding: var(--s-4) var(--s-3); }
+  .queue-progress-num {
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 600;
+    color: var(--text); letter-spacing: -0.01em;
+  }
+  .queue-progress-of {
+    font-size: var(--t-micro); color: var(--text-mute);
+  }
+  .queue-item {
+    position: relative;
+    padding: var(--s-3);
+    border-radius: var(--r-3);
+    margin-bottom: 2px;
+    cursor: pointer;
+    background: transparent;
+    transition: background var(--dur) var(--ease);
+    display: flex; flex-direction: column;
+  }
+  .queue-item:hover { background: var(--elevated); }
+  .queue-item.current { background: var(--accent-soft); }
+  .queue-item.dialing {
+    background: var(--green-soft);
+    box-shadow: inset 2px 0 0 var(--green);
+  }
+  .queue-item.done { opacity: 0.45; }
+  .queue-item .biz {
+    font-weight: 500;
+    font-size: var(--t-body);
+    color: var(--text);
+    letter-spacing: -0.005em;
+  }
+  .queue-item .meta {
+    font-size: var(--t-micro);
+    color: var(--text-mute);
+    margin-top: 2px;
+  }
+  .queue-item.current .biz { color: var(--text); }
+  .queue-now {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--green);
+    font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 9px;
+    margin-right: var(--s-2);
+  }
+  .queue-now::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+  }
+  .queue-item .code {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: var(--r-2);
+    margin-left: var(--s-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  .code.no_answer       { background: rgba(245,245,247,0.08); color: var(--text-dim); }
+  .code.voicemail       { background: rgba(255,214,10,0.14);  color: var(--yellow); }
+  .code.callback        { background: rgba(10,132,255,0.18); color: var(--accent); }
+  .code.not_interested  { background: rgba(255,69,58,0.16);  color: var(--red); }
+  .code.interested      { background: rgba(48,209,88,0.18);  color: var(--green); }
+  .code.dnc             { background: rgba(255,69,58,0.24);  color: var(--red); }
+  .code.skip            { background: rgba(245,245,247,0.08); color: var(--text-mute); }
+  .queue-expanded { display: none; margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--hairline); color: var(--text-dim); font-size: var(--t-micro); line-height: 1.5; }
+  .queue-item.current .queue-expanded { display: block; }
+
+  /* ── center: lead card ─────────────────────────────────────────────────── */
+  .lead-card { padding: var(--s-7) var(--s-6); display: flex; flex-direction: column; gap: var(--s-5); }
+  .lead-eyebrow {
+    font-size: var(--t-micro);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-mute);
+    font-weight: 500;
+  }
+  .biz-name {
+    font-family: var(--font-display);
+    font-size: var(--t-hero);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    color: var(--text);
+  }
+  .biz-sub {
+    font-size: var(--t-body);
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .biz-sub .sep { color: var(--text-mute); margin: 0 6px; }
+  .ask-for {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 6px var(--s-3);
+    border-radius: var(--r-pill);
+    font-size: var(--t-micro);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    align-self: flex-start;
+  }
+
+  /* AI briefing card — the top-of-lead intelligence */
+  .briefing {
+    background: var(--elevated);
+    border-radius: var(--r-4);
+    padding: var(--s-4) var(--s-5);
+    position: relative;
+  }
+  .briefing-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-mute);
+    margin-bottom: var(--s-2);
+    display: flex; align-items: center; gap: var(--s-2);
+  }
+  .briefing-label .sparkle {
+    display: inline-block; width: 10px; height: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-soft);
+  }
+  .briefing ul { list-style: none; }
+  .briefing li {
+    padding: var(--s-2) 0;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--text);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .briefing li:last-child { border-bottom: none; }
+  .briefing li::before {
+    content: "→ ";
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 2px;
+  }
+  .briefing.skeleton li {
+    color: var(--text-mute);
+    font-style: italic;
+  }
+
+  /* phone chips */
+  .phone-row { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+  .phone-chip {
+    padding: var(--s-2) var(--s-3);
+    background: transparent;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-pill);
+    font-family: var(--font-mono);
+    font-size: var(--t-small);
+    color: var(--text);
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+  }
+  .phone-chip:hover { border-color: var(--accent); }
+  .phone-chip.active { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; }
+
+  /* talking points */
+  .talking {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-4);
+    padding: var(--s-4) var(--s-5);
+  }
+  .talking-title {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-mute);
+    margin-bottom: var(--s-3);
+  }
+  .talking ul { list-style: none; }
+  .talking li {
+    padding: 6px 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .talking li:last-child { border-bottom: none; }
+  .talking li::before { content: "▸"; color: var(--accent); margin-right: 8px; font-size: 11px; vertical-align: 1px; }
+
+  .demo-link {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    color: var(--accent);
+    font-size: var(--t-small);
+    padding: var(--s-2) 0;
+  }
+  .demo-link::after { content: "→"; transition: transform var(--dur) var(--ease); }
+  .demo-link:hover::after { transform: translateX(4px); }
+
+  /* notes panel */
+  .notes-panel {
+    background: var(--elevated);
+    border-radius: var(--r-4);
+    padding: var(--s-4) var(--s-5);
+  }
+  .notes-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s-3); }
+  .notes-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-mute); font-weight: 600; }
+  .note-save-state { font-size: var(--t-micro); color: var(--text-mute); }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); margin-bottom: var(--s-2); }
+  .notes-panel input, .notes-panel textarea {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-3);
+    color: var(--text);
+    font-size: var(--t-small);
+    padding: var(--s-2) var(--s-3);
+    transition: border-color var(--dur) var(--ease);
+  }
+  .notes-panel input:focus, .notes-panel textarea:focus { border-color: var(--accent); outline: none; }
+  .notes-panel textarea { min-height: 64px; resize: vertical; line-height: 1.45; font-family: var(--font-body); }
+  .note-save-row { display: flex; justify-content: flex-end; margin-top: var(--s-2); }
+  .btn-note {
+    border: 1px solid var(--hairline-strong);
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: var(--r-2);
+    padding: 4px var(--s-3);
+    font-size: var(--t-micro);
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+  }
+  .btn-note:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* call row — the main action */
+  .call-row { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
+  .call-row button {
+    flex: 1;
+    padding: var(--s-4) var(--s-5);
+    border: none;
+    border-radius: var(--r-4);
+    font-weight: 600;
+    font-size: var(--t-h2);
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+    display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+  }
+  .call-row button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-call { background: var(--green); color: #00120a; }
+  .btn-call:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px var(--green-soft); }
+  .btn-hang { background: var(--red); color: #fff; }
+  .btn-hang:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px var(--red-soft); }
+  .btn-pause {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--hairline-strong) !important;
+    flex: 0 0 130px !important;
+  }
+  .btn-pause.paused { background: var(--yellow); color: #000; border-color: var(--yellow) !important; }
+
+  /* DTMF panel — visible during live call */
+  .dtmf-panel {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2);
+    margin-top: var(--s-3);
+    padding: var(--s-4);
+    border: 1px solid rgba(48,209,88,0.3);
+    border-radius: var(--r-4);
+    background: var(--green-soft);
+  }
+  .dtmf-head { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--green); font-size: var(--t-micro); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .dtmf-key {
+    height: 44px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-3);
+    cursor: pointer;
+    transition: all var(--dur) var(--ease);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dtmf-key:hover { background: var(--green); color: #00120a; border-color: var(--green); }
+
+  /* dispositions */
+  .actions {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2);
+    margin-top: var(--s-3);
+  }
+  .action {
+    padding: var(--s-3) var(--s-2);
+    background: var(--elevated);
+    border: 1px solid transparent;
+    border-radius: var(--r-3);
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--dur) var(--ease);
+    font-size: var(--t-small);
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: var(--s-2);
+  }
+  .action:hover { background: var(--panel); color: var(--text); border-color: var(--hairline-strong); transform: translateY(-1px); }
+  .action .kbd {
+    flex: 0 0 22px;
+    height: 22px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: var(--t-micro);
+    color: var(--text-dim);
+  }
+  .action.no_answer:hover      { color: var(--text-dim); border-color: var(--hairline-strong); }
+  .action.voicemail:hover      { color: var(--yellow); border-color: rgba(255,214,10,0.32); }
+  .action.callback:hover       { color: var(--accent); border-color: rgba(10,132,255,0.32); }
+  .action.not_interested:hover { color: var(--red); border-color: rgba(255,69,58,0.32); }
+  .action.interested:hover     { color: var(--green); border-color: rgba(48,209,88,0.32); }
+  .action.dnc:hover            { color: var(--red); border-color: rgba(255,69,58,0.5); }
+  .action.build {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(48,209,88,0.12), rgba(10,132,255,0.12));
+    color: var(--green);
+    font-weight: 600;
+    border-color: rgba(48,209,88,0.3);
+  }
+  .action.build:hover { background: linear-gradient(135deg, rgba(48,209,88,0.2), rgba(10,132,255,0.2)); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(48,209,88,0.18); }
+
+  /* build status banner */
+  .build-status {
+    margin: var(--s-3) 0 var(--s-4);
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid rgba(48,209,88,0.3);
+    border-radius: var(--r-3);
+    background: var(--green-soft);
+    color: var(--green);
+    font-size: var(--t-small);
+    display: flex; align-items: center; gap: var(--s-3);
+  }
+  .build-status a { color: var(--green); font-weight: 600; }
+  .build-status.error { border-color: rgba(255,69,58,0.3); background: var(--red-soft); color: var(--red); }
+  .build-status.error a { color: var(--red); }
+
+  /* ── right rail: session ───────────────────────────────────────────────── */
+  .session-panel { display: flex; flex-direction: column; gap: var(--s-5); }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+  .stat {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-3);
+    padding: var(--s-3);
+  }
+  .stat .v { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .stat .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-mute); margin-top: 2px; }
+  .stat.green .v { color: var(--green); }
+  .stat.blue  .v { color: var(--accent); }
+
+  /* event log + builds + recent — common list rows */
+  .row {
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: var(--t-small);
+    color: var(--text-dim);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .b { color: var(--text-mute); font-size: var(--t-micro); margin-top: 2px; }
+  .build-row, .disp-row { padding: var(--s-2) 0; border-bottom: 1px solid var(--hairline); font-size: var(--t-small); color: var(--text-dim); }
+  .build-row:last-child, .disp-row:last-child { border-bottom: none; }
+  .disp-row .b, .build-row .b { color: var(--text-mute); font-size: var(--t-micro); margin-top: 2px; }
+  .build-row a, .disp-row a { color: var(--green); }
+  .build-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: var(--r-2);
+    background: var(--elevated);
+    color: var(--text-dim);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-left: var(--s-2);
+  }
+  .build-pill.done   { background: var(--green-soft); color: var(--green); }
+  .build-pill.error  { background: var(--red-soft); color: var(--red); }
+
+  .shortcut-list {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: var(--t-small);
+    color: var(--text-dim);
+  }
+  .shortcut-list > div { display: flex; align-items: center; gap: var(--s-2); }
+
+  /* empty state */
+  .empty { color: var(--text-mute); text-align: center; padding: var(--s-7) var(--s-4); font-size: var(--t-small); font-style: italic; }
+
+  /* ── modal / popovers ──────────────────────────────────────────────────── */
+  .popover {
+    position: fixed; bottom: var(--s-4); right: var(--s-4);
+    width: 380px; z-index: 9998;
+    background: var(--panel);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--r-4);
+    padding: var(--s-4) var(--s-5);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: pop-in var(--dur) var(--ease);
+  }
+  @keyframes pop-in { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* ── responsive collapse ───────────────────────────────────────────────── */
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 200px 1fr 260px; }
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    .panel { min-height: 240px; }
+  }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto}
   h2{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
   /* ── header bar ───────────────────────────────────────────────────────── */
@@ -134,22 +748,32 @@
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:.85rem}
 </style>
 </head>
-<body>
+<body data-mode="idle">
 
-<div class="header">
-  <h1>Brain-off <span>Dialer</span></h1>
-  <div class="controls">
-    <span class="badge" id="from-badge">FROM ?</span>
-    <span class="badge" id="src-badge">SRC ?</span>
-    <span class="badge" id="device-badge"><span class="dot" id="device-dot"></span><span id="device-msg">init…</span></span>
+<!-- ── topbar ──────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <h1>Dialer<span class="pill" id="src-pill">loading</span></h1>
+  <div class="status-strip" id="status-strip">
+    <span class="status-dot" data-tool="twilio"     title="Twilio Voice"><span class="pip"></span><span class="label">Twilio</span></span>
+    <span class="status-dot" data-tool="deepgram"   title="Deepgram STT"><span class="pip"></span><span class="label">Deepgram</span></span>
+    <span class="status-dot" data-tool="anthropic"  title="Anthropic (build + agent)"><span class="pip"></span><span class="label">Sonnet</span></span>
+    <span class="status-dot" data-tool="outscraper" title="Outscraper GBP"><span class="pip"></span><span class="label">Outscraper</span></span>
+    <span class="status-dot" data-tool="device"     title="Twilio Voice SDK"><span class="pip" id="device-dot"></span><span class="label" id="device-msg">device</span></span>
   </div>
+</div>
+
+<!-- legacy badges kept hidden so existing JS doesn't crash -->
+<div style="display:none">
+  <span id="from-badge"></span>
+  <span id="src-badge"></span>
+  <span id="device-badge"></span>
 </div>
 
 <div class="layout">
 
   <!-- LEFT: queue ─────────────────────────────────────────────────────── -->
-  <div class="panel">
-    <h2>Queue · <span id="queue-progress">0 / 0</span></h2>
+  <div class="panel queue-panel">
+    <div class="panel-title">Queue · <span class="queue-progress-num" id="queue-progress">0</span><span class="queue-progress-of"> / 0</span></div>
     <div id="queue"></div>
   </div>
 
@@ -159,30 +783,40 @@
   </div>
 
   <!-- RIGHT: session ──────────────────────────────────────────────────── -->
-  <div class="panel">
-    <h2>Session</h2>
-    <div class="stats">
-      <div class="stat"><div class="l">Dialed</div><div class="v" id="stat-dialed">0</div></div>
-      <div class="stat green"><div class="l">Interested</div><div class="v" id="stat-interested">0</div></div>
-      <div class="stat blue"><div class="l">Callbacks</div><div class="v" id="stat-callback">0</div></div>
-      <div class="stat"><div class="l">No Ans/VM</div><div class="v" id="stat-noans">0</div></div>
+  <div class="panel session-panel">
+    <div>
+      <div class="panel-title">Today</div>
+      <div class="stats">
+        <div class="stat"><div class="v" id="stat-dialed">0</div><div class="l">Dialed</div></div>
+        <div class="stat green"><div class="v" id="stat-interested">0</div><div class="l">Interested</div></div>
+        <div class="stat blue"><div class="v" id="stat-callback">0</div><div class="l">Callbacks</div></div>
+        <div class="stat"><div class="v" id="stat-noans">0</div><div class="l">No Ans / VM</div></div>
+      </div>
     </div>
-    <h2>Call Events</h2>
-    <div id="call-events" style="margin-bottom:16px"></div>
-    <h2>Builds</h2>
-    <div id="builds" style="margin-bottom:16px"></div>
-    <h2>Shortcuts</h2>
-    <div style="font-size:.78rem;line-height:1.9;color:var(--muted);margin-bottom:16px">
-      <div><kbd>Space</kbd> pause / resume auto-advance</div>
-      <div><kbd>Enter</kbd> call selected phone</div>
-      <div><kbd>1</kbd> no answer · <kbd>2</kbd> voicemail</div>
-      <div><kbd>3</kbd> callback · <kbd>4</kbd> not interested</div>
-      <div><kbd>5</kbd> interested · <kbd>B</kbd> interested + build</div>
-      <div><kbd>D</kbd> DNC</div>
-      <div><kbd>Esc</kbd> skip · <kbd>←/→</kbd> prev/next lead</div>
+    <div>
+      <div class="panel-title">Call events</div>
+      <div id="call-events"></div>
     </div>
-    <h2>Recent</h2>
-    <div id="recent"></div>
+    <div>
+      <div class="panel-title">Builds</div>
+      <div id="builds"></div>
+    </div>
+    <div>
+      <div class="panel-title">Shortcuts</div>
+      <div class="shortcut-list">
+        <div><kbd>Space</kbd> pause auto-advance</div>
+        <div><kbd>↵</kbd> call selected number</div>
+        <div><kbd>1</kbd> no answer · <kbd>2</kbd> voicemail</div>
+        <div><kbd>3</kbd> callback · <kbd>4</kbd> not interested</div>
+        <div><kbd>5</kbd> interested · <kbd>B</kbd> interested + build</div>
+        <div><kbd>D</kbd> DNC · <kbd>Esc</kbd> skip</div>
+        <div><kbd>←</kbd>/<kbd>→</kbd> prev/next lead</div>
+      </div>
+    </div>
+    <div>
+      <div class="panel-title">Recent</div>
+      <div id="recent"></div>
+    </div>
   </div>
 
 </div>
@@ -213,7 +847,64 @@ const state = {
   dialingLeadId: null,
   buildJobs: {},
   callEvents: [],
+  briefings: {},        // lead_id → { bullets[], fetched_at }
+  briefingPending: {},  // lead_id → Promise (de-dupe in-flight)
+  toolStatus: {},       // tool_name → { ok, msg, last_check_at }
 };
+
+// ── system status polling ────────────────────────────────────────────────
+const STATUS_TOOLS = ["twilio","deepgram","anthropic","outscraper"];
+
+async function pollStatus() {
+  try {
+    const r = await fetch("/status");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    for (const tool of STATUS_TOOLS) {
+      const s = d[tool] || { ok: false, msg: "unknown" };
+      state.toolStatus[tool] = s;
+      const dot = document.querySelector(`.status-dot[data-tool="${tool}"]`);
+      if (dot) {
+        dot.classList.remove("ok","warn","err");
+        dot.classList.add(s.ok ? "ok" : (s.degraded ? "warn" : "err"));
+        dot.title = (s.msg || tool) + (s.detail ? " — " + s.detail : "");
+      }
+    }
+    if (d.lead_source) $("src-pill").textContent = d.lead_source;
+  } catch (_) {
+    // network error — mark all unknown
+    for (const tool of STATUS_TOOLS) {
+      const dot = document.querySelector(`.status-dot[data-tool="${tool}"]`);
+      if (dot) { dot.classList.remove("ok","warn","err"); dot.classList.add("err"); dot.title = "status fetch failed"; }
+    }
+  }
+}
+
+// ── AI briefing — pre-call intel ─────────────────────────────────────────
+async function ensureBriefing(lead) {
+  if (!lead) return;
+  if (state.briefings[lead.id]) return; // cached
+  if (state.briefingPending[lead.id]) return; // in flight
+  state.briefingPending[lead.id] = (async () => {
+    try {
+      const r = await fetch("/briefing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: lead.id, lead }),
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const d = await r.json();
+      if (d && Array.isArray(d.bullets) && d.bullets.length) {
+        state.briefings[lead.id] = { bullets: d.bullets, fetched_at: Date.now() };
+        if (state.leads[state.idx]?.id === lead.id) renderCurrent();
+      }
+    } catch (e) {
+      // silent — talking_points still render
+    } finally {
+      delete state.briefingPending[lead.id];
+    }
+  })();
+}
 
 function fmtPhone(e) {
   const d = (e || "").replace(/\D/g, "").slice(-10);
@@ -296,14 +987,25 @@ function renderCurrent() {
   const lead = state.leads[state.idx];
   const el = $("lead-content");
   if (!lead) { el.innerHTML = '<div class="empty">No lead selected</div>'; return; }
+  ensureBriefing(lead); // lazy-fetch the AI briefing for this lead
   const rating = lead.rating ? `★ ${lead.rating} · ${lead.reviews || 0} reviews` : "";
   const sub = [lead.category, [lead.city, lead.state].filter(Boolean).join(", "), rating].filter(Boolean).join(" · ");
   const phones = lead.phones.map((p, i) => `
     <div class="phone-chip ${i === state.phoneIdx ? "active" : ""}" onclick="selectPhone(${i})">${fmtPhone(p)}</div>
   `).join("");
   const points = (lead.talking_points || []).map(t => `<li>${escapeHtml(t)}</li>`).join("");
-  const demo = lead.vercel_url ? `<a class="demo-link" href="${lead.vercel_url}" target="_blank">↗ Open demo · ${lead.business_name}</a>` : "";
-  const owner = lead.owner_name ? `<div style="color:var(--accent);font-size:1rem;margin-bottom:4px">Ask for ${lead.owner_name}</div>` : "";
+  const demo = lead.vercel_url ? `<a class="demo-link" href="${lead.vercel_url}" target="_blank">Open ${escapeHtml(lead.business_name)}'s preview</a>` : "";
+  const owner = lead.owner_name ? `<div class="ask-for">Ask for ${escapeHtml(lead.owner_name)}</div>` : "";
+  // AI briefing card — 3-bullet pre-call intel, lazily generated by the agent
+  const briefing = state.briefings[lead.id];
+  const briefingHtml = `
+    <div class="briefing ${briefing ? "" : "skeleton"}">
+      <div class="briefing-label"><span class="sparkle"></span>Briefing</div>
+      <ul>
+        ${(briefing ? briefing.bullets : ["Loading intel...", "Pulling research_brief signals...", "Synthesizing ~"]).map(b => `<li>${escapeHtml(b)}</li>`).join("")}
+      </ul>
+    </div>
+  `;
   const job = state.buildJobs[lead.id];
   const savedNote = state.notes[lead.id] || {};
   const buildStatus = job ? `<div class="build-status">${escapeHtml(job.message || job.status)} ${job.url ? `<a href="${job.url}" target="_blank">Open preview</a>` : ""}</div>` : "";
@@ -333,11 +1035,14 @@ function renderCurrent() {
     </div>
   ` : "";
   el.innerHTML = `
-    <div>
+    <div style="display:flex;flex-direction:column;gap:var(--s-4)">
       ${owner}
-      <div class="biz-name">${escapeHtml(lead.business_name)}</div>
-      <div class="biz-sub">${escapeHtml(sub)}</div>
+      <div>
+        <div class="biz-name">${escapeHtml(lead.business_name)}</div>
+        <div class="biz-sub">${(sub.split(" · ").map(s => escapeHtml(s)).join('<span class="sep">·</span>'))}</div>
+      </div>
       <div class="phone-row">${phones}</div>
+      ${briefingHtml}
       ${points ? `<div class="talking"><div class="talking-title">Talking points</div><ul>${points}</ul></div>` : ""}
       ${demo}
       ${buildStatus}
@@ -560,6 +1265,7 @@ async function makeCall() {
       }).catch(() => {});
     } catch (_) {}
     state.call = await state.device.connect({ params: { To: to, SessionId: state.sessionId } });
+    document.body.setAttribute("data-mode", "calling");
     startIvrPolling();
     renderCurrent();
     $("btn-call").disabled = true;
@@ -572,6 +1278,7 @@ async function makeCall() {
       $("btn-hang").disabled = true;
       state.call = null;
       state.dialingLeadId = null;
+      document.body.setAttribute("data-mode", "idle");
       try { fetch("/calls/clear", { method: "POST" }).catch(() => {}); } catch (_) {}
       setTimeout(stopIvrPolling, 2500);
       renderQueue();
@@ -1018,6 +1725,8 @@ async function initDevice() {
 
 loadQueue();
 initDevice();
+pollStatus();
+setInterval(pollStatus, 30000);  // status dots refresh every 30s
 </script>
 </body>
 </html>

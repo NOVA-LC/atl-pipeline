@@ -139,6 +139,40 @@ def _db():
         note TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
+    # Per-call transcripts captured from Deepgram. One row per call session.
+    c.execute("""CREATE TABLE IF NOT EXISTS call_transcripts (
+        session_id     TEXT PRIMARY KEY,
+        lead_id        TEXT,
+        business_name  TEXT,
+        phone          TEXT,
+        transcript     TEXT NOT NULL DEFAULT '',
+        chunk_count    INTEGER DEFAULT 0,
+        started_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ended_at       TIMESTAMP
+    )""")
+    # AI summary generated post-call from the transcript.
+    c.execute("""CREATE TABLE IF NOT EXISTS call_summaries (
+        session_id          TEXT PRIMARY KEY,
+        lead_id             TEXT,
+        outcome             TEXT,
+        sentiment           TEXT,
+        key_objections      TEXT,    -- JSON list
+        follow_up_actions   TEXT,    -- JSON list
+        key_quotes          TEXT,    -- JSON list
+        suggested_disposition TEXT,
+        confidence          REAL,
+        model               TEXT,
+        cost_usd            REAL,
+        created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
+    # Cached pre-call AI briefings — 3-bullet intel per lead, generated once
+    c.execute("""CREATE TABLE IF NOT EXISTS briefings (
+        lead_id       TEXT PRIMARY KEY,
+        bullets       TEXT NOT NULL,   -- JSON list
+        model         TEXT,
+        cost_usd      REAL,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )""")
     return c
 
 
@@ -349,6 +383,109 @@ def detect_ivr_digit(transcript):
     return best
 
 
+def _persist_transcript_chunk(session_id, chunk):
+    """Append a Deepgram transcript chunk to call_transcripts. Best-effort."""
+    if not session_id or not chunk:
+        return
+    try:
+        active = (call_agent.get_active_lead() if call_agent else {}) or {}
+        with _db() as c:
+            row = c.execute("SELECT transcript, chunk_count FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+            if row is None:
+                c.execute(
+                    "INSERT INTO call_transcripts (session_id, lead_id, business_name, phone, transcript, chunk_count) "
+                    "VALUES (?, ?, ?, ?, ?, 1)",
+                    (session_id, active.get("lead_id"), active.get("business_name"), active.get("phone"), chunk),
+                )
+            else:
+                existing = (row["transcript"] or "").rstrip()
+                joined = (existing + " " + chunk).strip()
+                c.execute(
+                    "UPDATE call_transcripts SET transcript = ?, chunk_count = chunk_count + 1 WHERE session_id = ?",
+                    (joined, session_id),
+                )
+            c.commit()
+    except Exception:
+        pass
+
+
+def _finalize_transcript(session_id):
+    """Mark the transcript as ended_at NOW + trigger async post-call summary."""
+    if not session_id:
+        return
+    try:
+        with _db() as c:
+            c.execute("UPDATE call_transcripts SET ended_at = CURRENT_TIMESTAMP WHERE session_id = ? AND ended_at IS NULL", (session_id,))
+            c.commit()
+    except Exception:
+        return
+    threading.Thread(target=_generate_call_summary, args=(session_id,), daemon=True).start()
+
+
+def _generate_call_summary(session_id):
+    """Read the transcript, ask Haiku for a structured post-call summary.
+    Persists to call_summaries. Idempotent — skips if a row already exists."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return
+    try:
+        with _db() as c:
+            t = c.execute("SELECT transcript, lead_id, business_name FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+            existing = c.execute("SELECT 1 FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+        if not t or existing:
+            return
+        transcript = (t["transcript"] or "").strip()
+        if len(transcript) < 40:
+            return  # too short to summarize
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        model = os.environ.get("CALL_SUMMARY_MODEL", "claude-haiku-4-5-20251001")
+        system = (
+            "You analyze cold-call phone transcripts for Tyler Brown's website-build cold outreach.\n"
+            "Tyler is on the line; the other speaker is a small business owner or gatekeeper.\n"
+            "Return STRICT JSON only — no prose, no fences."
+        )
+        user = (
+            "Transcript (verbatim Deepgram, may have ASR errors):\n"
+            f"```\n{transcript[:6000]}\n```\n\n"
+            "Business name (if known): " + (t["business_name"] or "unknown") + "\n\n"
+            "Return JSON with these keys exactly:\n"
+            "  outcome           : one of [booked, interested, callback, not_interested, dnc, voicemail, gatekeeper, no_decision]\n"
+            "  sentiment         : one of [positive, neutral, negative]\n"
+            "  key_objections    : list of strings, verbatim or close paraphrase\n"
+            "  follow_up_actions : list of imperative bullets ('text demo link Friday', 'email Joe at joe@...')\n"
+            "  key_quotes        : list of strings — the 1-3 most useful verbatim quotes\n"
+            "  suggested_disposition : one of [no_answer, voicemail, callback, not_interested, interested, dnc, skip]\n"
+            "  confidence        : float 0-1"
+        )
+        resp = client.messages.create(model=model, max_tokens=600, system=system,
+                                       messages=[{"role": "user", "content": user}])
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+        # strip fences if present
+        if text.startswith("```"):
+            text = re.sub(r"^```\w*\s*", "", text).rsplit("```", 1)[0].strip()
+        try:
+            data = json.loads(text)
+        except Exception:
+            return
+        usage = resp.usage
+        cost = round(getattr(usage, "input_tokens", 0) * 1.0 / 1_000_000 + getattr(usage, "output_tokens", 0) * 5.0 / 1_000_000, 4)
+        with _db() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO call_summaries (session_id, lead_id, outcome, sentiment, key_objections, follow_up_actions, key_quotes, suggested_disposition, confidence, model, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (session_id, t["lead_id"], data.get("outcome"), data.get("sentiment"),
+                 json.dumps(data.get("key_objections") or []),
+                 json.dumps(data.get("follow_up_actions") or []),
+                 json.dumps(data.get("key_quotes") or []),
+                 data.get("suggested_disposition"),
+                 float(data.get("confidence") or 0),
+                 model, cost),
+            )
+            c.commit()
+    except Exception:
+        pass
+
+
 def _handle_ivr_transcript(session_id, transcript, seen):
     cleaned = re.sub(r"\s+", " ", transcript or "").strip()
     if not cleaned:
@@ -358,6 +495,7 @@ def _handle_ivr_transcript(session_id, transcript, seen):
         return
     seen.add(key)
     _add_ivr_event(session_id, kind="transcript", message=f"Heard: {cleaned}", transcript=cleaned)
+    _persist_transcript_chunk(session_id, cleaned)
 
     # Agent path — Haiku reasons about the call. Falls through to regex on error.
     if IVR_AGENT_MODE in ("agent", "auto") and call_agent and call_agent.is_available():
@@ -522,6 +660,7 @@ def _bridge_twilio_to_deepgram(ws):
                     dg.send_binary(base64.b64decode(payload))
             elif event == "stop":
                 _add_ivr_event(session_id, kind="status", message="IVR Copilot audio stream stopped.")
+                _finalize_transcript(session_id)
                 break
     except Exception as e:
         _add_ivr_event(session_id, kind="error", level="err", message=f"IVR Copilot failed: {e}")
@@ -1010,6 +1149,223 @@ def healthz():
             "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
         },
     })
+
+
+@app.route("/status")
+def status_aggregator():
+    """Aggregated tool health for the dialer's status strip.
+    Each tool reports: {ok: bool, degraded: bool, msg: str, detail: str}."""
+    out = {}
+    out["lead_source"] = LEAD_SRC
+
+    # Twilio: account creds + from number + twiml app set
+    twilio_ok = all([ACCOUNT_SID, API_KEY_SID, API_KEY_SECRET, FROM_NUMBER, TWIML_APP_SID])
+    out["twilio"] = {
+        "ok": twilio_ok,
+        "degraded": False,
+        "msg": "Twilio Voice",
+        "detail": f"FROM {FROM_NUMBER}" if twilio_ok else "missing credentials",
+    }
+
+    # Deepgram: key + media stream URL configured
+    out["deepgram"] = {
+        "ok": bool(DEEPGRAM_API_KEY and MEDIA_STREAM_URL and sock),
+        "degraded": bool(DEEPGRAM_API_KEY) and not bool(MEDIA_STREAM_URL and sock),
+        "msg": "Deepgram STT",
+        "detail": "configured" if (DEEPGRAM_API_KEY and MEDIA_STREAM_URL) else "missing key or public URL",
+    }
+
+    # Anthropic: probe a 1-token call to verify capacity (cached 5min)
+    out["anthropic"] = _probe_anthropic()
+
+    # Outscraper: probe (cached 5min) — known to be past-due
+    out["outscraper"] = _probe_outscraper()
+
+    return jsonify(out)
+
+
+# Tiny LRU cache for probes — re-check each tool at most every 5 min
+_PROBE_CACHE = {}
+_PROBE_TTL = 300  # seconds
+
+
+def _probe_anthropic():
+    import time as _t
+    key = "anthropic"
+    cached = _PROBE_CACHE.get(key)
+    if cached and _t.time() - cached["at"] < _PROBE_TTL:
+        return cached["data"]
+    data = {"ok": False, "degraded": False, "msg": "Anthropic", "detail": "no key"}
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+        return data
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        # 1-token cheap probe to claude-haiku
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4,
+            messages=[{"role": "user", "content": "ok"}],
+        )
+        if resp and resp.content:
+            data = {"ok": True, "degraded": False, "msg": "Anthropic", "detail": "Sonnet+Haiku reachable"}
+    except Exception as e:
+        err = str(e)[:120]
+        # 529 overload → degraded (not dead)
+        if "529" in err or "overload" in err.lower():
+            data = {"ok": False, "degraded": True, "msg": "Anthropic", "detail": "overloaded (529)"}
+        else:
+            data = {"ok": False, "degraded": False, "msg": "Anthropic", "detail": err}
+    _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+    return data
+
+
+def _probe_outscraper():
+    import time as _t
+    key = "outscraper"
+    cached = _PROBE_CACHE.get(key)
+    if cached and _t.time() - cached["at"] < _PROBE_TTL:
+        return cached["data"]
+    data = {"ok": False, "degraded": False, "msg": "Outscraper", "detail": "no key"}
+    api_key = os.environ.get("OUTSCRAPER_API_KEY")
+    if not api_key:
+        _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+        return data
+    try:
+        r = requests.get(
+            "https://api.outscraper.cloud/maps/search-v3",
+            params={"query": "Acme, Atlanta, GA, USA", "limit": 1, "async": "false"},
+            headers={"X-API-KEY": api_key},
+            timeout=10,
+        )
+        body = r.json() if r.headers.get("Content-Type", "").startswith("application/json") else {}
+        if r.status_code == 200 and not body.get("error"):
+            data = {"ok": True, "degraded": False, "msg": "Outscraper", "detail": "API reachable"}
+        elif "past-due" in (body.get("errorMessage", "") or "").lower() or "credit" in (body.get("errorMessage", "") or "").lower():
+            data = {"ok": False, "degraded": True, "msg": "Outscraper", "detail": "account past-due — top up"}
+        else:
+            data = {"ok": False, "degraded": True, "msg": "Outscraper", "detail": (body.get("errorMessage") or f"http {r.status_code}")[:80]}
+    except Exception as e:
+        data = {"ok": False, "degraded": False, "msg": "Outscraper", "detail": str(e)[:120]}
+    _PROBE_CACHE[key] = {"at": _t.time(), "data": data}
+    return data
+
+
+# ─── pre-call AI briefing ───────────────────────────────────────────────────
+@app.route("/briefing", methods=["POST"])
+def briefing():
+    """Generate / fetch a 3-bullet pre-call briefing for a lead.
+    Cached in `briefings` table — first call is ~$0.001, repeats are free."""
+    data = request.get_json(force=True) or {}
+    lead_id = data.get("lead_id") or (data.get("lead") or {}).get("id")
+    if not lead_id:
+        return jsonify({"error": "lead_id required"}), 400
+    # Cached?
+    with _db() as c:
+        row = c.execute("SELECT bullets, created_at FROM briefings WHERE lead_id = ?", (lead_id,)).fetchone()
+    if row:
+        try:
+            return jsonify({"bullets": json.loads(row["bullets"]), "cached": True})
+        except Exception:
+            pass
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return jsonify({"bullets": [], "error": "no anthropic key"}), 200
+
+    lead = data.get("lead") or {}
+    biz = lead.get("business_name") or ""
+    cat = lead.get("category") or ""
+    city = lead.get("city") or ""
+    rating = lead.get("rating")
+    reviews = lead.get("reviews")
+    talking = lead.get("talking_points") or []
+    owner = lead.get("owner_name") or ""
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        model = os.environ.get("BRIEFING_MODEL", "claude-haiku-4-5-20251001")
+        system = (
+            "You write tight 3-bullet pre-call briefings for Tyler Brown, a cold-call rep at Nova, who builds free demo websites for local trade businesses in Atlanta. "
+            "Tyler is about to dial. He has 5 seconds to read your bullets before the line rings. Pull intel from the data given; do NOT invent. "
+            "Each bullet is one specific sentence: a hook, a leverage point, a thing to say. No generic advice."
+        )
+        user = (
+            f"BUSINESS: {biz}\n"
+            f"CATEGORY: {cat}\n"
+            f"LOCATION: {city}\n"
+            f"RATING: {rating} ({reviews} reviews)\n"
+            f"OWNER (if surfaced): {owner}\n"
+            f"EXISTING TALKING POINTS (raw): {talking[:8]}\n\n"
+            "Return JSON only: {\"bullets\": [\"...\", \"...\", \"...\"]} — exactly 3 bullets, max 14 words each."
+        )
+        resp = client.messages.create(model=model, max_tokens=250, system=system,
+                                       messages=[{"role": "user", "content": user}])
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```\w*\s*", "", text).rsplit("```", 1)[0].strip()
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            return jsonify({"bullets": [], "error": f"parse failed: {text[:120]}"}), 200
+        bullets = parsed.get("bullets") or []
+        bullets = [str(b).strip() for b in bullets if b and isinstance(b, (str,))][:3]
+        if not bullets:
+            return jsonify({"bullets": []}), 200
+        usage = resp.usage
+        cost = round(getattr(usage, "input_tokens", 0) * 1.0 / 1_000_000 + getattr(usage, "output_tokens", 0) * 5.0 / 1_000_000, 5)
+        with _db() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO briefings (lead_id, bullets, model, cost_usd) VALUES (?, ?, ?, ?)",
+                (lead_id, json.dumps(bullets), model, cost),
+            )
+            c.commit()
+        return jsonify({"bullets": bullets, "cached": False, "cost": cost})
+    except Exception as e:
+        return jsonify({"bullets": [], "error": str(e)[:200]}), 200
+
+
+# ─── transcript + summary endpoints ─────────────────────────────────────────
+@app.route("/transcripts")
+def list_transcripts():
+    with _db() as c:
+        rows = c.execute(
+            "SELECT session_id, lead_id, business_name, phone, chunk_count, started_at, ended_at, length(transcript) AS len "
+            "FROM call_transcripts ORDER BY started_at DESC LIMIT 50"
+        ).fetchall()
+    return jsonify({"transcripts": [dict(r) for r in rows]})
+
+
+@app.route("/transcript/<session_id>")
+def get_transcript(session_id):
+    with _db() as c:
+        row = c.execute("SELECT * FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+        if not row:
+            return jsonify({"error": "not found"}), 404
+        summary = c.execute("SELECT * FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+    out = dict(row)
+    if summary:
+        s = dict(summary)
+        for k in ("key_objections", "follow_up_actions", "key_quotes"):
+            try: s[k] = json.loads(s[k] or "[]")
+            except Exception: s[k] = []
+        out["summary"] = s
+    return jsonify(out)
+
+
+@app.route("/summary/<session_id>")
+def get_summary(session_id):
+    with _db() as c:
+        row = c.execute("SELECT * FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "no summary yet"}), 404
+    out = dict(row)
+    for k in ("key_objections", "follow_up_actions", "key_quotes"):
+        try: out[k] = json.loads(out[k] or "[]")
+        except Exception: out[k] = []
+    return jsonify(out)
 
 
 @app.route("/calls/active", methods=["POST"])
