@@ -1192,6 +1192,12 @@ def notes_list():
 
 @app.route("/build", methods=["POST"])
 def build_site():
+    """Triggered by the dialer's B = interested + build button.
+
+    Routes to the build_agent orchestrator (Steps 1-6 of SPEC) when available,
+    falls back to the legacy _run_build_job() when build_agent isn't installed
+    on this host (e.g. Railway prod, which currently doesn't ship Playwright).
+    """
     data = request.get_json(force=True) or {}
     lead = _lead_for_build(data.get("lead") or data)
     if not lead["business_name"]:
@@ -1209,11 +1215,21 @@ def build_site():
         "error": None,
         "started_at": _now_iso(),
         "updated_at": _now_iso(),
+        "events": [],         # streaming progress events for the dialer UI
+        "preview_url": None,
+        "rep_approved": False,
+        "rep_approved_at": None,
+        "feels_like_score": None,
+        "use_build_agent": _try_use_build_agent(),
     }
     with BUILD_LOCK:
         BUILD_JOBS[job_id] = job
 
-    thread = threading.Thread(target=_run_build_job, args=(job_id, lead), daemon=True)
+    if job["use_build_agent"]:
+        target = _run_build_agent_job
+    else:
+        target = _run_build_job
+    thread = threading.Thread(target=target, args=(job_id, lead), daemon=True)
     thread.start()
     return jsonify(job)
 
@@ -1225,6 +1241,174 @@ def build_status(job_id):
         if not job:
             return jsonify({"error": "build job not found"}), 404
         return jsonify(dict(job))
+
+
+@app.route("/build/<job_id>/approve", methods=["POST"])
+def build_approve(job_id):
+    """Rep clicks 'Send to Lead' — gates the lead-side SMS. Per SPEC §5."""
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "build job not found"}), 404
+        if not job.get("preview_url"):
+            return jsonify({"error": "no preview_url yet — build not complete"}), 400
+        job["rep_approved"] = True
+        job["rep_approved_at"] = _now_iso()
+    # Optional: send SMS to lead now. Reuses existing Twilio config.
+    try:
+        from twilio.rest import Client as TwilioClient
+        lead_phone = (job.get("lead_phone") or "").strip()
+        if FROM_NUMBER and lead_phone:
+            owner_first = (job.get("owner_first") or "there").strip()
+            body = (
+                f"hey {owner_first} — tyler with nova. built this preview while we "
+                f"were talking: {job['preview_url']} — take a look while we're on."
+            )
+            tw = TwilioClient(ACCOUNT_SID, os.environ.get("TWILIO_AUTH_TOKEN", ""))
+            sent = tw.messages.create(to=lead_phone, from_=FROM_NUMBER, body=body)
+            job["lead_sms_sid"] = sent.sid
+    except Exception as e:
+        job["lead_sms_error"] = str(e)
+    return jsonify(job)
+
+
+@app.route("/build/<job_id>/calibration", methods=["POST"])
+def build_calibration(job_id):
+    """Rep's 1-5 'feels like theirs' rating per SPEC §2. THE feedback engine."""
+    data = request.get_json(force=True) or {}
+    score = data.get("score")
+    note = (data.get("note") or "").strip()
+    try:
+        score_int = int(score)
+        assert 1 <= score_int <= 5
+    except Exception:
+        return jsonify({"error": "score must be int 1-5"}), 400
+
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if not job:
+            return jsonify({"error": "build job not found"}), 404
+        job["feels_like_score"] = score_int
+        job["feels_like_note"] = note
+
+    # Also write to build_agent's calibration table if the build_agent DB exists
+    try:
+        import sqlite3
+        from pathlib import Path as _P
+        cal_db = _P(os.environ.get("BUILD_AGENT_DB", str(_P(__file__).resolve().parents[1] / "build_agent" / "_data" / "build_agent.db")))
+        if cal_db.exists():
+            with sqlite3.connect(cal_db) as cc:
+                cc.execute(
+                    "INSERT OR REPLACE INTO build_calibration "
+                    "(build_id, lead_id, feels_like_score, feels_like_note, rated_at) "
+                    "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                    (job.get("agent_job_id") or job_id, job.get("lead_id", ""), score_int, note),
+                )
+    except Exception as e:
+        job["calibration_db_error"] = str(e)
+    return jsonify(job)
+
+
+def _try_use_build_agent() -> bool:
+    """Decide whether build_agent.orchestrator is importable + dependencies are met."""
+    if os.environ.get("DIALER_USE_LEGACY_BUILD") == "1":
+        return False
+    try:
+        import build_agent.orchestrator  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def _run_build_agent_job(job_id, lead):
+    """Hand the lead to build_agent.orchestrator with streaming progress callback."""
+    try:
+        import sys as _sys
+        atl_root = str(Path(__file__).resolve().parent.parent)
+        if atl_root not in _sys.path:
+            _sys.path.insert(0, atl_root)
+        from build_agent import orchestrator  # type: ignore
+    except Exception as e:
+        _job_update(job_id, status="error", message=f"build_agent unavailable: {e}", finished_at=_now_iso())
+        return
+
+    # Capture lead context for SMS-to-lead later (we don't auto-send; rep approves)
+    with BUILD_LOCK:
+        job = BUILD_JOBS.get(job_id)
+        if job:
+            job["lead_phone"] = lead.get("phone")
+            job["owner_first"] = (lead.get("owner_name") or "").split(" ")[0]
+
+    def progress(event: str, payload: dict):
+        with BUILD_LOCK:
+            j = BUILD_JOBS.get(job_id)
+            if not j:
+                return
+            evt = {"at": _now_iso(), "event": event, **payload}
+            j.setdefault("events", []).append(evt)
+            j["events"] = j["events"][-50:]
+            j["updated_at"] = _now_iso()
+            j["status"] = event
+            j["message"] = _pretty_event_message(event, payload)
+
+    try:
+        result = orchestrator.build(lead, progress=progress)
+        with BUILD_LOCK:
+            j = BUILD_JOBS.get(job_id) or {}
+            j["agent_job_id"] = result.get("job_id")
+            j["agent_result"] = result
+            if result.get("error"):
+                j["status"] = "error"
+                j["error"] = result["error"]
+                j["message"] = f"build failed: {result['error']}"
+            else:
+                # Preview URL — for v1 we serve from the local build_agent _data dir
+                j["preview_url"] = f"/build_agent_preview/{result['slug']}/index.html"
+                j["status"] = "completed"
+                j["message"] = (
+                    f"Site ready · code={result.get('code_score')} · "
+                    f"vision={result.get('vision_score')} · "
+                    f"${result.get('budget_used')} in {result.get('duration_sec')}s · "
+                    f"awaiting rep approval"
+                )
+                j["url"] = j["preview_url"]
+            j["finished_at"] = _now_iso()
+    except Exception as e:
+        _job_update(job_id, status="error", message=str(e), error=traceback.format_exc(limit=8), finished_at=_now_iso())
+
+
+def _pretty_event_message(event: str, payload: dict) -> str:
+    if event == "queued":
+        return "Queued."
+    if event == "researching":
+        return f"Researching {payload.get('business_name','...')} via GBP + existing site..."
+    if event == "gathering_assets":
+        return "Downloading prospect photos + extracting palette..."
+    if event == "picking_inspiration":
+        return "Picking inspiration refs from corpus..."
+    if event == "inspiration_picked":
+        return f"Picked refs: {', '.join(payload.get('ref_ids', []))}"
+    if event == "building_first_draft":
+        return "Sonnet writing first draft..."
+    if event == "critic_done":
+        return (
+            f"Iter {payload.get('iteration')} · code {payload.get('code_score')}/100 "
+            f"· vision {payload.get('vision_score')}/10 · "
+            f"${payload.get('budget_remaining'):.2f} left"
+        )
+    if event == "done":
+        return (
+            f"Done · code={payload.get('code_score')} vision={payload.get('vision_score')} "
+            f"({payload.get('ship_reason')})"
+        )
+    return event
+
+
+@app.route("/build_agent_preview/<path:filename>")
+def build_agent_preview(filename):
+    """Serve the built site (from build_agent/_data/builds/<slug>/...)."""
+    base = Path(os.environ.get("BUILD_AGENT_BUILDS_DIR", str(Path(__file__).resolve().parent.parent / "build_agent" / "_data" / "builds")))
+    return send_from_directory(str(base), filename)
 
 
 @app.route("/builds/<path:filename>")
