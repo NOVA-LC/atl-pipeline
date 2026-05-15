@@ -33,7 +33,15 @@ from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 import requests
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, send_from_directory, jsonify, Response
+from coach import (
+    is_social_turn,
+    detect_objection_type,
+    get_specialist_type,
+    build_prompt,
+    stream_anthropic,
+    postprocess,
+)
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial
@@ -1838,6 +1846,81 @@ def build_agent_preview(filename):
 @app.route("/builds/<path:filename>")
 def built_preview(filename):
     return send_from_directory(str(BUILD_DIR), filename)
+
+
+@app.post("/api/agent/coach")
+def api_agent_coach():
+    body = request.get_json(force=True, silent=True) or {}
+    transcript          = body.get("transcript", []) or []
+    prospect_just_said  = (body.get("prospectJustSaid") or "").strip()
+    current_node        = body.get("currentNode") or {}
+    checkpoints         = body.get("checkpoints") or {}
+    call_state          = body.get("callState") or {}
+    agent_name          = body.get("agentName") or "Tyler"
+    business_name       = body.get("businessName") or ""
+    category            = body.get("category") or ""
+
+    # Empty utterance — return empty suggestion
+    if not prospect_just_said:
+        return {"suggestion": "", "reasoning": "", "thinking": ""}
+
+    # Social turn — return script node text, no LLM call
+    if is_social_turn(prospect_just_said, len(transcript)):
+        node_say = (current_node or {}).get("say", "") or "Hey — go ahead, I'm listening."
+        return {
+            "suggestion": node_say,
+            "reasoning": "Social turn — return script node.",
+            "_specialist": "rapport",
+            "_badge": (current_node or {}).get("badge", "Entry"),
+        }
+
+    # Route to specialist (objection wins)
+    objection_type = detect_objection_type(prospect_just_said)
+    badge = (current_node or {}).get("badge", "")
+    specialist = "objection" if objection_type else get_specialist_type(badge, "")
+
+    prompt = build_prompt(
+        specialist=specialist,
+        transcript=transcript,
+        prospect_just_said=prospect_just_said,
+        current_node=current_node,
+        checkpoints=checkpoints,
+        call_state=call_state,
+        agent_name=agent_name,
+        business_name=business_name,
+        category=category,
+        objection_type=objection_type,
+    )
+
+    def event_stream():
+        full_text = ""
+        try:
+            for chunk in stream_anthropic(prompt):
+                full_text += chunk
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            result = postprocess(
+                full_text,
+                current_node=current_node,
+                transcript=transcript,
+                business_name=business_name,
+                agent_name=agent_name,
+            )
+            result["_specialist"] = specialist
+            result["_badge"] = badge
+            yield f"data: {json.dumps({'done': True, 'result': result})}\n\n"
+        except Exception as e:
+            app.logger.exception("coach stream error")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 PORT = int(os.environ.get("PORT", "5050"))

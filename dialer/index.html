@@ -256,6 +256,26 @@
   }
   .icon-btn:hover { background: #f1f5f9; color: var(--text); }
   .icon-btn svg { display: block; flex-shrink: 0; }
+
+  /* Easy / ADHD mode toggle (mode-agnostic base) */
+  .mode-toggle {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line);
+    background: #f8fafc;
+    border-radius: var(--r-pill);
+    font-size: 13px; font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .mode-toggle:hover { background: #f1f5f9; }
+  .mode-toggle-glyph { display: none; }
+  html[data-mode="easy"] .mode-toggle-glyph.mode-toggle-easy { display: inline-flex; color: #10b981; }
+  html[data-mode="adhd"] .mode-toggle-glyph.mode-toggle-adhd { display: inline-flex; color: #f59e0b; }
+  html[data-mode="adhd"] .mode-toggle {
+    background: #fef3c7; border-color: #fde68a; color: #92400e;
+  }
   @media (max-width: 767px) {
     .icon-btn span { display: none; }
     .progress-label { display: none; }
@@ -1407,6 +1427,12 @@
   .ai-status.idle .ai-status-dot { background: #cbd5e1; box-shadow: none; animation: none; }
   .ai-status.error { color: var(--red); }
   .ai-status.error .ai-status-dot { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+  .ai-status.thinking { color: #f59e0b; }
+  .ai-status.thinking .ai-status-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
+    animation: pulse 0.8s ease-in-out infinite;
+  }
 
   .ai-bubble {
     display: grid; grid-template-columns: 48px 1fr;
@@ -1669,6 +1695,87 @@
       transition: none !important;
     }
   }
+
+  /* ── Script decision tree (prompt #16) ───────────────────────────── */
+  .script-node { display: flex; flex-direction: column; gap: var(--s-3); }
+  .script-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s-3);
+  }
+  .script-back {
+    background: transparent; border: 1px solid var(--line);
+    padding: 4px 10px; border-radius: var(--r-pill);
+    font-size: 12px; color: var(--text-dim);
+    cursor: pointer;
+  }
+  .script-back:disabled { opacity: 0.4; cursor: not-allowed; }
+  .script-badge {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--purple);
+    background: var(--purple-soft);
+    padding: 3px 10px; border-radius: var(--r-pill);
+  }
+  .script-practice {
+    display: flex; align-items: center; gap: var(--s-2);
+    font-size: 12px; color: var(--text-dim);
+  }
+  .script-practice .switch { width: 36px; height: 20px; }
+  .script-practice .switch-thumb { width: 16px; height: 16px; }
+  .script-practice .switch[aria-checked="true"] .switch-thumb { left: 18px; }
+  .script-say {
+    font-size: 16px; line-height: 1.55;
+    color: var(--text);
+  }
+  .script-coaching {
+    background: #ffffff; border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    padding: var(--s-3);
+    display: flex; flex-direction: column; gap: var(--s-2);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .coach-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--s-3); align-items: baseline; }
+  .coach-row strong {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  .coach-row.coach-warn { background: #fef2f2; padding: var(--s-2) var(--s-3); border-radius: var(--r-3); margin-top: var(--s-2); }
+  .coach-row.coach-warn strong { color: #b91c1c; }
+  .coach-row.coach-warn span { color: #7f1d1d; }
+  .script-answers {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2);
+    margin-top: var(--s-2);
+  }
+  @media (max-width: 1023px) { .script-answers { grid-template-columns: 1fr; } }
+  .answer-btn {
+    text-align: left;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    padding: var(--s-3);
+    border-radius: var(--r-3);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  }
+  .answer-btn:hover { background: #f8fafc; border-color: var(--accent); }
+  .answer-btn.answer-objection { border-left: 3px solid #f59e0b; }
+  .answer-btn.answer-exit-positive { border-left: 3px solid var(--green); }
+  .answer-btn.answer-exit-negative { border-left: 3px solid var(--red); }
+
+  /* ─────────────────────────────────────────────────────────────────
+     ADHD MODE — empty by default. Drop high-stimulus overrides here
+     when the inspiration is locked. Every rule must be scoped under
+     html[data-mode="adhd"] so it never leaks into Easy mode.
+     ───────────────────────────────────────────────────────────── */
+  html[data-mode="adhd"] body {
+    outline: 4px solid #f59e0b;
+    outline-offset: -4px;
+  }
+  /* ─── end ADHD MODE ─── */
 </style>
 </head>
 <body data-mode="idle">
@@ -1709,6 +1816,20 @@
     </span>
     <span class="ai-label">AI Agent:</span>
     <span class="ai-state" id="ai-toggle-state">On</span>
+  </button>
+  <button class="mode-toggle" id="mode-toggle" type="button"
+          aria-label="Switch focus mode" aria-pressed="false">
+    <svg class="mode-toggle-glyph mode-toggle-easy" aria-hidden="true"
+         width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </svg>
+    <svg class="mode-toggle-glyph mode-toggle-adhd" aria-hidden="true"
+         width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>
+    </svg>
+    <span class="mode-toggle-label" id="mode-toggle-label">Easy</span>
   </button>
   <button class="icon-btn" id="btn-help" type="button" aria-label="Help">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1875,7 +1996,28 @@
         <span class="script-title">Conversation Script</span>
       </header>
       <div class="script-body" id="script-body">
-        <!-- populated by renderScript() with the briefing's opening lines -->
+        <div class="script-node" id="script-node">
+          <div class="script-toolbar">
+            <button class="script-back" id="script-back" type="button" disabled>↩ Back</button>
+            <span class="script-badge" id="script-badge">Entry</span>
+            <div class="script-practice">
+              <span>Practice mode</span>
+              <button class="switch" id="script-practice-toggle" type="button" role="switch" aria-checked="false">
+                <span class="switch-thumb"></span>
+              </button>
+            </div>
+          </div>
+          <div class="script-say" id="script-say"></div>
+          <div class="script-coaching" id="script-coaching" hidden>
+            <div class="coach-row"><strong>Direction</strong><span id="coach-direction"></span></div>
+            <div class="coach-row"><strong>Tonality</strong><span id="coach-tonality"></span></div>
+            <div class="coach-row"><strong>Pacing</strong><span id="coach-pacing"></span></div>
+            <div class="coach-row coach-warn"><strong>Watch out</strong><span id="coach-warn"></span></div>
+          </div>
+          <div class="script-answers" id="script-answers" role="list">
+            <!-- buttons rendered per answer -->
+          </div>
+        </div>
       </div>
       <footer class="script-tip">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2109,8 +2251,35 @@
 </div>
 
 <script src="https://unpkg.com/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
+<script src="scripts/cold_call_b2b.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+
+// ── focus mode (Easy / ADHD) ─────────────────────────────────────────────
+const MODE_KEY = 'dialer.mode';
+function loadMode() {
+  try {
+    const v = localStorage.getItem(MODE_KEY);
+    return v === 'adhd' ? 'adhd' : 'easy';
+  } catch (_) { return 'easy'; }
+}
+function setMode(mode) {
+  mode = (mode === 'adhd') ? 'adhd' : 'easy';
+  try { localStorage.setItem(MODE_KEY, mode); } catch (_) {}
+  document.documentElement.dataset.mode = mode;
+  if (window.state) state.mode = mode;
+  renderModeToggle();
+}
+function renderModeToggle() {
+  const btn = document.getElementById('mode-toggle');
+  if (!btn) return;
+  const mode = loadMode();
+  btn.setAttribute('aria-pressed', mode === 'adhd' ? 'true' : 'false');
+  const lbl = document.getElementById('mode-toggle-label');
+  if (lbl) lbl.textContent = mode === 'adhd' ? 'ADHD' : 'Easy';
+}
+// Apply BEFORE first paint to avoid flicker.
+document.documentElement.dataset.mode = loadMode();
 
 // ── state ────────────────────────────────────────────────────────────────
 const state = {
@@ -2150,6 +2319,31 @@ const state = {
   aiListening: false,
   progressTarget: 100,
   demoMode: false,
+  mode: loadMode(),
+  scriptCurrentId: 'start',
+  scriptHistory: [],
+  scriptPracticeMode: false,
+  scriptVars: {
+    business_name: '',
+    city: '',
+    category: '',
+    your_name: 'Tyler',
+    owner_name: 'there',
+  },
+  aiTranscript: [],
+  callState: {
+    excavation_depth: 0,
+    resistance_level: 'unknown',
+    rapport_level: 'cold',
+    owner_confirmed: false,
+    people_mentioned: [],
+  },
+  checkpoints: {
+    ownerConfirmed: false,
+    discoveryStarted: false,
+    consequenceEstablished: false,
+    priceQuoted: false,
+  },
 };
 
 // ── demo seed for file:// / backend-down first paint ─────────────────────
@@ -2523,32 +2717,116 @@ function renderRecentCallsDrawer() {
   `).join("")}</div>`;
 }
 
+function interpolate(template, vars) {
+  return String(template || '').replace(/\{(\w+)\}/g, (_, k) =>
+    (vars && vars[k] != null && vars[k] !== '') ? vars[k] : '___'
+  );
+}
+
 function renderScript(lead) {
-  const body = $("script-body");
-  if (!body) return;
-  if (!lead) {
-    body.innerHTML = defaultOpeningScript().map((line, i) => {
-      const cue = line.cue || `script-${i}`;
-      return `<p data-cue="${escapeHtml(cue)}" data-cue-key="${escapeHtml(normalizeCue(line.text))}">${scriptTextHtml(line.text)}</p>`;
-    }).join("");
-    updateScriptTip(0);
+  if (lead) {
+    state.scriptVars.business_name = lead.business_name || '';
+    state.scriptVars.city          = lead.city || '';
+    state.scriptVars.category      = (lead.category || 'business').toLowerCase();
+    state.scriptVars.owner_name    = lead.owner_name || 'there';
+  }
+  const tree = window.COLD_CALL_B2B;
+  if (!tree) return;
+  const node = tree[state.scriptCurrentId] || tree.start;
+  if (!node) return;
+
+  // Exit node → fire outcome and reset
+  if (node.type === 'exit') {
+    const outcome = node.outcome;
+    state.scriptCurrentId = 'start';
+    state.scriptHistory = [];
+    renderScript(state.leads?.[state.idx]);
+    if (typeof markOutcome === 'function' && outcome) markOutcome(outcome);
     return;
   }
 
-  const briefing = getScriptBriefing(lead);
-  const opening = getOpeningLines(briefing);
-  const paragraphs = opening.length ? opening : defaultOpeningScript();
-  const extraLines = getBriefingExtraLines(briefing).concat(getTalkingPointLines(lead, briefing));
-  const allLines = paragraphs.concat(extraLines);
+  const badgeEl = document.getElementById('script-badge');
+  if (badgeEl) badgeEl.textContent = node.badge || '';
 
-  body.innerHTML = allLines.map((line, i) => {
-    const text = line.text || "";
-    const cue = line.cue || `script-${i}`;
-    return `<p data-cue="${escapeHtml(cue)}" data-cue-key="${escapeHtml(normalizeCue(text))}">${scriptTextHtml(text)}</p>`;
-  }).join("");
+  const sayEl = document.getElementById('script-say');
+  if (sayEl) {
+    const sayText = interpolate(node.say, state.scriptVars)
+      .replace(/___/g, '<span class="placeholder">___</span>');
+    sayEl.innerHTML = sayText;
+  }
 
-  updateScriptTip(currentCallElapsedMs());
-  applyScriptCue();
+  const coachingEl = document.getElementById('script-coaching');
+  if (coachingEl) coachingEl.hidden = !state.scriptPracticeMode;
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setText('coach-direction', interpolate(node.direction, state.scriptVars));
+  setText('coach-tonality',  interpolate(node.tonality,  state.scriptVars));
+  setText('coach-pacing',    interpolate(node.pacing,    state.scriptVars));
+  setText('coach-warn',      interpolate(node.warn,      state.scriptVars));
+
+  const ansEl = document.getElementById('script-answers');
+  if (ansEl) {
+    ansEl.innerHTML = '';
+    (node.answers || []).forEach(ans => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'answer-btn';
+      const nextNode = tree[ans.next];
+      if (nextNode && nextNode.badge === 'Objection') btn.classList.add('answer-objection');
+      if (nextNode && nextNode.type === 'exit') {
+        if (['interested','callback'].includes(nextNode.outcome)) btn.classList.add('answer-exit-positive');
+        if (['not_interested','dnc'].includes(nextNode.outcome))  btn.classList.add('answer-exit-negative');
+      }
+      btn.textContent = ans.label;
+      btn.addEventListener('click', () => advanceScript(ans.next));
+      ansEl.appendChild(btn);
+    });
+  }
+
+  const backEl = document.getElementById('script-back');
+  if (backEl) backEl.disabled = state.scriptHistory.length === 0;
+
+  const tipMap = {
+    'Entry':       'Speak slowly, smile through the phone',
+    'Reason':      'Mystery is the hook — do not reveal what you saw',
+    'Discovery':   'Ask, then count to 5 — let silence work',
+    'Consequence': 'Do not fill the silence after they answer',
+    'Objection':   'Strip to the bone — name the real reason',
+    'Value':       'Anchor the preview, defer the price',
+    'Close':       'Already-done energy — collect logistics, not approval',
+    'Hostile':     'Match their energy, defuse, do not push',
+    'Gatekeeper':  'Be honest — receptionists remember liars',
+    'Pivot':       'Match their pace, give them the choice',
+    'Email':       'Quick exit, document the win',
+    'REENTRY':     'Earned trust — gentle re-engage',
+  };
+  const tipEl = document.getElementById('script-tip');
+  if (tipEl) tipEl.textContent = tipMap[node.badge] || 'Listen for needs, pain points, and budget';
+}
+
+function advanceScript(nextId) {
+  if (!window.COLD_CALL_B2B || !window.COLD_CALL_B2B[nextId]) return;
+  // Update checkpoints based on which node we just entered
+  const ck = state.checkpoints;
+  const entering = nextId;
+  if (entering === 'state_reason' || entering === 'lead_source_q') ck.ownerConfirmed = true;
+  if (entering === 'lead_source_q') ck.discoveryStarted = true;
+  if (entering === 'consequence_q' || entering === 'value_anchor') ck.consequenceEstablished = true;
+  if (entering === 'obj_price' || entering === 'value_anchor') ck.priceQuoted = true;
+  state.scriptHistory.push(state.scriptCurrentId);
+  state.scriptCurrentId = nextId;
+  renderScript(state.leads ? state.leads[state.idx] : null);
+}
+
+function scriptBack() {
+  if (!state.scriptHistory.length) return;
+  state.scriptCurrentId = state.scriptHistory.pop();
+  renderScript(state.leads ? state.leads[state.idx] : null);
+}
+
+function resetScriptToStart() {
+  state.scriptCurrentId = 'start';
+  state.scriptHistory = [];
+  renderScript(state.leads ? state.leads[state.idx] : null);
 }
 
 function getScriptBriefing(lead) {
@@ -3141,6 +3419,22 @@ function goTo(i) {
   if (i < 0 || i >= state.leads.length) return;
   state.idx = i;
   state.phoneIdx = 0;
+  state.scriptCurrentId = 'start';
+  state.scriptHistory = [];
+  state.aiTranscript = [];
+  state.callState = {
+    excavation_depth: 0,
+    resistance_level: 'unknown',
+    rapport_level: 'cold',
+    owner_confirmed: false,
+    people_mentioned: [],
+  };
+  state.checkpoints = {
+    ownerConfirmed: false,
+    discoveryStarted: false,
+    consequenceEstablished: false,
+    priceQuoted: false,
+  };
   renderAll();
   focusCurrentLead();
 }
@@ -3654,7 +3948,25 @@ function togglePause() {
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && closeTopOverlay()) { e.preventDefault(); return; }
   if (isShortcutTextTarget(e.target)) return;
-  const outcomeKeyMap = {"1":"no_answer","2":"voicemail","3":"callback","5":"interested","4":"not_interested","d":"dnc","D":"dnc","n":"notes","N":"notes"};
+
+  // Backspace → undo last script-node step
+  if (e.key === "Backspace") {
+    if (state.scriptHistory && state.scriptHistory.length) {
+      e.preventDefault();
+      scriptBack();
+      return;
+    }
+  }
+
+  // Number keys 1–9: prefer the matching answer button by index.
+  // 4/5 still fall through to the existing outcome map below (per spec).
+  if (/^[1-9]$/.test(e.key) && e.key !== "4" && e.key !== "5") {
+    const idx = parseInt(e.key, 10) - 1;
+    const btns = document.querySelectorAll("#script-answers .answer-btn");
+    if (btns[idx]) { e.preventDefault(); btns[idx].click(); return; }
+  }
+
+  const outcomeKeyMap = {"4":"not_interested","5":"interested","d":"dnc","D":"dnc","n":"notes","N":"notes"};
   if (outcomeKeyMap[e.key]) {
     e.preventDefault();
     markOutcome(outcomeKeyMap[e.key]);
@@ -3703,11 +4015,116 @@ async function aiStopListening() {
 }
 
 async function aiOnProspectUtterance(text) {
-  // text: final transcribed prospect turn
-  // TODO: call backend POST /api/agent/coach with {transcript, leadId, callPhase}
-  // Backend uses Tyler's gates/system prompt. Returns {suggestion, reasoning}.
-  // For now just echo:
-  showAiTip(`(stub) Respond to: "${String(text || "").slice(0, 60)}..."`);
+  if (!state.aiOn) return;
+  if (!text || text.trim().length < 2) return;
+
+  state.aiTranscript.push({ role: 'prospect', text: text.trim(), ts: Date.now() });
+  if (text.length > 20) {
+    state.callState.excavation_depth = (state.callState.excavation_depth || 0) + 1;
+  }
+
+  // Fuzzy match against current node's answers — auto-advance if confident
+  const node = window.COLD_CALL_B2B?.[state.scriptCurrentId];
+  if (node?.answers?.length) {
+    const lower = text.toLowerCase();
+    for (const ans of node.answers) {
+      const labelWords = ans.label.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      if (!labelWords.length) continue;
+      const matchCount = labelWords.filter(w => lower.includes(w)).length;
+      const conf = matchCount / labelWords.length;
+      if (conf >= 0.85) {
+        advanceScript(ans.next);
+        showAiTip(`Auto-advanced: "${ans.label}"`);
+        setTimeout(clearAiTip, 4000);
+        return;
+      }
+    }
+  }
+
+  // Call the coach
+  const lead = state.leads?.[state.idx];
+  const reqBody = {
+    transcript: state.aiTranscript.slice(-20),
+    prospectJustSaid: text,
+    currentNode: node || {},
+    callState: state.callState,
+    checkpoints: state.checkpoints,
+    agentName: state.scriptVars?.your_name || 'Tyler',
+    businessName: lead?.business_name || '',
+    category: lead?.category || '',
+  };
+
+  setAiStatus('thinking');
+  let finalResult = null;
+  try {
+    const res = await fetch('/api/agent/coach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody),
+    });
+    if (!res.ok) throw new Error(`coach ${res.status}`);
+
+    // Non-streaming fast path (social/empty returns JSON, not SSE)
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const data = await res.json();
+      if (data.suggestion) showAiTip(data.suggestion);
+      return;
+    }
+
+    // SSE path
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.done && data.result) finalResult = data.result;
+        } catch {}
+      }
+    }
+
+    if (finalResult?.suggestion) {
+      showAiTip(finalResult.suggestion);
+      if (finalResult.resistance_level) state.callState.resistance_level = finalResult.resistance_level;
+      if (finalResult.rapport_level)    state.callState.rapport_level    = finalResult.rapport_level;
+      if (finalResult.recommended_branch) {
+        const parts = String(finalResult.recommended_branch).split('|');
+        const branchId = parts[parts.length - 1];
+        if (node?.answers?.some(a => a.next === branchId)) {
+          wireAiTipAdvance(branchId);
+        }
+      }
+      state.aiTranscript.push({ role: 'coach', text: finalResult.suggestion, ts: Date.now() });
+    }
+  } catch (e) {
+    console.error('coach error', e);
+    setAiStatus('error');
+    return;
+  } finally {
+    // Reset status (unless we set 'error' above)
+    const target = state.aiOn && (state.autoDialer || state.demoMode) ? 'active' : 'idle';
+    if (document.getElementById('ai-status')?.className.indexOf('error') === -1) {
+      setAiStatus(target);
+    }
+  }
+}
+
+function wireAiTipAdvance(branchId) {
+  const btn = document.getElementById('ai-tip-use');
+  if (!btn) return;
+  btn.dataset.branch = branchId;
+  btn.onclick = () => {
+    advanceScript(branchId);
+    clearAiTip();
+  };
 }
 
 async function aiOnAgentUtterance(text) {
@@ -3719,10 +4136,11 @@ async function aiOnAgentUtterance(text) {
 function setAiStatus(status) {
   const el = $("ai-status");
   if (!el) return;
-  el.classList.remove("idle", "error");
+  el.classList.remove("idle", "error", "thinking");
   if (status === "idle") el.classList.add("idle");
   if (status === "error") el.classList.add("error");
-  const label = { active: "Active", idle: "Idle", error: "Error" }[status] || "Active";
+  if (status === "thinking") el.classList.add("thinking");
+  const label = { active: "Active", idle: "Idle", error: "Error", thinking: "Thinking…" }[status] || "Active";
   el.innerHTML = `<span class="ai-status-dot"></span> ${label}`;
 }
 
@@ -3962,6 +4380,9 @@ function testMicrophone() {
   if (help) help.addEventListener("click", () => console.log("TODO help modal — prompt #8"));
   const settings = $("btn-settings");
   if (settings) settings.addEventListener("click", () => console.log("TODO settings modal — prompt #8"));
+  const modeBtn = $("mode-toggle");
+  if (modeBtn) modeBtn.addEventListener("click", () => setMode(loadMode() === "adhd" ? "easy" : "adhd"));
+  renderModeToggle();
 })();
 
 (function wirePrompt8Controls() {
@@ -3988,6 +4409,17 @@ function testMicrophone() {
     if (!closer) return;
     e.preventDefault();
     closeContainingOverlay(closer);
+  });
+})();
+
+(function wireScriptTree() {
+  const back = document.getElementById("script-back");
+  if (back) back.addEventListener("click", scriptBack);
+  const practice = document.getElementById("script-practice-toggle");
+  if (practice) practice.addEventListener("click", () => {
+    state.scriptPracticeMode = !state.scriptPracticeMode;
+    practice.setAttribute("aria-checked", state.scriptPracticeMode ? "true" : "false");
+    renderScript(state.leads ? state.leads[state.idx] : null);
   });
 })();
 
