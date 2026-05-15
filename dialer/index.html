@@ -10,27 +10,39 @@
 <style>
   /* ── design tokens ─────────────────────────────────────────────────────── */
   :root {
-    /* color — Apple dark mode lineage */
-    --bg:        #000000;
-    --panel:     #0c0c10;
-    --elevated:  #1c1c1e;
-    --hairline:  rgba(255,255,255,0.07);
-    --hairline-strong: rgba(255,255,255,0.13);
-    --text:      #f5f5f7;
-    --text-dim:  rgba(245,245,247,0.55);
-    --text-mute: rgba(245,245,247,0.32);
+    /* color — WebBoost light theme */
+    --bg:        #ffffff;
+    --panel:     #f8fafc;
+    --elevated:  #f1f5f9;
+    --hairline:  #e5e7eb;
+    --hairline-strong: #cbd5e1;
+    --text:      #0f172a;
+    --text-dim:  #475569;
+    --text-mute: #64748b;
 
     /* accent — one at a time, set on body[data-mode] */
-    --accent:        #0a84ff;  /* idle (Apple system blue) */
+    --accent:        #2563eb;  /* idle (WebBoost blue) */
     --accent-on:     #ffffff;
-    --accent-soft:   rgba(10,132,255,0.16);
+    --accent-soft:   #dbeafe;
 
-    --green:   #30d158;
-    --green-soft: rgba(48,209,88,0.16);
-    --yellow:  #ffd60a;
-    --orange:  #ff9f0a;
-    --red:     #ff453a;
-    --red-soft: rgba(255,69,58,0.18);
+    --green:        #10b981;
+    --green-soft:   #d1fae5;
+    --yellow:       #f59e0b;
+    --yellow-soft:  #fef3c7;
+    --orange:       #f59e0b;
+    --red:          #ef4444;
+    --red-soft:     #fee2e2;
+    --purple:       #8b5cf6;
+    --purple-soft:  #ede9fe;
+
+    /* legacy aliases for older CSS rules in this file */
+    --line:   #e5e7eb;
+    --muted:  #64748b;
+    --blue:   #2563eb;
+
+    /* elevation */
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.08);
+    --shadow-md: 0 4px 6px -1px rgba(15,23,42,0.08), 0 2px 4px -2px rgba(15,23,42,0.05);
 
     /* spacing — 4pt scale */
     --s-1:  4px; --s-2:  8px; --s-3: 12px; --s-4: 16px; --s-5: 24px;
@@ -70,8 +82,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overflow-x: hidden;
-    padding: var(--s-4) var(--s-4) 0;
+    overflow: hidden;
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     line-height: 1.45;
   }
   ::selection { background: var(--accent-soft); color: var(--text); }
@@ -90,13 +105,207 @@
     min-width: 20px;
     padding: 0 6px;
     border-radius: var(--r-2);
-    background: var(--elevated);
+    background: #f1f5f9;
     color: var(--text-dim);
     font-family: var(--font-mono);
     font-size: var(--t-micro);
     font-weight: 600;
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.4);
+    box-shadow: inset 0 -1px 0 #cbd5e1;
   }
+
+  /* ── app shell ─────────────────────────────────────────────────────────── */
+  .app-shell {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 1fr;
+    gap: var(--s-4);
+    padding: var(--s-4);
+    overflow: hidden;
+    max-width: 1536px;
+    width: 100%;
+    margin-inline: auto;
+  }
+  .app-header {
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--s-5);
+    min-height: 72px;
+    padding: var(--s-3) var(--s-5);
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-4);
+    box-shadow: var(--shadow-sm);
+  }
+  .brand { display: flex; align-items: center; gap: var(--s-3); }
+  .brand-mark {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .brand-mark svg { width: 100%; height: 100%; }
+  .brand-name {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .app-header .btn-primary,
+  .app-header .ai-toggle,
+  .app-header .icon-btn { min-height: 44px; }
+  .icon-btn { gap: 6px; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    background: var(--green);
+    color: #ffffff;
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r-3);
+    border: none;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: filter var(--dur) var(--ease), background var(--dur) var(--ease);
+  }
+  .btn-primary:hover { filter: brightness(0.95); }
+  .btn-primary.is-active { background: var(--red); }
+  .btn-primary svg { display: block; }
+  .progress-block {
+    flex: 1;
+    min-width: 0;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-1);
+    align-items: center;
+  }
+  .progress-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    align-self: flex-start;
+  }
+  .progress-row {
+    display: flex;
+    gap: var(--s-3);
+    align-items: center;
+    width: 100%;
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: inherit;
+    transition: width 300ms var(--ease);
+  }
+  .progress-count {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .ai-toggle {
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: #f8fafc;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--dur) var(--ease);
+  }
+  .ai-toggle:hover { background: #f1f5f9; }
+  .ai-toggle .ai-label { color: var(--text-dim); }
+  .ai-toggle .ai-state { color: var(--text-mute); font-weight: 500; }
+  .ai-toggle[aria-pressed="true"] .ai-state { color: var(--green); font-weight: 600; }
+  .ai-avatar {
+    width: 24px; height: 24px;
+    background: var(--green-soft);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--green);
+    flex-shrink: 0;
+  }
+  .ai-toggle[aria-pressed="false"] .ai-avatar {
+    background: #f1f5f9;
+    color: var(--text-mute);
+  }
+  .icon-btn {
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: var(--r-3);
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .icon-btn:hover { background: #f1f5f9; color: var(--text); }
+  .icon-btn svg { display: block; flex-shrink: 0; }
+  @media (max-width: 767px) {
+    .icon-btn span { display: none; }
+    .progress-label { display: none; }
+  }
+  @media (max-width: 480px) {
+    .progress-block { display: none; }
+    .brand-name { display: none; }
+  }
+
+  /* ── column container panels (replace old .panel base on cols) ─────────── */
+  .call-list-panel, .active-call-panel, .side-panel {
+    background: transparent;
+    padding: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    overflow: hidden;
+    border: none;
+  }
+  .side-panel { gap: var(--s-3); }
+  .side-panel > .ai-card,
+  .side-panel > .notes-card,
+  .side-panel > .stats-card { flex: 0 0 auto; }
+  .side-panel > .ai-card { flex: 1 1 auto; min-height: 0; }
+
+  .app-columns {
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    gap: var(--s-4);
+    grid-template-columns: 280px 1fr 320px;
+    align-items: stretch;
+  }
+  @media (max-width: 1279px) {
+    .app-columns { grid-template-columns: 1fr 320px; }
+    .app-columns > .col-left { display: none; }
+  }
+  @media (max-width: 767px) {
+    .app-columns { grid-template-columns: 1fr; }
+    .app-columns > .col-right { display: none; }
+  }
+  .col-left, .col-center, .col-right {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .col-left { flex: 1 1 auto; }
 
   /* ── header ────────────────────────────────────────────────────────────── */
   .topbar {
@@ -158,8 +367,8 @@
     padding: 2px 8px; border-radius: var(--r-pill);
     border: 1px solid var(--hairline); background: var(--panel);
   }
-  .badge.live { color: var(--green); border-color: rgba(48,209,88,0.3); }
-  .badge.err  { color: var(--red);   border-color: rgba(255,69,58,0.3); }
+  .badge.live { color: var(--green); border-color: var(--green); background: var(--green-soft); }
+  .badge.err  { color: var(--red);   border-color: var(--red);   background: var(--red-soft); }
   .controls { display: flex; gap: var(--s-2); align-items: center; }
   .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background: var(--text-mute); }
   .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green-soft); }
@@ -186,7 +395,7 @@
     background: var(--text-mute);
   }
   body[data-mode="calling"] .panel.queue-panel .queue-item.current::after { background: var(--accent); }
-  body[data-mode="calling"] .panel.queue-panel .queue-item.done::after { background: rgba(245,245,247,0.18); }
+  body[data-mode="calling"] .panel.queue-panel .queue-item.done::after { background: #cbd5e1; }
 
   .panel {
     background: var(--panel);
@@ -195,10 +404,10 @@
     padding: var(--s-5);
     overflow: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(245,245,247,0.18) transparent;
+    scrollbar-color: #cbd5e1 transparent;
   }
   .panel::-webkit-scrollbar { width: 8px; height: 8px; }
-  .panel::-webkit-scrollbar-thumb { background: rgba(245,245,247,0.14); border-radius: 4px; }
+  .panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   .panel::-webkit-scrollbar-track { background: transparent; }
 
   /* panel typography */
@@ -273,13 +482,13 @@
     letter-spacing: 0.06em;
     font-weight: 600;
   }
-  .code.no_answer       { background: rgba(245,245,247,0.08); color: var(--text-dim); }
-  .code.voicemail       { background: rgba(255,214,10,0.14);  color: var(--yellow); }
-  .code.callback        { background: rgba(10,132,255,0.18); color: var(--accent); }
-  .code.not_interested  { background: rgba(255,69,58,0.16);  color: var(--red); }
-  .code.interested      { background: rgba(48,209,88,0.18);  color: var(--green); }
-  .code.dnc             { background: rgba(255,69,58,0.24);  color: var(--red); }
-  .code.skip            { background: rgba(245,245,247,0.08); color: var(--text-mute); }
+  .code.no_answer       { background: #f1f5f9;             color: var(--text-dim); }
+  .code.voicemail       { background: var(--yellow-soft);  color: #92400e; }
+  .code.callback        { background: var(--accent-soft);  color: var(--accent); }
+  .code.not_interested  { background: var(--red-soft);     color: #991b1b; }
+  .code.interested      { background: var(--green-soft);   color: #065f46; }
+  .code.dnc             { background: var(--red-soft);     color: #991b1b; }
+  .code.skip            { background: #f1f5f9;             color: var(--text-mute); }
   .queue-expanded { display: none; margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--hairline); color: var(--text-dim); font-size: var(--t-micro); line-height: 1.5; }
   .queue-item.current .queue-expanded { display: block; }
 
@@ -461,31 +670,31 @@
     display: flex; align-items: center; justify-content: center; gap: var(--s-2);
   }
   .call-row button:disabled { opacity: 0.3; cursor: not-allowed; }
-  .btn-call { background: var(--green); color: #00120a; }
-  .btn-call:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px var(--green-soft); }
+  .btn-call { background: var(--green); color: #ffffff; }
+  .btn-call:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(16,185,129,0.25); }
   .btn-hang { background: var(--red); color: #fff; }
-  .btn-hang:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px var(--red-soft); }
+  .btn-hang:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(239,68,68,0.25); }
   .btn-pause {
     background: transparent;
     color: var(--text-dim);
     border: 1px solid var(--hairline-strong) !important;
     flex: 0 0 130px !important;
   }
-  .btn-pause.paused { background: var(--yellow); color: #000; border-color: var(--yellow) !important; }
+  .btn-pause.paused { background: var(--yellow); color: #fff; border-color: var(--yellow) !important; }
 
   /* DTMF panel — visible during live call */
   .dtmf-panel {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2);
     margin-top: var(--s-3);
     padding: var(--s-4);
-    border: 1px solid rgba(48,209,88,0.3);
+    border: 1px solid var(--green);
     border-radius: var(--r-4);
     background: var(--green-soft);
   }
-  .dtmf-head { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--green); font-size: var(--t-micro); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .dtmf-head { grid-column: 1 / -1; display: flex; justify-content: space-between; color: #065f46; font-size: var(--t-micro); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
   .dtmf-key {
     height: 44px;
-    background: var(--panel);
+    background: #ffffff;
     color: var(--text);
     font-family: var(--font-mono);
     font-size: 18px;
@@ -495,7 +704,7 @@
     transition: all var(--dur) var(--ease);
     display: flex; align-items: center; justify-content: center;
   }
-  .dtmf-key:hover { background: var(--green); color: #00120a; border-color: var(--green); }
+  .dtmf-key:hover { background: var(--green); color: #ffffff; border-color: var(--green); }
 
   /* dispositions */
   .actions {
@@ -526,34 +735,34 @@
     color: var(--text-dim);
   }
   .action.no_answer:hover      { color: var(--text-dim); border-color: var(--hairline-strong); }
-  .action.voicemail:hover      { color: var(--yellow); border-color: rgba(255,214,10,0.32); }
-  .action.callback:hover       { color: var(--accent); border-color: rgba(10,132,255,0.32); }
-  .action.not_interested:hover { color: var(--red); border-color: rgba(255,69,58,0.32); }
-  .action.interested:hover     { color: var(--green); border-color: rgba(48,209,88,0.32); }
-  .action.dnc:hover            { color: var(--red); border-color: rgba(255,69,58,0.5); }
+  .action.voicemail:hover      { color: var(--yellow); border-color: var(--yellow); background: var(--yellow-soft); }
+  .action.callback:hover       { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .action.not_interested:hover { color: var(--red); border-color: var(--red); background: var(--red-soft); }
+  .action.interested:hover     { color: var(--green); border-color: var(--green); background: var(--green-soft); }
+  .action.dnc:hover            { color: var(--red); border-color: var(--red); background: var(--red-soft); }
   .action.build {
     grid-column: 1 / -1;
-    background: linear-gradient(135deg, rgba(48,209,88,0.12), rgba(10,132,255,0.12));
-    color: var(--green);
+    background: var(--green-soft);
+    color: #065f46;
     font-weight: 600;
-    border-color: rgba(48,209,88,0.3);
+    border-color: var(--green);
   }
-  .action.build:hover { background: linear-gradient(135deg, rgba(48,209,88,0.2), rgba(10,132,255,0.2)); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(48,209,88,0.18); }
+  .action.build:hover { background: var(--green); color: #ffffff; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,185,129,0.25); }
 
   /* build status banner */
   .build-status {
     margin: var(--s-3) 0 var(--s-4);
     padding: var(--s-3) var(--s-4);
-    border: 1px solid rgba(48,209,88,0.3);
+    border: 1px solid var(--green);
     border-radius: var(--r-3);
     background: var(--green-soft);
-    color: var(--green);
+    color: #065f46;
     font-size: var(--t-small);
     display: flex; align-items: center; gap: var(--s-3);
   }
-  .build-status a { color: var(--green); font-weight: 600; }
-  .build-status.error { border-color: rgba(255,69,58,0.3); background: var(--red-soft); color: var(--red); }
-  .build-status.error a { color: var(--red); }
+  .build-status a { color: #065f46; font-weight: 600; }
+  .build-status.error { border-color: var(--red); background: var(--red-soft); color: #991b1b; }
+  .build-status.error a { color: #991b1b; }
 
   /* ── right rail: session ───────────────────────────────────────────────── */
   .session-panel { display: flex; flex-direction: column; gap: var(--s-5); }
@@ -611,11 +820,11 @@
   .popover {
     position: fixed; bottom: var(--s-4); right: var(--s-4);
     width: 380px; z-index: 9998;
-    background: var(--panel);
+    background: #ffffff;
     border: 1px solid var(--hairline-strong);
     border-radius: var(--r-4);
     padding: var(--s-4) var(--s-5);
-    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    box-shadow: var(--shadow-md);
     animation: pop-in var(--dur) var(--ease);
   }
   @keyframes pop-in { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -629,130 +838,905 @@
     .panel { min-height: 240px; }
   }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto}
-  h2{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
+  /* legacy h2 baseline — uppercase removed, kept only as a low-specificity fallback */
+  h2{font-size:.75rem;color:var(--muted);margin-bottom:12px}
   /* ── header bar ───────────────────────────────────────────────────────── */
   .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;grid-column:1 / -1}
   .header h1{font-size:1.1rem}
   .header h1 span{color:var(--accent)}
   .controls{display:flex;gap:8px;align-items:center;font-size:.8rem}
-  .badge{padding:4px 10px;border-radius:999px;background:#0a0a14;border:1px solid var(--line);font-size:.7rem;color:var(--muted);font-family:'SF Mono',Consolas,monospace}
-  .badge.live{color:var(--green);border-color:#1a4730}
-  .badge.err{color:var(--red);border-color:#4a1e1e}
+  .badge{padding:4px 10px;border-radius:999px;background:#ffffff;border:1px solid var(--line);font-size:.7rem;color:var(--muted);font-family:'SF Mono',Consolas,monospace}
+  .badge.live{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+  .badge.err{color:var(--red);border-color:var(--red);background:var(--red-soft)}
   .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
-  .dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .dot.live{background:var(--green);box-shadow:0 0 6px var(--green-soft)}
   /* ── left: queue ──────────────────────────────────────────────────────── */
-  .queue-item{padding:10px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;border-left:3px solid transparent;background:#0a0a14;font-size:.85rem}
-  .queue-item:hover{background:#1d1d2c}
-  .queue-item.current{border-left-color:var(--accent);background:#1d1d2c}
-  .queue-item.dialing{box-shadow:0 0 0 1px rgba(34,197,94,.35),0 0 18px rgba(34,197,94,.1)}
-  .queue-item.done{opacity:.4}
-  .queue-item .biz{font-weight:600}
+  .queue-item{padding:10px 12px;border-radius:8px;margin-bottom:6px;cursor:pointer;border-left:3px solid transparent;background:#ffffff;font-size:.85rem}
+  .queue-item:hover{background:#f1f5f9}
+  .queue-item.current{border-left-color:var(--accent);background:var(--accent-soft)}
+  .queue-item.dialing{box-shadow:0 0 0 1px var(--green),0 0 18px rgba(16,185,129,.15)}
+  .queue-item.done{opacity:.5}
+  .queue-item .biz{font-weight:600;color:var(--text)}
   .queue-item .meta{font-size:.7rem;color:var(--muted);margin-top:2px}
-  .queue-expanded{display:none;margin-top:8px;padding-top:8px;border-top:1px solid #2a2a3e;color:var(--muted);font-size:.72rem;line-height:1.5}
+  .queue-expanded{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem;line-height:1.5}
   .queue-item.current .queue-expanded{display:block}
   .queue-now{display:inline-flex;gap:6px;align-items:center;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.7px;font-size:.65rem}
   .queue-item .code{display:inline-block;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-  .code.no_answer{background:#1e293b;color:#94a3b8}
-  .code.voicemail{background:#3b3b1a;color:var(--yellow)}
-  .code.callback{background:#1e3a8a;color:#93c5fd}
-  .code.not_interested{background:#4a1e1e;color:#fca5a5}
-  .code.interested{background:#14532d;color:#86efac}
-  .code.dnc{background:#3f0a0a;color:#fecaca}
-  .code.skip{background:#374151;color:#9ca3af}
+  .code.no_answer{background:#f1f5f9;color:#475569}
+  .code.voicemail{background:var(--yellow-soft);color:#92400e}
+  .code.callback{background:var(--accent-soft);color:var(--accent)}
+  .code.not_interested{background:var(--red-soft);color:#991b1b}
+  .code.interested{background:var(--green-soft);color:#065f46}
+  .code.dnc{background:var(--red-soft);color:#991b1b}
+  .code.skip{background:#f1f5f9;color:var(--muted)}
   /* ── center: current lead ─────────────────────────────────────────────── */
   .lead-card{display:flex;flex-direction:column;height:100%}
-  .biz-name{font-size:2rem;font-weight:700;margin-bottom:4px;letter-spacing:-.5px}
+  .biz-name{font-size:2rem;font-weight:700;margin-bottom:4px;letter-spacing:-.5px;color:var(--text)}
   .biz-sub{color:var(--muted);font-size:.95rem;margin-bottom:20px}
   .phone-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
-  .phone-chip{padding:8px 14px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:1rem;cursor:pointer;transition:all .15s}
+  .phone-chip{padding:8px 14px;background:#ffffff;border:1px solid var(--line);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:1rem;color:var(--text);cursor:pointer;transition:all .15s}
   .phone-chip:hover{border-color:var(--accent)}
-  .phone-chip.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
-  .talking{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:20px}
+  .phone-chip.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+  .talking{background:#ffffff;border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:20px}
   .talking-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
   .talking ul{list-style:none}
-  .talking li{padding:4px 0;font-size:.95rem;border-bottom:1px solid #1a1a2e}
+  .talking li{padding:4px 0;font-size:.95rem;color:var(--text);border-bottom:1px solid var(--line)}
   .talking li:last-child{border-bottom:none}
   .talking li::before{content:"▸ ";color:var(--accent)}
-  .demo-link{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;color:var(--blue);text-decoration:none;font-size:.85rem;margin-bottom:24px}
+  .demo-link{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#ffffff;border:1px solid var(--line);border-radius:8px;color:var(--blue);text-decoration:none;font-size:.85rem;margin-bottom:24px}
   .demo-link:hover{border-color:var(--blue)}
-  .notes-panel{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 16px}
+  .notes-panel{background:#ffffff;border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 16px}
   .notes-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .notes-title{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
   .note-save-state{font-size:.7rem;color:var(--muted)}
   .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-  .notes-panel input,.notes-panel textarea{width:100%;background:#111120;border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:.85rem;padding:10px 11px;outline:none}
+  .notes-panel input,.notes-panel textarea{width:100%;background:#ffffff;border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:.85rem;padding:10px 11px;outline:none}
   .notes-panel input:focus,.notes-panel textarea:focus{border-color:var(--accent)}
   .notes-panel textarea{min-height:92px;resize:vertical;line-height:1.45}
   .note-save-row{display:flex;justify-content:flex-end;margin-top:8px}
-  .btn-note{border:1px solid var(--line);background:#1a1a2e;color:var(--text);border-radius:7px;padding:8px 12px;font-size:.78rem;cursor:pointer}
-  .btn-note:hover{border-color:var(--accent)}
+  .btn-note{border:1px solid var(--line);background:#ffffff;color:var(--text);border-radius:7px;padding:8px 12px;font-size:.78rem;cursor:pointer}
+  .btn-note:hover{border-color:var(--accent);color:var(--accent)}
   .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:auto}
-  .action{padding:14px 8px;background:#0a0a14;border:1px solid var(--line);border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;font-size:.8rem}
-  .action:hover{transform:translateY(-1px)}
-  .action .kbd{display:inline-block;background:#1a1a2e;padding:2px 6px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;margin-right:4px;color:var(--muted)}
-  .action.no_answer:hover{border-color:#94a3b8;color:#94a3b8}
-  .action.voicemail:hover{border-color:var(--yellow);color:var(--yellow)}
-  .action.callback:hover{border-color:var(--blue);color:var(--blue)}
-  .action.not_interested:hover{border-color:var(--red);color:var(--red)}
-  .action.interested:hover{border-color:var(--green);color:var(--green)}
-  .action.build{grid-column:1 / -1;border-color:#274a35;background:linear-gradient(135deg,#102015,#0a0a14);color:#baf7cf;font-weight:700}
-  .action.build:hover{border-color:var(--green);color:#dcffe8}
-  .action.dnc:hover{border-color:#fecaca;color:#fecaca}
-  .build-status{margin:10px 0 14px;padding:10px 12px;border:1px solid #274a35;border-radius:8px;background:#0b1710;color:#baf7cf;font-size:.78rem}
-  .build-status a{color:var(--green);font-weight:700;text-decoration:none}
+  .action{padding:14px 8px;background:#ffffff;border:1px solid var(--line);border-radius:8px;color:var(--text);cursor:pointer;text-align:center;transition:all .15s;font-size:.8rem}
+  .action:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+  .action .kbd{display:inline-block;background:#f1f5f9;padding:2px 6px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;margin-right:4px;color:var(--muted)}
+  .action.no_answer:hover{border-color:var(--muted);color:var(--muted)}
+  .action.voicemail:hover{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-soft)}
+  .action.callback:hover{border-color:var(--blue);color:var(--blue);background:var(--accent-soft)}
+  .action.not_interested:hover{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+  .action.interested:hover{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+  .action.build{grid-column:1 / -1;border-color:var(--green);background:var(--green-soft);color:#065f46;font-weight:700}
+  .action.build:hover{border-color:var(--green);background:var(--green);color:#ffffff}
+  .action.dnc:hover{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+  .build-status{margin:10px 0 14px;padding:10px 12px;border:1px solid var(--green);border-radius:8px;background:var(--green-soft);color:#065f46;font-size:.78rem}
+  .build-status a{color:#065f46;font-weight:700;text-decoration:none}
   .call-row{display:flex;gap:8px;margin-bottom:16px}
   .call-row button{flex:1;padding:18px;border:none;border-radius:10px;font-weight:700;font-size:1rem;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:opacity .15s}
   .call-row button:disabled{opacity:.3;cursor:not-allowed}
-  .btn-call{background:var(--green);color:#000}
+  .btn-call{background:var(--green);color:#fff}
   .btn-hang{background:var(--red);color:#fff}
-  .btn-pause{background:#374151;color:#fff;flex:0 0 110px !important}
-  .btn-pause.paused{background:var(--yellow);color:#000}
-  .dtmf-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:-6px 0 16px;padding:12px;border:1px solid #20452f;border-radius:10px;background:#07130c}
-  .dtmf-head{grid-column:1 / -1;display:flex;justify-content:space-between;color:#86efac;font-size:.72rem;text-transform:uppercase;letter-spacing:1px}
-  .dtmf-btn{border:1px solid #27543a;background:#0d1f14;color:#dcffe8;border-radius:8px;padding:12px;font-size:1rem;font-weight:800;cursor:pointer}
-  .dtmf-btn:hover{border-color:var(--green);background:#13361f}
-  .post-call{margin:-4px 0 16px;padding:14px;border:1px solid #3c3320;border-radius:10px;background:#171105}
-  .post-call h3{font-size:.86rem;margin-bottom:5px;color:#facc15}
-  .post-call p{font-size:.8rem;color:#d6c8a0;line-height:1.45;margin-bottom:10px}
+  .btn-pause{background:#f1f5f9;color:var(--text);flex:0 0 110px !important}
+  .btn-pause.paused{background:var(--yellow);color:#fff}
+  .dtmf-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:-6px 0 16px;padding:12px;border:1px solid var(--green);border-radius:10px;background:var(--green-soft)}
+  .dtmf-head{grid-column:1 / -1;display:flex;justify-content:space-between;color:#065f46;font-size:.72rem;text-transform:uppercase;letter-spacing:1px}
+  .dtmf-btn{border:1px solid var(--green);background:#ffffff;color:#065f46;border-radius:8px;padding:12px;font-size:1rem;font-weight:800;cursor:pointer}
+  .dtmf-btn:hover{border-color:var(--green);background:var(--green);color:#fff}
+  .post-call{margin:-4px 0 16px;padding:14px;border:1px solid var(--yellow);border-radius:10px;background:var(--yellow-soft)}
+  .post-call h3{font-size:.86rem;margin-bottom:5px;color:#92400e}
+  .post-call p{font-size:.8rem;color:#78350f;line-height:1.45;margin-bottom:10px}
   .post-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .post-actions button{border:1px solid #4c3c19;background:#241a08;color:#fde68a;border-radius:8px;padding:10px 8px;font-size:.78rem;cursor:pointer}
-  .post-actions button:hover{border-color:#eab308}
-  .ivr-suggestion{margin:-4px 0 16px;padding:13px;border:1px solid #3c3320;border-radius:10px;background:#171105;color:#fde68a}
+  .post-actions button{border:1px solid var(--yellow);background:#ffffff;color:#92400e;border-radius:8px;padding:10px 8px;font-size:.78rem;cursor:pointer}
+  .post-actions button:hover{border-color:var(--yellow);background:var(--yellow);color:#fff}
+  .ivr-suggestion{margin:-4px 0 16px;padding:13px;border:1px solid var(--yellow);border-radius:10px;background:var(--yellow-soft);color:#92400e}
   .ivr-suggestion strong{display:block;margin-bottom:5px}
-  .ivr-suggestion p{font-size:.78rem;line-height:1.45;color:#d6c8a0;margin-bottom:10px}
-  .ivr-suggestion button{border:1px solid #eab308;background:#312409;color:#fde68a;border-radius:8px;padding:10px 12px;font-weight:800;cursor:pointer}
+  .ivr-suggestion p{font-size:.78rem;line-height:1.45;color:#78350f;margin-bottom:10px}
+  .ivr-suggestion button{border:1px solid var(--yellow);background:var(--yellow);color:#fff;border-radius:8px;padding:10px 12px;font-weight:800;cursor:pointer}
   /* ── right: session stats + dispositions ──────────────────────────────── */
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-  .stat{background:#0a0a14;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
-  .stat .v{font-size:1.5rem;font-weight:700}
+  .stat{background:#ffffff;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .stat .v{font-size:1.5rem;font-weight:700;color:var(--text)}
   .stat .l{font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
   .stat.green .v{color:var(--green)}
   .stat.blue .v{color:var(--blue)}
-  .disp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a2e;font-size:.8rem}
+  .disp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:.8rem;color:var(--text)}
   .disp-row:last-child{border-bottom:none}
   .disp-row .b{color:var(--muted);font-size:.7rem}
-  .build-row{padding:9px 0;border-bottom:1px solid #1a1a2e;font-size:.8rem}
+  .build-row{padding:9px 0;border-bottom:1px solid var(--line);font-size:.8rem;color:var(--text)}
   .build-row:last-child{border-bottom:none}
   .build-row .b{color:var(--muted);font-size:.72rem;margin-top:2px}
   .build-row a{color:var(--green);text-decoration:none;font-weight:700}
-  .event-row{padding:8px 0;border-bottom:1px solid #1a1a2e;font-size:.78rem;line-height:1.35}
+  .event-row{padding:8px 0;border-bottom:1px solid var(--line);font-size:.78rem;line-height:1.35;color:var(--text)}
   .event-row:last-child{border-bottom:none}
   .event-row .t{color:var(--muted);font-size:.68rem;margin-bottom:2px}
-  .event-row.warn{color:#fde68a}
-  .event-row.err{color:#fca5a5}
-  .event-row.ok{color:#bbf7d0}
-  .build-pill{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#172033;color:#93c5fd;font-size:.65rem;text-transform:uppercase;letter-spacing:.5px}
-  .build-pill.done{background:#14532d;color:#86efac}
-  .build-pill.error{background:#4a1e1e;color:#fca5a5}
-  kbd{display:inline-block;background:#1a1a2e;padding:1px 5px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--muted)}
+  .event-row.warn{color:#92400e}
+  .event-row.err{color:#991b1b}
+  .event-row.ok{color:#065f46}
+  .build-pill{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px}
+  .build-pill.done{background:var(--green-soft);color:#065f46}
+  .build-pill.error{background:var(--red-soft);color:#991b1b}
+  kbd{display:inline-block;background:#f1f5f9;padding:1px 5px;border-radius:3px;font-family:'SF Mono',Consolas,monospace;font-size:.7rem;color:var(--muted);box-shadow:inset 0 -1px 0 #cbd5e1}
   .empty{color:var(--muted);text-align:center;padding:40px 20px;font-size:.85rem}
+
+  /* ── Call List card (prompt #3) ───────────────────────────────────────── */
+  .call-list-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-4);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+  .call-list-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--s-4) var(--s-4) var(--s-3);
+  }
+  .call-list-title { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; text-transform: none; letter-spacing: -0.01em; }
+  .call-list-count {
+    background: #dbeafe; color: var(--accent);
+    padding: 2px 10px; border-radius: var(--r-pill);
+    font-size: 13px; font-weight: 600;
+  }
+  .call-list-search {
+    position: relative; padding: 0 var(--s-4) var(--s-3);
+  }
+  .call-list-search svg {
+    position: absolute; left: calc(var(--s-4) + var(--s-3));
+    top: 50%; transform: translateY(-50%); color: var(--text-dim);
+    pointer-events: none;
+  }
+  .call-list-search input {
+    width: 100%;
+    padding: var(--s-3) var(--s-3) var(--s-3) calc(var(--s-3) + 20px);
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    font-size: 14px;
+    color: var(--text);
+  }
+  .call-list-search input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .call-list-scroll {
+    flex: 1 1 auto;
+    min-height: 120px;
+    overflow-y: auto;
+    padding: 0 var(--s-3) var(--s-3);
+    display: flex; flex-direction: column; gap: var(--s-2);
+  }
+  .call-list-scroll::-webkit-scrollbar { width: 6px; }
+  .call-list-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+
+  /* contact card (overrides legacy .queue-item rules above) */
+  .call-list-scroll .queue-item {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: var(--s-3);
+    padding: var(--s-3);
+    border-radius: var(--r-3);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    margin: 0;
+    color: var(--text);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .call-list-scroll .queue-item:hover { background: #f1f5f9; }
+  .call-list-scroll .queue-item.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
+  }
+  .call-list-scroll .queue-item.active .queue-meta,
+  .call-list-scroll .queue-item.active .queue-phone {
+    color: rgba(255,255,255,0.85);
+  }
+  .call-list-scroll .queue-item .queue-index {
+    font-weight: 700; font-size: 14px;
+    color: var(--text-dim);
+  }
+  .call-list-scroll .queue-item.active .queue-index { color: rgba(255,255,255,0.9); }
+  .call-list-scroll .queue-item .queue-biz { font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .call-list-scroll .queue-item .queue-phone { font-size: 13px; margin-top: 2px; color: var(--text-dim); }
+  .call-list-scroll .queue-item .queue-meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .call-list-scroll .queue-item.dialing {
+    box-shadow: inset 0 0 0 2px var(--green);
+  }
+  .call-list-scroll .queue-item.hidden { display: none; }
+
+  .auto-advance {
+    padding: var(--s-3) var(--s-4) var(--s-4);
+    border-top: 1px solid var(--line);
+  }
+  .auto-advance-row { display: flex; align-items: center; justify-content: space-between; }
+  .auto-advance-label { font-weight: 600; font-size: 14px; color: var(--text); }
+  .auto-advance-help { font-size: 12px; color: var(--text-dim); margin-top: var(--s-1); }
+
+  /* generic switch */
+  .switch {
+    position: relative; width: 44px; height: 24px;
+    background: #cbd5e1; border-radius: 999px; border: none;
+    cursor: pointer; padding: 0;
+    transition: background var(--dur) var(--ease);
+    flex-shrink: 0;
+  }
+  .switch[aria-checked="true"] { background: var(--green); }
+  .switch-thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    transition: left var(--dur) var(--ease);
+  }
+  .switch[aria-checked="true"] .switch-thumb { left: 22px; }
+
+  /* ── Now Calling hero card (prompt #4) ────────────────────────────────── */
+  .active-call-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    overflow: hidden;
+  }
+  .now-calling-card {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: var(--r-4);
+    padding: var(--s-5);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .now-calling-status {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    background: #ffffff;
+    color: var(--accent);
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: var(--r-pill);
+    border: 1px solid #dbeafe;
+    margin-bottom: var(--s-4);
+  }
+  .now-calling-status .dot.live {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-soft);
+    animation: nc-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes nc-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--green-soft); }
+    50%      { box-shadow: 0 0 0 6px rgba(16,185,129,0.08); }
+  }
+  .now-calling-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--s-5);
+    align-items: center;
+  }
+  .now-calling-info { min-width: 0; }
+  .phone-hero {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: var(--s-2);
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+  }
+  .phone-hero:hover { color: var(--accent); }
+  .biz-hero {
+    font-size: 24px; font-weight: 700;
+    margin-top: var(--s-2);
+    color: var(--text);
+    line-height: 1.2;
+    text-transform: none;
+    letter-spacing: -0.01em;
+  }
+  .biz-meta {
+    margin-top: var(--s-2);
+    color: var(--text-dim);
+    font-size: 14px;
+    display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center;
+  }
+  .biz-meta .sep { color: var(--text-dim); }
+  .pill-btn {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    margin-top: var(--s-4);
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-3);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: background var(--dur) var(--ease);
+  }
+  .pill-btn:hover { background: #f8fafc; }
+  .now-calling-art {
+    width: 160px; height: 160px;
+    background: #ffffff;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+  }
+  .now-calling-illo {
+    width: 96px;
+    height: 96px;
+    display: block;
+  }
+  .now-calling-illo svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .signal-icon {
+    position: absolute;
+    top: var(--s-5);
+    right: var(--s-5);
+    color: #2563eb;
+    opacity: 0.9;
+    width: 24px; height: 24px;
+  }
+  .now-calling-card[data-empty="true"] .phone-hero::before,
+  .now-calling-card[data-empty="true"] .biz-hero::before,
+  .now-calling-card[data-empty="true"] #lead-type::before,
+  .now-calling-card[data-empty="true"] #lead-locality::before {
+    content: '—';
+    color: var(--text-mute);
+  }
+  .now-calling-card[data-empty="true"] #lead-type::before { content: '—'; }
+  .now-calling-card[data-empty="true"] #lead-locality::before { content: '—'; }
+  @media (max-width: 767px) {
+    .now-calling-grid { grid-template-columns: 1fr; }
+    .now-calling-art { justify-self: flex-end; width: 112px; height: 112px; }
+    .now-calling-illo { width: 64px; height: 64px; }
+    .signal-icon { width: 18px; height: 18px; top: var(--s-3); right: var(--s-3); }
+    .phone-hero { font-size: 32px; }
+    .biz-hero { font-size: 20px; }
+  }
+
+  /* ── Outcome row (prompt #5) ──────────────────────────────────────────── */
+  .outcome-row {
+    display: grid;
+    grid-template-columns: auto repeat(4, 1fr);
+    gap: var(--s-3);
+    align-items: stretch;
+    max-width: 960px;
+    align-self: stretch;
+  }
+  .duration {
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 0 var(--s-3);
+    min-width: 96px;
+  }
+  .duration-time {
+    font-family: var(--font-display);
+    font-size: 32px; font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .duration-label {
+    font-size: 12px; color: var(--text-dim);
+    margin-top: var(--s-2);
+    text-transform: none;
+  }
+  .outcome {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: var(--s-1);
+    padding: var(--s-3);
+    border-radius: var(--r-3);
+    border: none;
+    cursor: pointer;
+    transition: transform 100ms var(--ease-snappy), filter 150ms var(--ease);
+    text-align: center;
+    color: #ffffff;
+    line-height: 1.15;
+    min-height: 88px;
+    max-height: 120px;
+  }
+  .outcome svg { color: #ffffff; }
+  .outcome:hover { filter: brightness(1.05); }
+  .outcome:active,
+  .outcome.pressed { transform: scale(0.98); filter: brightness(0.92); }
+  .outcome-title {
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .outcome-sub {
+    font-size: 11px; opacity: 0.92; font-weight: 500;
+  }
+  .outcome-interested      { background: #10b981; }
+  .outcome-not-interested  { background: #f59e0b; }
+  .outcome-dnc             { background: #ef4444; }
+  .outcome-notes           { background: #8b5cf6; }
+
+  @media (max-width: 1023px) {
+    .outcome-row { grid-template-columns: repeat(4, 1fr); }
+    .duration { display: none; }
+  }
+  @media (max-width: 639px) {
+    .outcome-row { grid-template-columns: repeat(2, 1fr); }
+    .outcome-sub { display: none; }
+  }
+
+  /* ── Conversation script (prompt #6) ─────────────────────────────────── */
+  .script-card {
+    background: #faf5ff;
+    border: 1px solid #ede9fe;
+    border-radius: var(--r-4);
+    padding: var(--s-4);
+    display: flex; flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 220px;
+    max-height: 60vh;
+    overflow: hidden;
+    align-self: stretch;
+  }
+  .script-head {
+    display: flex; align-items: center; gap: var(--s-2);
+    color: var(--purple);
+    margin-bottom: var(--s-3);
+  }
+  .script-icon { color: var(--purple); flex-shrink: 0; }
+  .script-title { font-weight: 600; font-size: 16px; }
+  .script-body {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding-right: var(--s-2);
+    font-size: 15px; line-height: 1.6;
+    color: var(--text);
+  }
+  .script-body p { margin: 0 0 var(--s-3); }
+  .script-body p:last-child { margin-bottom: 0; }
+  .script-body strong { font-weight: 700; }
+  .script-body .placeholder {
+    display: inline-block;
+    padding: 0 6px;
+    background: #ede9fe;
+    border-radius: 4px;
+    font-weight: 600;
+    color: var(--purple);
+  }
+  .script-body p.cue-active {
+    background: rgba(139,92,246,0.12);
+    border-radius: 6px;
+    padding: var(--s-2);
+    margin-left: calc(var(--s-2) * -1);
+  }
+  .script-body::-webkit-scrollbar { width: 6px; }
+  .script-body::-webkit-scrollbar-thumb { background: #d8b4fe; border-radius: 999px; }
+
+  .script-tip {
+    display: flex; align-items: center; gap: var(--s-2);
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid #ede9fe;
+    font-size: 13px;
+  }
+  .script-tip svg { flex-shrink: 0; color: var(--purple); }
+  .script-tip-label { color: var(--purple); font-weight: 700; }
+  .script-tip-text { color: var(--text-dim); }
+
+  /* ── Quick actions (prompt #7) ───────────────────────────────────────── */
+  .quick-actions {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-4);
+    padding: var(--s-4);
+    box-shadow: var(--shadow-sm);
+    flex: 0 0 auto;
+  }
+  .quick-actions-head {
+    display: flex; align-items: baseline; gap: var(--s-2);
+    margin-bottom: var(--s-3);
+  }
+  .quick-actions-title { font-weight: 600; font-size: 14px; }
+  .quick-actions-sub { font-size: 12px; color: var(--text-dim); }
+  .quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--s-2);
+  }
+  .qa-chip {
+    display: flex; align-items: center; justify-content: center;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-3);
+    border: 1px solid transparent;
+    font-size: 13px;
+    cursor: pointer;
+    transition: transform 100ms var(--ease-snappy), filter 120ms var(--ease);
+  }
+  .qa-chip kbd {
+    background: rgba(0,0,0,0.05);
+    border: none;
+    box-shadow: none;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .qa-chip:hover { filter: brightness(0.97); }
+  .qa-chip.qa-neutral      { background: #f1f5f9; color: var(--text); }
+  .qa-chip.qa-blue         { background: #dbeafe; color: #1e40af; }
+  .qa-chip.qa-orange       { background: #fed7aa; color: #9a3412; }
+  .qa-chip.qa-red-light    { background: #fee2e2; color: #991b1b; }
+  .qa-chip.qa-green-light  { background: #d1fae5; color: #065f46; }
+  .qa-chip.pressed { transform: scale(0.97); filter: brightness(0.94); }
+
+  @media (max-width: 1023px) {
+    .quick-actions-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── AI Agent Assistant (prompt #9) ──────────────────────────────────── */
+  .ai-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-4);
+    padding: var(--s-4);
+    box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column;
+    flex: 0 0 auto;
+  }
+  .ai-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+  .ai-title { font-size: 16px; font-weight: 700; text-transform: none; letter-spacing: -0.01em; color: var(--text); }
+  .ai-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    color: var(--green);
+  }
+  .ai-status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-soft);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .ai-status.idle { color: var(--text-dim); }
+  .ai-status.idle .ai-status-dot { background: #cbd5e1; box-shadow: none; animation: none; }
+  .ai-status.error { color: var(--red); }
+  .ai-status.error .ai-status-dot { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+
+  .ai-bubble {
+    display: grid; grid-template-columns: 48px 1fr;
+    gap: var(--s-3);
+    background: #f8fafc;
+    border-radius: var(--r-3);
+    padding: var(--s-3);
+  }
+  .ai-avatar-large {
+    width: 48px; height: 48px;
+    background: var(--green-soft);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: var(--green);
+  }
+  .ai-avatar-large svg { display: block; }
+  .ai-msg p { margin: 0 0 var(--s-2); font-size: 14px; line-height: 1.4; }
+  .ai-msg-secondary { color: var(--text-dim); }
+  .ai-msg-line:last-child { margin-bottom: 0; }
+
+  .ai-tip-card {
+    margin-top: var(--s-3);
+    background: var(--purple-soft);
+    border: 1px solid #ddd6fe;
+    border-radius: var(--r-3);
+    padding: var(--s-3);
+  }
+  .ai-tip-eyebrow {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--purple);
+    margin-bottom: var(--s-2);
+  }
+  .ai-tip-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: var(--s-3);
+  }
+  .ai-tip-actions { display: flex; gap: var(--s-2); }
+  .ai-tip-card .pill-btn:first-child {
+    background: var(--purple); color: #fff; border-color: var(--purple);
+  }
+
+  .ai-insights-link {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%;
+    margin-top: var(--s-3);
+    padding: var(--s-2) var(--s-3);
+    background: transparent; border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    cursor: pointer;
+  }
+  .ai-insights-link:hover { background: #f0f9ff; }
+
+  /* ── Bottom controls + overlays (prompt #8) ──────────────────────────── */
+  /* Call notes + stats (prompt #10) */
+  .notes-card, .stats-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-4);
+    padding: var(--s-4);
+    box-shadow: var(--shadow-sm);
+    flex: 0 0 auto;
+  }
+  .notes-head h2, .stats-head h2 {
+    font-size: 16px; font-weight: 700; margin-bottom: var(--s-3);
+    text-transform: none; letter-spacing: -0.01em; color: var(--text);
+  }
+  .stats-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s-2);
+  }
+  .stats-head h2 { margin-bottom: 0; }
+  .demo-badge {
+    font-size: 10px; font-weight: 700;
+    background: #fef3c7; color: #92400e;
+    border-radius: 999px;
+    padding: 1px 6px;
+    letter-spacing: 0.04em;
+  }
+
+  .notes-textarea {
+    width: 100%;
+    min-height: 110px;
+    resize: vertical;
+    padding: var(--s-3);
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    font-size: 14px;
+    line-height: 1.4;
+    font-family: var(--font-body);
+    color: var(--text);
+  }
+  .notes-textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    background: #ffffff;
+  }
+  .notes-foot { display: flex; justify-content: flex-end; margin-top: var(--s-3); }
+  .btn-save-note {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--r-3);
+    padding: var(--s-2) var(--s-4);
+    font-weight: 600; font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-save-note:hover { filter: brightness(1.05); }
+  .btn-save-note:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+  .stats-list { display: grid; gap: var(--s-3); margin: 0; }
+  .stats-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px;
+  }
+  .stats-row dt { color: var(--text-dim); }
+  .stats-row dd { font-weight: 700; font-size: 16px; color: var(--text); margin: 0; }
+  .stats-row dd.stats-positive { color: var(--green); }
+  .stats-row dd.stats-negative { color: var(--red); }
+
+  .bottom-controls {
+    display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+    gap: var(--s-3);
+    flex: 0 0 auto;
+    max-width: 880px;
+    align-self: stretch;
+  }
+  .center-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: 960px;
+    width: 100%;
+    margin-inline: auto;
+    overflow: hidden;
+  }
+  .active-call-panel { align-items: stretch; }
+  .btn-control {
+    display: flex; align-items: center; gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--dur) var(--ease), filter var(--dur) var(--ease);
+    color: var(--text);
+    min-width: 0;
+  }
+  .btn-control:hover { background: #f8fafc; }
+  .btn-control svg { flex-shrink: 0; color: var(--text-dim); }
+  .btn-control strong { display: block; font-size: 14px; }
+  .btn-control em { display: block; font-size: 12px; color: var(--text-dim); font-style: normal; }
+  .btn-control-primary { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+  .btn-control-primary svg, .btn-control-primary em { color: rgba(255,255,255,0.85); }
+  .btn-control-primary:hover { filter: brightness(1.05); background: var(--accent); }
+
+  .drawer { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+  .drawer[aria-hidden="false"] { pointer-events: auto; }
+  .drawer-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(15,23,42,0.4);
+    opacity: 0; transition: opacity var(--dur) var(--ease);
+  }
+  .drawer[aria-hidden="false"] .drawer-backdrop { opacity: 1; }
+  .drawer-panel {
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: min(520px, 100vw);
+    background: #ffffff;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform var(--dur) var(--ease);
+  }
+  .drawer[aria-hidden="false"] .drawer-panel { transform: translateX(0); }
+  .drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--s-4); border-bottom: 1px solid var(--line);
+  }
+  .drawer-head h2 { font-size: 18px; font-weight: 700; }
+  .drawer-body {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: var(--s-4);
+  }
+
+  .modal { position: fixed; inset: 0; z-index: 60; pointer-events: none; display: grid; place-items: center; }
+  .modal[aria-hidden="false"] { pointer-events: auto; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(15,23,42,0.5); opacity: 0; transition: opacity var(--dur); }
+  .modal[aria-hidden="false"] .modal-backdrop { opacity: 1; }
+  .modal-panel {
+    position: relative;
+    background: #fff;
+    border-radius: var(--r-4);
+    width: min(560px, 92vw);
+    max-height: min(80vh, 720px);
+    display: flex; flex-direction: column;
+    transform: scale(0.96); opacity: 0;
+    transition: transform var(--dur) var(--ease), opacity var(--dur);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.18);
+  }
+  .modal[aria-hidden="false"] .modal-panel { transform: scale(1); opacity: 1; }
+  .modal-head { padding: var(--s-4); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h2 { font-size: 18px; font-weight: 700; }
+  .modal-body { padding: var(--s-4); overflow-y: auto; }
+  .modal-body section + section { margin-top: var(--s-5); }
+  .modal-body h3, .drawer-body h3 {
+    font-size: 14px; font-weight: 700; margin: 0 0 var(--s-3);
+  }
+  .kbd-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: var(--s-2) var(--s-4);
+    align-items: center;
+  }
+  .kbd-grid dt { font-size: 13px; }
+  .kbd-grid dd { font-size: 13px; color: var(--text-dim); margin: 0; }
+  .settings-field {
+    display: grid; gap: var(--s-2);
+    font-size: 13px; color: var(--text-dim);
+    margin-bottom: var(--s-3);
+  }
+  .settings-field select {
+    width: 100%; border: 1px solid var(--line); border-radius: var(--r-3);
+    padding: var(--s-2) var(--s-3); background: #f8fafc; color: var(--text);
+  }
+  #settings-status-strip .status-strip {
+    display: flex; gap: var(--s-2); flex-wrap: wrap;
+  }
+  .drawer-section {
+    border: 1px solid var(--line); border-radius: var(--r-3);
+    padding: var(--s-3); background: #f8fafc; margin-bottom: var(--s-3);
+  }
+  .drawer-section p { margin: 0 0 var(--s-2); color: var(--text-dim); font-size: 13px; }
+  .drawer-section p:last-child { margin-bottom: 0; }
+  .drawer-list { display: grid; gap: var(--s-2); }
+  .drawer-list button, .drawer-list a {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--s-2);
+    padding: var(--s-2) var(--s-3); border: 1px solid var(--line);
+    border-radius: var(--r-3); background: #ffffff; color: var(--text);
+    text-align: left; cursor: pointer;
+  }
+  .drawer-muted { color: var(--text-dim); font-size: 13px; }
+  .drawer-dtmf-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2);
+  }
+  .drawer-dtmf-grid button {
+    height: 40px; border: 1px solid var(--line); border-radius: var(--r-3);
+    background: #ffffff; color: var(--text); font-weight: 700; cursor: pointer;
+  }
+  @media (max-width: 639px) {
+    .bottom-controls { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-backdrop, .drawer-panel, .modal-backdrop, .modal-panel, .btn-control {
+      transition: none !important;
+    }
+  }
 </style>
 </head>
 <body data-mode="idle">
 
-<!-- ── topbar ──────────────────────────────────────────────────────────── -->
-<div class="topbar">
-  <h1>Dialer<span class="pill" id="src-pill">loading</span><span class="pill" style="opacity:0.7; cursor:pointer;" onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true}))" title="Search leads">⌘K to search</span></h1>
+<div class="app-shell">
+
+<header class="app-header">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="16" fill="currentColor" fill-opacity="0.12"/>
+        <path d="M11.2 10.1c.2-.3.5-.5.9-.5h2.3c.5 0 .9.3 1 .8l.6 2.7c.1.4-.1.8-.4 1l-1.3.9c.8 1.8 2.2 3.2 4 4l.9-1.3c.2-.3.6-.5 1-.4l2.7.6c.5.1.8.5.8 1v2.3c0 .4-.2.7-.5.9-3 2-7 1.6-9.6-1-2.6-2.6-3-6.6-1-9.6l-1.4-1.4z" fill="currentColor"/>
+      </svg>
+    </span>
+    <span class="brand-name">NovaIntel Dialer</span>
+  </div>
+  <button class="btn-primary btn-start-dialer" id="btn-start-dialer" type="button">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path id="btn-start-dialer-icon" d="M4 3.5v9c0 .4.4.6.7.4l7-4.5c.3-.2.3-.6 0-.8l-7-4.5c-.3-.2-.7 0-.7.4z" fill="currentColor"/>
+    </svg>
+    <span id="btn-start-dialer-label">Start Auto-Dialer</span>
+  </button>
+  <div class="progress-block" aria-label="Today's Progress">
+    <div class="progress-label">Today's Progress</div>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width: 23%"></div></div>
+      <div class="progress-count"><span id="progress-current">23</span> / <span id="progress-target">100</span> calls</div>
+    </div>
+  </div>
+  <button class="ai-toggle" id="ai-toggle" type="button" aria-pressed="true">
+    <span class="ai-avatar" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="4" width="10" height="8" rx="2" fill="currentColor"/>
+        <circle cx="5" cy="8" r="1" fill="#fff"/>
+        <circle cx="9" cy="8" r="1" fill="#fff"/>
+        <path d="M7 1v3M5 1.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="ai-label">AI Agent:</span>
+    <span class="ai-state" id="ai-toggle-state">On</span>
+  </button>
+  <button class="icon-btn" id="btn-help" type="button" aria-label="Help">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M7.5 7.5c0-1.4 1.1-2.5 2.5-2.5s2.5 1.1 2.5 2.5c0 1-.6 1.7-1.5 2.1-.6.3-1 .7-1 1.4v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="10" cy="14.5" r="0.9" fill="currentColor"/>
+    </svg>
+    <span>Help</span>
+  </button>
+  <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.5"/>
+      <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span>Settings</span>
+  </button>
+</header>
+
+<!-- legacy badges kept hidden so existing JS doesn't crash -->
+<div style="display:none">
+  <span id="from-badge"></span>
+  <span id="src-badge"></span>
+  <span id="device-badge"></span>
+  <span id="src-pill"></span>
+</div>
+
+<!-- moved to Settings modal in prompt #8 — kept in DOM (hidden) so existing pollStatus() and device handlers can mutate .status-dot/#device-dot/#device-msg -->
+<template id="tpl-status-strip">
   <div class="status-strip" id="status-strip">
     <span class="status-dot" data-tool="twilio"     title="Twilio Voice"><span class="pip"></span><span class="label">Twilio</span></span>
     <span class="status-dot" data-tool="deepgram"   title="Deepgram STT"><span class="pip"></span><span class="label">Deepgram</span></span>
@@ -760,48 +1744,272 @@
     <span class="status-dot" data-tool="outscraper" title="Outscraper GBP"><span class="pip"></span><span class="label">Outscraper</span></span>
     <span class="status-dot" data-tool="device"     title="Twilio Voice SDK"><span class="pip" id="device-dot"></span><span class="label" id="device-msg">device</span></span>
   </div>
-</div>
+</template>
+<div id="status-strip-host" style="display:none" aria-hidden="true"></div>
+<script>
+  (function mountStatusStrip(){
+    const tpl = document.getElementById("tpl-status-strip");
+    const host = document.getElementById("status-strip-host");
+    if (tpl && host) host.appendChild(tpl.content.cloneNode(true));
+  })();
+</script>
 
-<!-- legacy badges kept hidden so existing JS doesn't crash -->
-<div style="display:none">
-  <span id="from-badge"></span>
-  <span id="src-badge"></span>
-  <span id="device-badge"></span>
-</div>
-
-<div class="layout">
+<div class="app-columns">
 
   <!-- LEFT: queue ─────────────────────────────────────────────────────── -->
-  <div class="panel queue-panel">
-    <div class="panel-title">Queue · <span class="queue-progress-num" id="queue-progress">0</span><span class="queue-progress-of"> / 0</span></div>
-    <div id="queue"></div>
+  <aside class="col-left">
+  <div class="call-list-panel queue-panel">
+    <section class="call-list-card">
+      <header class="call-list-head">
+        <h2 class="call-list-title">Call List</h2>
+        <span class="call-list-count" id="queue-total-badge">0</span>
+      </header>
+      <div class="call-list-search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input id="queue-search" type="search" placeholder="Search contacts..." autocomplete="off" />
+      </div>
+      <div class="call-list-scroll" id="queue-list" role="listbox" aria-label="Call queue">
+        <!-- queue items rendered here by renderQueue() -->
+      </div>
+      <div class="auto-advance">
+        <div class="auto-advance-row">
+          <span class="auto-advance-label">Auto-Advance</span>
+          <button class="switch" id="auto-advance-toggle" type="button" role="switch" aria-checked="true">
+            <span class="switch-thumb"></span>
+          </button>
+        </div>
+        <p class="auto-advance-help">Calls will auto-advance after call ends</p>
+      </div>
+    </section>
+    <!-- legacy queue mount kept hidden so any direct $("queue") access still works -->
+    <span id="queue-progress" style="display:none">0</span>
+    <div id="queue" style="display:none"></div>
   </div>
+  </aside>
 
   <!-- CENTER: current lead ────────────────────────────────────────────── -->
-  <div class="panel lead-card" id="lead-card">
-    <div id="lead-content"><div class="empty">Loading queue…</div></div>
-  </div>
+  <main class="col-center">
+  <section class="active-call-panel lead-card" id="lead-card">
+    <article class="now-calling-card" id="now-calling-card" data-empty="true">
+      <span class="now-calling-status"><span class="dot live"></span> Now Calling...</span>
+      <div class="now-calling-grid">
+        <div class="now-calling-info">
+          <div class="phone-hero" id="lead-phone-hero" onclick="cyclePhone()" title="Click to cycle to next number"></div>
+          <h2 class="biz-hero" id="lead-biz-hero"></h2>
+          <div class="biz-meta">
+            <span id="lead-type"></span>
+            <span class="sep" aria-hidden="true">•</span>
+            <span id="lead-locality"></span>
+          </div>
+          <button class="pill-btn" id="btn-view-details" type="button">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M3.5 1.5h5L11 4v8.5H3.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+              <path d="M8.5 1.5V4H11M5 7h4M5 9.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span>View Details</span>
+          </button>
+        </div>
+        <div class="now-calling-art" aria-hidden="true">
+          <div class="now-calling-illo" id="lead-illo"></div>
+          <svg class="signal-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3"  y="14" width="3" height="6" rx="0.5" fill="currentColor"/>
+            <rect x="9"  y="10" width="3" height="10" rx="0.5" fill="currentColor"/>
+            <rect x="15" y="6"  width="3" height="14" rx="0.5" fill="currentColor"/>
+            <rect x="21" y="3"  width="0" height="0"/>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <!-- Centered stack: outcome row + script + quick actions + bottom controls -->
+    <div class="center-stack">
+
+    <!-- TIMER + OUTCOME BUTTONS (prompt #5) -->
+    <div class="outcome-row">
+      <div class="duration">
+        <div class="duration-time" id="call-duration">00:00</div>
+        <div class="duration-label">Call Duration</div>
+      </div>
+      <button class="outcome outcome-interested" data-outcome="interested" data-key="5" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M6.5 10.2l2.4 2.4L13.8 7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="outcome-title">INTERESTED</span>
+        <span class="outcome-sub">Move to Next Step</span>
+      </button>
+      <button class="outcome outcome-not-interested" data-outcome="not_interested" data-key="4" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M13 3h2.5a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5H13" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M13 12l-2 4a2 2 0 01-4-.6V12H3.7a1.6 1.6 0 01-1.6-1.9l1.1-5.5A2 2 0 015.2 3H13v9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <span class="outcome-title">NOT INTERESTED</span>
+        <span class="outcome-sub">Next Contact</span>
+      </button>
+      <button class="outcome outcome-dnc" data-outcome="dnc" data-key="d" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="outcome-title">DNC</span>
+        <span class="outcome-sub">Do Not Call</span>
+      </button>
+      <button class="outcome outcome-notes" data-outcome="notes" data-key="n" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M5 3h7l3 3v11H5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 3v3h3M7.5 9.5h5M7.5 12.5h5M7.5 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <span class="outcome-title">NOTES</span>
+        <span class="outcome-sub">Add Note</span>
+      </button>
+    </div>
+    <section class="script-card">
+      <header class="script-head">
+        <svg class="script-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M8.4 2.2l1.2 3.2c.1.3.3.5.6.6l3.2 1.2c.5.2.5.9 0 1.1l-3.2 1.2c-.3.1-.5.3-.6.6l-1.2 3.2c-.2.5-.9.5-1.1 0L6.1 10c-.1-.3-.3-.5-.6-.6L2.3 8.2c-.5-.2-.5-.9 0-1.1l3.2-1.2c.3-.1.5-.3.6-.6l1.2-3.2c.2-.5.9-.5 1.1 0z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M13.3 1.8v2.4M12.1 3h2.4M15 11.8v2M14 12.8h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="script-title">Conversation Script</span>
+      </header>
+      <div class="script-body" id="script-body">
+        <!-- populated by renderScript() with the briefing's opening lines -->
+      </div>
+      <footer class="script-tip">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M5.6 12.2h4.8M6.1 14h3.8M11.6 6.5c0 1.3-.6 2.1-1.5 3-.4.4-.6.8-.6 1.4h-3c0-.6-.2-1-.6-1.4-.9-.9-1.5-1.7-1.5-3a3.6 3.6 0 017.2 0z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="script-tip-label">TIP:</span>
+        <span class="script-tip-text" id="script-tip">Listen for needs, pain points, and budget</span>
+      </footer>
+    </section>
+    <section class="quick-actions">
+      <div class="quick-actions-head">
+        <span class="quick-actions-title">Quick Actions</span>
+        <span class="quick-actions-sub">(Press Keys)</span>
+      </div>
+      <div class="quick-actions-grid">
+        <button class="qa-chip qa-neutral" data-outcome="no_answer" data-key="1" onclick="markOutcome('no_answer')" type="button">
+          <kbd>1</kbd><span>No Answer</span>
+        </button>
+        <button class="qa-chip qa-blue" data-outcome="voicemail" data-key="2" onclick="markOutcome('voicemail')" type="button">
+          <kbd>2</kbd><span>Voicemail</span>
+        </button>
+        <button class="qa-chip qa-orange" data-outcome="callback" data-key="3" onclick="markOutcome('callback')" type="button">
+          <kbd>3</kbd><span>Callback</span>
+        </button>
+        <button class="qa-chip qa-red-light" data-outcome="not_interested" data-key="4" onclick="markOutcome('not_interested')" type="button">
+          <kbd>4</kbd><span>Not Interested</span>
+        </button>
+        <button class="qa-chip qa-green-light" data-outcome="interested" data-key="5" onclick="markOutcome('interested')" type="button">
+          <kbd>5</kbd><span>Interested</span>
+        </button>
+        <button class="qa-chip qa-red-light" data-outcome="dnc" data-key="d" onclick="markOutcome('dnc')" type="button">
+          <kbd>D</kbd><span>DNC</span>
+        </button>
+      </div>
+    </section>
+    <section class="bottom-controls">
+      <button class="btn-control" id="btn-pause-auto" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M6 4h3v12H6zM11 4h3v12h-3z" fill="currentColor"/>
+        </svg>
+        <span><strong>Start Auto-Dialer</strong><em>Begin calling</em></span>
+      </button>
+      <button class="btn-control" id="btn-skip" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 5v10l7-5-7-5zM13 5v10M16 5v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span><strong>Skip</strong><em>Next contact</em></span>
+      </button>
+      <button class="btn-control" id="btn-audio" type="button">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 8v4h3l5 4V4L6 8H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <path d="M14 7c.8.8 1.2 1.8 1.2 3S14.8 12.2 14 13M16.4 5.2A6.6 6.6 0 0118 10a6.6 6.6 0 01-1.6 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <span><strong>Audio Settings</strong><em>Test your sound</em></span>
+      </button>
+    </section>
+
+    </div><!-- /.center-stack -->
+
+    <!-- Existing JS-rendered children (DTMF, IVR, post-call, talking points,
+         notes, call/hang/pause, outcome buttons) kept alive but hidden;
+         folded into View Details / overlays in later prompts. -->
+    <div id="legacy-lead-content" hidden>
+      <div id="lead-content"><div class="empty">Loading queue…</div></div>
+    </div>
+  </section>
+  </main>
 
   <!-- RIGHT: session ──────────────────────────────────────────────────── -->
-  <div class="panel session-panel">
-    <div>
-      <div class="panel-title">Today</div>
-      <div class="stats">
-        <div class="stat"><div class="v" id="stat-dialed">0</div><div class="l">Dialed</div></div>
-        <div class="stat green"><div class="v" id="stat-interested">0</div><div class="l">Interested</div></div>
-        <div class="stat blue"><div class="v" id="stat-callback">0</div><div class="l">Callbacks</div></div>
-        <div class="stat"><div class="v" id="stat-noans">0</div><div class="l">No Ans / VM</div></div>
+  <aside class="col-right">
+  <div class="side-panel session-panel">
+    <section class="ai-card">
+      <header class="ai-head">
+        <h2 class="ai-title">AI Agent Assistant</h2>
+        <span class="ai-status" id="ai-status">
+          <span class="ai-status-dot"></span> Active
+        </span>
+      </header>
+      <div class="ai-bubble">
+        <div class="ai-avatar-large" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="13" width="24" height="19" rx="6" fill="currentColor" fill-opacity="0.18"/>
+            <rect x="10.5" y="15.5" width="19" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
+            <circle cx="17" cy="22" r="1.8" fill="currentColor"/>
+            <circle cx="23" cy="22" r="1.8" fill="currentColor"/>
+            <path d="M17 26c1.8 1.2 4.2 1.2 6 0M20 8v5M16.5 8.5h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ai-msg" id="ai-msg">
+          <p class="ai-msg-line" id="ai-msg-1">I'm listening and analyzing the conversation...</p>
+          <p class="ai-msg-line ai-msg-secondary" id="ai-msg-2">I'll help you know when they're interested and guide you on what to say next.</p>
+          <div class="ai-tip-card" id="ai-tip-card" hidden>
+            <span class="ai-tip-eyebrow">Suggested next line</span>
+            <p class="ai-tip-text" id="ai-tip-text"></p>
+            <div class="ai-tip-actions">
+              <button class="pill-btn" id="ai-tip-use" type="button">Use this</button>
+              <button class="pill-btn" id="ai-tip-skip" type="button">Skip</button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div>
-      <div class="panel-title">Call events</div>
-      <div id="call-events"></div>
-    </div>
-    <div>
-      <div class="panel-title">Builds</div>
-      <div id="builds"></div>
-    </div>
-    <div>
+      <button class="ai-insights-link" id="btn-ai-insights" type="button">
+        <span>View AI Insights</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </section>
+    <section class="notes-card">
+      <header class="notes-head"><h2>Call Notes</h2></header>
+      <textarea
+        id="call-notes"
+        class="notes-textarea"
+        placeholder="Add notes about this call..."
+        rows="5"></textarea>
+      <div class="notes-foot">
+        <button class="btn-primary btn-save-note" id="btn-save-note" type="button" disabled>Save Note</button>
+      </div>
+    </section>
+
+    <section class="stats-card">
+      <header class="stats-head">
+        <h2>Today's Stats</h2>
+        <span class="demo-badge" id="stats-demo-badge" hidden>DEMO</span>
+      </header>
+      <dl class="stats-list">
+        <div class="stats-row"><dt>Calls Made</dt><dd id="stat-calls-made">0</dd></div>
+        <div class="stats-row"><dt>Conversations</dt><dd id="stat-conversations">0</dd></div>
+        <div class="stats-row"><dt>Interested</dt><dd id="stat-interested" class="stats-positive">0</dd></div>
+        <div class="stats-row"><dt>DNC</dt><dd id="stat-dnc" class="stats-negative">0</dd></div>
+        <div class="stats-row"><dt>Success Rate</dt><dd id="stat-success-rate">0%</dd></div>
+      </dl>
+    </section>
+    <div hidden aria-hidden="true">
       <div class="panel-title">Shortcuts</div>
       <div class="shortcut-list">
         <div><kbd>Space</kbd> pause auto-advance</div>
@@ -813,12 +2021,91 @@
         <div><kbd>←</kbd>/<kbd>→</kbd> prev/next lead</div>
       </div>
     </div>
-    <div>
+    <div hidden aria-hidden="true">
       <div class="panel-title">Recent</div>
       <div id="recent"></div>
     </div>
   </div>
+  </aside>
 
+</div>
+
+</div>
+
+<aside class="drawer" id="drawer-view-details" aria-hidden="true">
+  <div class="drawer-backdrop" data-close></div>
+  <div class="drawer-panel">
+    <header class="drawer-head">
+      <h2>Lead Details</h2>
+      <button class="icon-btn" data-close aria-label="Close" type="button">×</button>
+    </header>
+    <div class="drawer-body" id="view-details-body">
+      <!-- populated by renderViewDetails(lead) -->
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawer-ai-insights" aria-hidden="true">
+  <div class="drawer-backdrop" data-close></div>
+  <div class="drawer-panel">
+    <header class="drawer-head">
+      <h2>AI Insights</h2>
+      <button class="icon-btn" data-close aria-label="Close" type="button">×</button>
+    </header>
+    <div class="drawer-body">
+      <h3>Builds</h3>
+      <div id="builds-list"><!-- existing builds rendering --></div>
+      <h3>Transcript</h3>
+      <div id="ai-transcript-full"><!-- mirror of right-column transcript --></div>
+    </div>
+  </div>
+</aside>
+
+<div class="modal" id="modal-help" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel">
+    <header class="modal-head">
+      <h2>Keyboard Shortcuts</h2>
+      <button class="icon-btn" data-close aria-label="Close" type="button">×</button>
+    </header>
+    <div class="modal-body">
+      <dl class="kbd-grid">
+        <dt><kbd>Space</kbd></dt><dd>Pause auto-advance</dd>
+        <dt><kbd>↵</kbd></dt><dd>Call selected number</dd>
+        <dt><kbd>1</kbd></dt><dd>No Answer</dd>
+        <dt><kbd>2</kbd></dt><dd>Voicemail</dd>
+        <dt><kbd>3</kbd></dt><dd>Callback</dd>
+        <dt><kbd>4</kbd></dt><dd>Not Interested</dd>
+        <dt><kbd>5</kbd></dt><dd>Interested</dd>
+        <dt><kbd>D</kbd></dt><dd>DNC</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Skip / close overlay</dd>
+        <dt><kbd>←</kbd> / <kbd>→</kbd></dt><dd>Prev/next lead</dd>
+        <dt><kbd>⌘K</kbd></dt><dd>Search leads</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-settings" aria-hidden="true">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel">
+    <header class="modal-head">
+      <h2>Settings</h2>
+      <button class="icon-btn" data-close aria-label="Close" type="button">×</button>
+    </header>
+    <div class="modal-body">
+      <section>
+        <h3>Audio</h3>
+        <label class="settings-field">Microphone <select id="mic-device-select"></select></label>
+        <label class="settings-field">Output <select id="output-device-select"></select></label>
+        <button class="pill-btn" id="btn-test-mic" type="button">Test microphone</button>
+      </section>
+      <section>
+        <h3>System status</h3>
+        <div id="settings-status-strip"><!-- contents from <template id="tpl-status-strip"> --></div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
@@ -835,10 +2122,15 @@ const state = {
   device: null,
   call: null,
   paused: false,
+  autoAdvance: true,
   autoAdvanceTimer: null,
   noteSaveTimer: null,
+  noteDraftTimer: null,
+  currentNotesLeadId: null,
   postCall: null,
   callStartedAt: null,
+  callDurationTimerId: null,
+  lastCallDurationMs: 0,
   lastCallError: "",
   sessionId: (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
   ivrSince: 0,
@@ -849,8 +2141,62 @@ const state = {
   callEvents: [],
   briefings: {},        // lead_id → { bullets[], fetched_at }
   briefingPending: {},  // lead_id → Promise (de-dupe in-flight)
+  currentBriefing: null,
+  currentScriptCue: null,
+  lastOutcome: null,
   toolStatus: {},       // tool_name → { ok, msg, last_check_at }
+  autoDialer: false,
+  aiOn: true,
+  aiListening: false,
+  progressTarget: 100,
+  demoMode: false,
 };
+
+// ── demo seed for file:// / backend-down first paint ─────────────────────
+const DEMO_LEADS = [
+  { id: 'demo-1',  business_name: 'Elite Auto Body',     phones: ['+14045550123'], city: 'Atlanta',       state: 'GA', category: 'Auto Body Shop' },
+  { id: 'demo-2',  business_name: 'Midtown Fitness',     phones: ['+14045550145'], city: 'Atlanta',       state: 'GA', category: 'Gym' },
+  { id: 'demo-3',  business_name: 'Sunshine Dental',     phones: ['+14045550167'], city: 'Decatur',       state: 'GA', category: 'Dentist' },
+  { id: 'demo-4',  business_name: 'Green Leaf Cafe',     phones: ['+14045550189'], city: 'Atlanta',       state: 'GA', category: 'Cafe' },
+  { id: 'demo-5',  business_name: 'Prime Roofing',       phones: ['+14045550201'], city: 'Marietta',      state: 'GA', category: 'Roofing' },
+  { id: 'demo-6',  business_name: 'City Cleaners',       phones: ['+14045550223'], city: 'Atlanta',       state: 'GA', category: 'Dry Cleaner' },
+  { id: 'demo-7',  business_name: 'Paws & Claws Vet',    phones: ['+14045550245'], city: 'Smyrna',        state: 'GA', category: 'Veterinarian' },
+  { id: 'demo-8',  business_name: 'Atlanta HVAC Pros',   phones: ['+14045550267'], city: 'Atlanta',       state: 'GA', category: 'HVAC' },
+  { id: 'demo-9',  business_name: 'Westside Plumbing',   phones: ['+14045550289'], city: 'Marietta',      state: 'GA', category: 'Plumbing' },
+  { id: 'demo-10', business_name: 'Northside Tree Co.',  phones: ['+14045550301'], city: 'Sandy Springs', state: 'GA', category: 'Tree Service' },
+];
+
+function enterDemoMode() {
+  state.leads = DEMO_LEADS.slice();
+  state.idx = 0;
+  state.phoneIdx = 0;
+  state.demoMode = true;
+  state.todayDialed = 23;
+  state.todayConversations = 8;
+  state.todayInterested = 3;
+  state.todayDnc = 2;
+  if (typeof renderAll === "function") renderAll();
+  if (typeof renderHeader === "function") renderHeader();
+}
+
+function exitDemoMode() {
+  if (!state.demoMode) return;
+  state.demoMode = false;
+  delete state.todayDialed;
+  delete state.todayConversations;
+  delete state.todayInterested;
+  delete state.todayDnc;
+}
+
+let scriptCueValue = state.currentScriptCue;
+Object.defineProperty(state, "currentScriptCue", {
+  get() { return scriptCueValue; },
+  set(value) {
+    scriptCueValue = value;
+    requestAnimationFrame(() => applyScriptCue());
+  },
+  configurable: true,
+});
 
 // ── system status polling ────────────────────────────────────────────────
 const STATUS_TOOLS = ["twilio","deepgram","anthropic","outscraper"];
@@ -871,6 +2217,7 @@ async function pollStatus() {
       }
     }
     if (d.lead_source) $("src-pill").textContent = d.lead_source;
+    syncSettingsStatusStrip();
   } catch (_) {
     // network error — mark all unknown
     for (const tool of STATUS_TOOLS) {
@@ -915,6 +2262,7 @@ function setDeviceStatus(msg, level) {
   $("device-msg").textContent = msg;
   $("device-badge").className = "badge" + (level ? " " + level : "");
   $("device-dot").className = "dot" + (level === "live" ? " live" : "");
+  syncSettingsStatusStrip();
 }
 
 function fmtDuration(ms) {
@@ -934,60 +2282,473 @@ function logCallEvent(message, level = "") {
 
 // ── load queue ───────────────────────────────────────────────────────────
 async function loadQueue() {
-  const r = await fetch("/leads");
-  const d = await r.json();
-  state.leads = d.leads;
-  state.dispositions = d.dispositions || {};
-  state.notes = d.notes || {};
-  $("from-badge").textContent = "FROM " + d.from_number;
-  $("src-badge").textContent  = "SRC "  + d.source.toUpperCase();
-  if (d.source === "mock") $("src-badge").className = "badge err";
-  else $("src-badge").className = "badge live";
-  renderAll();
-  focusCurrentLead("auto");
+  try {
+    const r = await fetch("/leads");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    if (!d || !Array.isArray(d.leads) || d.leads.length === 0) throw new Error("empty queue");
+    exitDemoMode();
+    state.leads = d.leads;
+    state.dispositions = d.dispositions || {};
+    state.notes = d.notes || {};
+    if ($("from-badge")) $("from-badge").textContent = "FROM " + d.from_number;
+    if ($("src-badge")) {
+      $("src-badge").textContent = "SRC " + (d.source || "").toUpperCase();
+      $("src-badge").className = "badge" + (d.source === "mock" ? " err" : " live");
+    }
+    renderAll();
+    focusCurrentLead("auto");
+  } catch (e) {
+    console.log("loadQueue failed — entering demo mode:", e.message || e);
+    enterDemoMode();
+    focusCurrentLead("auto");
+  }
 }
 
 // ── render ───────────────────────────────────────────────────────────────
-function renderAll() { renderQueue(); renderCurrent(); renderStats(); renderRecent(); renderBuilds(); renderCallEvents(); }
+function renderAll() { renderQueue(); renderCurrent(); renderNotesCard(); renderStats(); renderRecent(); renderBuilds(); renderCallEvents(); }
 
 function renderQueue() {
-  const el = $("queue");
-  $("queue-progress").textContent = `${state.idx + 1} / ${state.leads.length}`;
+  const el = $("queue-list");
+  const badge = $("queue-total-badge");
+  if (badge) badge.textContent = state.demoMode ? "50" : String(state.leads.length);
+  const legacyProgress = $("queue-progress");
+  if (legacyProgress) legacyProgress.textContent = `${state.idx + 1} / ${state.leads.length}`;
+  if (!el) return;
   if (!state.leads.length) { el.innerHTML = '<div class="empty">No leads</div>'; return; }
   el.innerHTML = state.leads.map((l, i) => {
-    const disps = state.dispositions[l.id] || [];
-    const last  = disps.length ? disps[disps.length-1].code : null;
-    const cls   = ["queue-item"];
-    if (i === state.idx) cls.push("current");
+    const cls = ["queue-item"];
+    if (i === state.idx) cls.push("active");
     if (state.dialingLeadId === l.id) cls.push("dialing");
-    if (last && last !== "skip") cls.push("done");
-    const codeHtml = last ? `<span class="code ${last}">${last.replace("_"," ")}</span>` : "";
-    const job = state.buildJobs[l.id];
-    const note = state.notes[l.id] || {};
-    const jobHtml = job ? `<div>Build: <span class="build-pill ${job.status}">${job.status}</span></div>` : "";
-    const noteBits = [note.email, note.callback_at, note.note ? "note saved" : ""].filter(Boolean).map(escapeHtml).join(" · ");
-    const noteHtml = noteBits ? `<div>${noteBits}</div>` : "";
-    const queuePhoneIdx = i === state.idx ? state.phoneIdx : 0;
-    const nowHtml = state.dialingLeadId === l.id ? `<div class="queue-now"><span class="dot live"></span>dialing now</div>` : "";
-    return `<div id="queue-item-${i}" class="${cls.join(" ")}" aria-expanded="${i === state.idx}" onclick="goTo(${i})">
-      <div class="biz">${l.business_name}${codeHtml}</div>
-      <div class="queue-expanded">
-        ${nowHtml}
-        <div>${escapeHtml(l.category || "local business")} · ${fmtPhone(l.phones[state.phoneIdx] || l.phones[0])}</div>
-        ${l.owner_name ? `<div>Ask for ${escapeHtml(l.owner_name)}</div>` : ""}
-        ${noteHtml}
-        ${jobHtml}
+    const phone0 = (l.phones && l.phones[0]) || "";
+    const city = l.city || "";
+    const region = l.state || "GA";
+    return `<div id="queue-item-${i}" class="${cls.join(" ")}"
+         role="option" aria-selected="${i === state.idx}"
+         onclick="goTo(${i})">
+      <div class="queue-index">${i + 1}.</div>
+      <div>
+        <div class="queue-biz">${escapeHtml(l.business_name)}</div>
+        <div class="queue-phone">${fmtPhone(phone0)}</div>
+        <div class="queue-meta">${escapeHtml(city)}${city ? ", " : ""}${escapeHtml(region)}</div>
       </div>
-      <div class="meta">${l.city || ""} · ${l.phones.length} phone${l.phones.length>1?"s":""}</div>
     </div>`;
   }).join("");
+  applyQueueFilter();
+}
+
+function applyQueueFilter() {
+  const input = $("queue-search");
+  const q = (input && input.value || "").trim().toLowerCase();
+  const items = document.querySelectorAll("#queue-list .queue-item");
+  items.forEach((node, i) => {
+    if (!q) { node.classList.remove("hidden"); return; }
+    const l = state.leads[i];
+    if (!l) return;
+    const hay = [
+      l.business_name,
+      l.city,
+      (l.phones && l.phones[0]) || "",
+    ].join(" ").toLowerCase();
+    node.classList.toggle("hidden", !hay.includes(q));
+  });
 }
 
 function renderCurrent() {
   const lead = state.leads[state.idx];
   const el = $("lead-content");
-  if (!lead) { el.innerHTML = '<div class="empty">No lead selected</div>'; return; }
+  if (!lead) {
+    if (el) el.innerHTML = '<div class="empty">No lead selected</div>';
+    updateHero(null);
+    state.currentBriefing = null;
+    renderScript(null);
+    return;
+  }
   ensureBriefing(lead); // lazy-fetch the AI briefing for this lead
+  updateHero(lead);
+  // briefing strings exposed for the Script card (prompt #6) to consume.
+  state.currentBriefing = state.briefings[lead.id] || lead.briefing || null;
+  renderScript(lead);
+  renderLegacyLeadContent(lead);
+}
+
+function updateHero(lead) {
+  const phoneEl = $("lead-phone-hero");
+  const bizEl = $("lead-biz-hero");
+  const typeEl = $("lead-type");
+  const locEl = $("lead-locality");
+  const illoEl = $("lead-illo");
+  const card = $("now-calling-card");
+  if (!phoneEl) return;
+  if (!lead) {
+    phoneEl.textContent = "";
+    if (bizEl) bizEl.textContent = "";
+    if (typeEl) typeEl.textContent = "";
+    if (locEl) locEl.textContent = "";
+    if (card) card.setAttribute("data-empty", "true");
+    if (illoEl) illoEl.innerHTML = illoFor(null);
+    return;
+  }
+  const phone = (lead.phones && lead.phones[state.phoneIdx]) || (lead.phones && lead.phones[0]) || "";
+  phoneEl.textContent = fmtPhone(phone) || "";
+  if (bizEl) bizEl.textContent = lead.business_name || "";
+  if (typeEl) typeEl.textContent = lead.category || "Local business";
+  if (locEl) locEl.textContent = `${lead.city || ""}${lead.city ? ", " : ""}${lead.state || "GA"}`;
+  if (card) card.setAttribute("data-empty", "false");
+  if (illoEl) illoEl.innerHTML = illoFor(lead.category || null);
+}
+
+function cyclePhone() {
+  const lead = state.leads[state.idx];
+  if (!lead || !lead.phones || lead.phones.length < 2) return;
+  selectPhone((state.phoneIdx + 1) % lead.phones.length);
+}
+
+function openViewDetails() {
+  renderViewDetails(state.leads[state.idx]);
+  openDrawer("drawer-view-details");
+}
+
+function renderViewDetails(lead) {
+  const body = $("view-details-body");
+  if (!body) return;
+  if (!lead) {
+    body.innerHTML = '<div class="empty">No lead selected</div>';
+    return;
+  }
+  const phones = (lead.phones || []).map((phone, i) => `
+    <button type="button" onclick="selectPhone(${i}); closeDrawer('drawer-view-details'); makeCall();">
+      <span>${fmtPhone(phone)}</span>
+      <span class="drawer-muted">${i === state.phoneIdx ? "selected" : "call"}</span>
+    </button>
+  `).join("");
+  const points = (lead.talking_points || []).map(point => `<p>${escapeHtml(point)}</p>`).join("");
+  const events = leadCallEvents(lead).slice(0, 5).map(e => `
+    <div class="event-row ${escapeHtml(e.level || "")}">
+      <div class="t">${escapeHtml(e.at || "")}</div>
+      <div>${escapeHtml(e.message || "")}</div>
+    </div>
+  `).join("");
+  body.innerHTML = `
+    <section class="drawer-section">
+      <h3>Contact</h3>
+      ${lead.owner_name ? `<p><strong>Ask for:</strong> ${escapeHtml(lead.owner_name)}</p>` : '<p>No owner name on file.</p>'}
+      <p><strong>Business:</strong> ${escapeHtml(lead.business_name || "")}</p>
+      <p><strong>Type:</strong> ${escapeHtml(lead.category || "Local business")}</p>
+      <p><strong>Location:</strong> ${escapeHtml([lead.city, lead.state || "GA"].filter(Boolean).join(", "))}</p>
+      ${lead.vercel_url ? `<p><a href="${escapeHtml(lead.vercel_url)}" target="_blank" rel="noopener">Open preview demo</a></p>` : ""}
+    </section>
+    <section class="drawer-section">
+      <h3>Phones</h3>
+      <div class="drawer-list">${phones || '<p>No phone numbers.</p>'}</div>
+    </section>
+    <section class="drawer-section">
+      <h3>Talking Points</h3>
+      ${points || '<p>No talking points on file.</p>'}
+    </section>
+    <section class="drawer-section">
+      <h3>Call Events</h3>
+      ${events || '<p>No call events for this lead yet.</p>'}
+    </section>
+    <section class="drawer-section">
+      <h3>Phone Keypad</h3>
+      ${renderDtmfDrawer()}
+    </section>
+    <section class="drawer-section">
+      <h3>IVR Suggestion</h3>
+      ${renderIvrDrawer()}
+    </section>
+    <section class="drawer-section">
+      <h3>Post-call Actions</h3>
+      ${renderPostCallDrawer(lead)}
+    </section>
+    <section class="drawer-section">
+      <h3>Recent Calls</h3>
+      ${renderRecentCallsDrawer()}
+    </section>
+  `;
+}
+
+function leadCallEvents(lead) {
+  if (!lead) return [];
+  const name = lead.business_name || "";
+  return (state.callEvents || []).filter(e =>
+    e.leadId === lead.id || (name && (e.message || "").includes(name))
+  );
+}
+
+function renderDtmfDrawer() {
+  if (!state.call) return '<p>Phone keypad appears while a call is active.</p>';
+  return `<div class="drawer-dtmf-grid">
+    ${["1","2","3","4","5","6","7","8","9","*","0","#"].map(d => `<button type="button" onclick="sendDtmf('${d}')">${d}</button>`).join("")}
+  </div>`;
+}
+
+function renderIvrDrawer() {
+  if (!state.ivrSuggestion) return '<p>No IVR suggestion right now.</p>';
+  return `
+    <p><strong>Press ${escapeHtml(state.ivrSuggestion.digit)}</strong></p>
+    <p>${escapeHtml(state.ivrSuggestion.transcript || state.ivrSuggestion.message || "")}</p>
+    <button class="pill-btn" type="button" onclick="useIvrSuggestion()">Press ${escapeHtml(state.ivrSuggestion.digit)}</button>
+  `;
+}
+
+function renderPostCallDrawer(lead) {
+  const pc = state.postCall && state.postCall.leadId === lead.id ? state.postCall : null;
+  if (!pc) return '<p>No post-call prompt is active.</p>';
+  return `
+    <p>${escapeHtml(pc.message || "")}</p>
+    <div class="drawer-list">
+      <button type="button" onclick="resolvePostCall('no_answer'); closeDrawer('drawer-view-details');"><span>No answer</span><span class="drawer-muted">1</span></button>
+      <button type="button" onclick="resolvePostCall('voicemail'); closeDrawer('drawer-view-details');"><span>Machine / VM</span><span class="drawer-muted">2</span></button>
+      <button type="button" onclick="resolvePostCall('skip'); closeDrawer('drawer-view-details');"><span>Skip</span><span class="drawer-muted">Esc</span></button>
+    </div>
+  `;
+}
+
+function renderRecentCallsDrawer() {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const rows = Object.entries(state.dispositions).flatMap(([id, ds]) => {
+    const lead = state.leads.find(l => l.id === id);
+    return (ds || []).map(d => ({ ...d, biz: lead?.business_name || id }));
+  }).filter(d => Date.parse(d.at || "") >= oneHourAgo)
+    .sort((a, b) => Date.parse(b.at || 0) - Date.parse(a.at || 0))
+    .slice(0, 8);
+  if (!rows.length) return '<p>No calls in the last hour.</p>';
+  return `<div class="drawer-list">${rows.map(d => `
+    <div class="disp-row">
+      <span>${escapeHtml(d.biz)} <span class="b">${fmtPhone(d.phone)}</span></span>
+      <span class="code ${escapeHtml(d.code)}">${escapeHtml((d.code || "").replace("_", " "))}</span>
+    </div>
+  `).join("")}</div>`;
+}
+
+function renderScript(lead) {
+  const body = $("script-body");
+  if (!body) return;
+  if (!lead) {
+    body.innerHTML = defaultOpeningScript().map((line, i) => {
+      const cue = line.cue || `script-${i}`;
+      return `<p data-cue="${escapeHtml(cue)}" data-cue-key="${escapeHtml(normalizeCue(line.text))}">${scriptTextHtml(line.text)}</p>`;
+    }).join("");
+    updateScriptTip(0);
+    return;
+  }
+
+  const briefing = getScriptBriefing(lead);
+  const opening = getOpeningLines(briefing);
+  const paragraphs = opening.length ? opening : defaultOpeningScript();
+  const extraLines = getBriefingExtraLines(briefing).concat(getTalkingPointLines(lead, briefing));
+  const allLines = paragraphs.concat(extraLines);
+
+  body.innerHTML = allLines.map((line, i) => {
+    const text = line.text || "";
+    const cue = line.cue || `script-${i}`;
+    return `<p data-cue="${escapeHtml(cue)}" data-cue-key="${escapeHtml(normalizeCue(text))}">${scriptTextHtml(text)}</p>`;
+  }).join("");
+
+  updateScriptTip(currentCallElapsedMs());
+  applyScriptCue();
+}
+
+function getScriptBriefing(lead) {
+  const briefing = state.currentBriefing || lead?.briefing || {};
+  const talkingPoints = (lead?.talking_points || []).filter(Boolean);
+  if (briefing && typeof briefing === "object" && !Array.isArray(briefing)) {
+    briefing.talking_points = talkingPoints;
+  }
+  return briefing;
+}
+
+function defaultOpeningScript() {
+  return [
+    { text: "Hi, is this the owner or manager?", cue: "opening-owner" },
+    { text: "My name is {your_name} with NovaIntel. We build professional websites that help businesses like yours get more customers.", cue: "opening-intro" },
+    { text: "Can I ask, do you currently have a website that you're happy with?", cue: "opening-question" },
+  ];
+}
+
+function getOpeningLines(briefing) {
+  if (!briefing) return [];
+  if (typeof briefing === "string" || Array.isArray(briefing)) return scriptLineArray(briefing, "briefing");
+  return scriptLineArray(
+    briefing.opening_lines ||
+    briefing.openingLines ||
+    briefing.opening_script ||
+    briefing.openingScript ||
+    briefing.script ||
+    briefing.lines ||
+    briefing.prompts,
+    "opening"
+  );
+}
+
+function getBriefingExtraLines(briefing) {
+  if (!briefing || typeof briefing !== "object" || Array.isArray(briefing)) return [];
+  return scriptLineArray(briefing.bullets || briefing.tips || briefing.insights, "briefing");
+}
+
+function getTalkingPointLines(lead, briefing) {
+  const points = (briefing && typeof briefing === "object" && !Array.isArray(briefing) && briefing.talking_points)
+    || lead?.talking_points
+    || [];
+  return scriptLineArray(points, "talking-point");
+}
+
+function scriptLineArray(value, prefix) {
+  if (!value) return [];
+  const source = Array.isArray(value)
+    ? value
+    : String(value).split(/\n{1,}|\r{1,}/).map(s => s.trim()).filter(Boolean);
+  return source.map((item, i) => {
+    if (item && typeof item === "object") {
+      return {
+        text: String(item.text || item.line || item.content || item.prompt || item.body || ""),
+        cue: String(item.cue || item.id || item.key || `${prefix}-${i}`),
+      };
+    }
+    return { text: String(item), cue: `${prefix}-${i}` };
+  }).filter(line => line.text.trim());
+}
+
+function scriptTextHtml(text) {
+  const raw = String(text || "");
+  const tokenPattern = /\{([a-zA-Z0-9_ -]+)\}/g;
+  let html = "";
+  let last = 0;
+  let match;
+  while ((match = tokenPattern.exec(raw)) !== null) {
+    html += emphasizeScriptText(raw.slice(last, match.index));
+    html += `<span class="placeholder">[${escapeHtml(formatTokenLabel(match[1]))}]</span>`;
+    last = tokenPattern.lastIndex;
+  }
+  html += emphasizeScriptText(raw.slice(last));
+  return html;
+}
+
+function emphasizeScriptText(text) {
+  return escapeHtml(text).replace(/\bNovaIntel\b/g, "<strong>NovaIntel</strong>");
+}
+
+function formatTokenLabel(token) {
+  return String(token || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase()) || "Value";
+}
+
+function normalizeCue(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+}
+
+function currentCallElapsedMs() {
+  return state.callStartedAt ? Math.max(0, Date.now() - state.callStartedAt) : 0;
+}
+
+function updateScriptTip(ms = 0) {
+  const tip = $("script-tip");
+  if (!tip) return;
+  const seconds = Math.floor(Math.max(0, ms) / 1000);
+  if (seconds < 30) tip.textContent = "Listen for needs, pain points, and budget";
+  else if (seconds < 120) tip.textContent = "Ask one question, then stay silent";
+  else if (seconds < 300) tip.textContent = "Tie features to what they just told you";
+  else tip.textContent = "Ask for the email and send the preview";
+}
+
+function applyScriptCue() {
+  const body = $("script-body");
+  if (!body) return;
+  const cue = state.currentScriptCue;
+  body.querySelectorAll("p.cue-active").forEach(p => p.classList.remove("cue-active"));
+  if (!cue) return;
+  const cueKey = normalizeCue(cue);
+  const target = Array.from(body.querySelectorAll("p")).find(p =>
+    p.dataset.cue === String(cue) || p.dataset.cueKey === cueKey
+  );
+  if (!target) return;
+  target.classList.add("cue-active");
+  target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+// Inline SVG illustrations keyed off lead.category.
+// Stroke uses var(--accent); pastel fills.
+function illoFor(category) {
+  const c = (category || "").toLowerCase();
+  const stroke = 'stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
+  const accent = 'color:var(--accent);';
+  if (/roof/.test(c)) {
+    return `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="${accent}">
+      <path d="M14 50 L48 22 L82 50" fill="#fef3c7" ${stroke}/>
+      <rect x="22" y="50" width="52" height="32" fill="#fff7ed" ${stroke}/>
+      <rect x="58" y="28" width="10" height="14" fill="#fed7aa" ${stroke}/>
+      <rect x="40" y="60" width="16" height="22" fill="#fde68a" ${stroke}/>
+    </svg>`;
+  }
+  if (/hvac|heating|cool|air/.test(c)) {
+    return `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="${accent}">
+      <rect x="16" y="22" width="64" height="48" rx="6" fill="#dbeafe" ${stroke}/>
+      <line x1="16" y1="38" x2="80" y2="38" ${stroke}/>
+      <circle cx="36" cy="54" r="8" fill="#bfdbfe" ${stroke}/>
+      <circle cx="60" cy="54" r="8" fill="#bfdbfe" ${stroke}/>
+      <path d="M24 78v6M40 78v6M56 78v6M72 78v6" ${stroke}/>
+    </svg>`;
+  }
+  if (/plumb/.test(c)) {
+    return `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="${accent}">
+      <path d="M28 20h20v18h-8v36" fill="#dbeafe" ${stroke}/>
+      <rect x="22" y="68" width="36" height="10" rx="2" fill="#bfdbfe" ${stroke}/>
+      <path d="M64 36c8 0 14 6 14 14s-6 14-14 14" fill="#e0e7ff" ${stroke}/>
+      <circle cx="64" cy="50" r="3" fill="currentColor"/>
+    </svg>`;
+  }
+  if (/tree/.test(c)) {
+    return `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="${accent}">
+      <circle cx="48" cy="36" r="22" fill="#d1fae5" ${stroke}/>
+      <circle cx="30" cy="46" r="14" fill="#a7f3d0" ${stroke}/>
+      <circle cx="66" cy="46" r="14" fill="#a7f3d0" ${stroke}/>
+      <rect x="44" y="56" width="8" height="26" fill="#fde68a" ${stroke}/>
+    </svg>`;
+  }
+  if (/clean/.test(c)) {
+    return `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" style="${accent}">
+      <rect x="36" y="30" width="28" height="44" rx="4" fill="#dbeafe" ${stroke}/>
+      <path d="M44 30v-8h12v8" ${stroke}/>
+      <path d="M64 38l16-8 6 6-14 12" fill="#bfdbfe" ${stroke}/>
+      <line x1="42" y1="50" x2="58" y2="50" ${stroke}/>
+    </svg>`;
+  }
+  // default — storefront with striped blue/white awning, centered in 0 0 96 96
+  return `<svg viewBox="0 0 96 96" width="96" height="96" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet" style="${accent}">
+    <!-- awning band + scalloped bottom edge -->
+    <path d="M12 14 H84 V28 L76 34 L68 28 L60 34 L52 28 L44 34 L36 28 L28 34 L20 28 L12 28 Z" fill="#2563eb" stroke="#1d4ed8" stroke-width="1.5" stroke-linejoin="round"/>
+    <!-- awning white stripes -->
+    <path d="M20 14 L16 28 M30 14 L24 34 M42 14 L36 28 M54 14 L48 34 M66 14 L60 28 M78 14 L72 34" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- storefront body -->
+    <rect x="16" y="34" width="64" height="46" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <!-- windows -->
+    <rect x="22" y="40" width="16" height="14" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.5"/>
+    <rect x="58" y="40" width="16" height="14" fill="#bfdbfe" stroke="#2563eb" stroke-width="1.5"/>
+    <!-- door -->
+    <rect x="40" y="58" width="16" height="22" fill="#fde68a" stroke="#2563eb" stroke-width="1.5"/>
+    <circle cx="52" cy="70" r="1" fill="#2563eb"/>
+    <!-- ground line -->
+    <line x1="8" y1="84" x2="88" y2="84" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function renderIllustration() {
+  const illoEl = $("lead-illo");
+  if (!illoEl) return;
+  const lead = state.leads[state.idx];
+  illoEl.innerHTML = illoFor(lead ? (lead.category || null) : null);
+}
+
+function renderLegacyLeadContent(lead) {
+  const el = $("lead-content");
+  if (!el) return;
+  el.innerHTML = "";
+  return;
   const rating = lead.rating ? `★ ${lead.rating} · ${lead.reviews || 0} reviews` : "";
   const sub = [lead.category, [lead.city, lead.state].filter(Boolean).join(", "), rating].filter(Boolean).join(" · ");
   const phones = lead.phones.map((p, i) => `
@@ -1088,20 +2849,71 @@ function renderCurrent() {
 }
 
 function renderStats() {
-  const flat = Object.values(state.dispositions).flat();
-  const count = c => flat.filter(d => d.code === c).length;
-  $("stat-dialed").textContent = flat.filter(d => d.code !== "skip").length;
-  $("stat-interested").textContent = count("interested");
-  $("stat-callback").textContent = count("callback");
-  $("stat-noans").textContent = count("no_answer") + count("voicemail");
+  const stats = todayStats();
+  setText("stat-calls-made", stats.callsMade);
+  setText("stat-conversations", stats.conversations);
+  setText("stat-interested", stats.interested);
+  setText("stat-dnc", stats.dnc);
+  setText("stat-success-rate", stats.successRate + "%");
+  setText("stat-dialed", stats.callsMade);
+  setText("stat-callback", stats.callback);
+  setText("stat-noans", stats.noAnswer + stats.voicemail);
+  const demoBadge = $("stats-demo-badge");
+  if (demoBadge) demoBadge.hidden = !state.demoMode;
+}
+
+function todayStats() {
+  const flat = todayDispositions();
+  const count = code => flat.filter(d => d.code === code).length;
+  const callsMade = state.todayDialed ?? flat.filter(d => d.code !== "skip").length;
+  const interested = state.todayInterested ?? count("interested");
+  const dnc = state.todayDnc ?? (count("dnc") || todayOutcomeEvents("dnc"));
+  const conversations = state.todayConversations ?? (
+    count("interested") + count("not_interested") + count("callback") || todayOutcomeEvents(["interested", "not_interested", "callback"])
+  );
+  return {
+    callsMade,
+    conversations,
+    interested,
+    dnc,
+    callback: count("callback"),
+    noAnswer: count("no_answer"),
+    voicemail: count("voicemail"),
+    successRate: callsMade ? Math.round((interested / callsMade) * 100) : 0,
+  };
+}
+
+function todayDispositions() {
+  return Object.values(state.dispositions || {}).flat().filter(isTodayRecord);
+}
+
+function todayOutcomeEvents(outcome) {
+  const outcomes = Array.isArray(outcome) ? outcome : [outcome];
+  return (state.callEvents || []).filter(e => outcomes.includes(e.outcome) && isTodayRecord(e)).length;
+}
+
+function isTodayRecord(record) {
+  if (!record || !record.at) return true;
+  const t = Date.parse(record.at);
+  if (Number.isNaN(t)) return true;
+  const d = new Date(t);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = String(value);
 }
 
 function renderRecent() {
+  const el = $("recent");
+  if (!el) return;
   const flat = Object.entries(state.dispositions).flatMap(([id, ds]) =>
     ds.map(d => ({ ...d, biz: (state.leads.find(l => l.id === id) || {}).business_name || id }))
   ).sort((a, b) => (b.at || "").localeCompare(a.at || "")).slice(0, 8);
-  if (!flat.length) { $("recent").innerHTML = '<div class="empty" style="padding:8px 0">no calls yet</div>'; return; }
-  $("recent").innerHTML = flat.map(d => `
+  if (!flat.length) { el.innerHTML = '<div class="empty" style="padding:8px 0">no calls yet</div>'; return; }
+  el.innerHTML = flat.map(d => `
     <div class="disp-row">
       <span>${escapeHtml(d.biz)} <span class="b">${fmtPhone(d.phone)}</span></span>
       <span class="code ${d.code}">${d.code.replace("_"," ")}</span>
@@ -1111,32 +2923,42 @@ function renderRecent() {
 
 function renderBuilds() {
   const jobs = Object.values(state.buildJobs).sort((a, b) => (b.started_at || "").localeCompare(a.started_at || "")).slice(0, 6);
+  const buildsEl = $("builds");
+  const buildsListEl = $("builds-list");
   if (!jobs.length) {
-    $("builds").innerHTML = '<div class="empty" style="padding:8px 0">no builds yet</div>';
+    const empty = '<div class="empty" style="padding:8px 0">no builds yet</div>';
+    if (buildsEl) buildsEl.innerHTML = empty;
+    if (buildsListEl) buildsListEl.innerHTML = empty;
     return;
   }
-  $("builds").innerHTML = jobs.map(j => `
+  const html = jobs.map(j => `
     <div class="build-row">
       <div>${escapeHtml(j.business_name)} <span class="build-pill ${j.status}">${j.status}</span></div>
       <div class="b">${escapeHtml(j.message || "")}</div>
       ${j.url ? `<a href="${j.url}" target="_blank">Open preview</a>` : ""}
     </div>
   `).join("");
+  if (buildsEl) buildsEl.innerHTML = html;
+  if (buildsListEl) buildsListEl.innerHTML = html;
 }
 
 function renderCallEvents() {
   const el = $("call-events");
-  if (!el) return;
+  const transcript = $("ai-transcript-full");
   if (!state.callEvents.length) {
-    el.innerHTML = '<div class="empty" style="padding:8px 0">no auto moves yet</div>';
+    const empty = '<div class="empty" style="padding:8px 0">no auto moves yet</div>';
+    if (el) el.innerHTML = empty;
+    if (transcript) transcript.innerHTML = empty;
     return;
   }
-  el.innerHTML = state.callEvents.map(e => `
+  const html = state.callEvents.map(e => `
     <div class="event-row ${e.level || ""}">
       <div class="t">${escapeHtml(e.at)}</div>
       <div>${escapeHtml(e.message)}</div>
     </div>
   `).join("");
+  if (el) el.innerHTML = html;
+  if (transcript) transcript.innerHTML = html;
 }
 
 function escapeHtml(s) { return (s+"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -1190,11 +3012,123 @@ async function saveLeadNote(leadId, explicit = false) {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
     state.notes[leadId] = d.note;
+    clearTimeout(state.noteDraftTimer);
+    clearNoteDraft(leadId);
     setNoteSaveState("saved");
     renderQueue();
   } catch (e) {
     setNoteSaveState("save failed");
     console.error("note save failed", e);
+  }
+}
+
+function renderNotesCard() {
+  const textarea = $("call-notes");
+  const saveBtn = $("btn-save-note");
+  if (!textarea || !saveBtn) return;
+  const lead = state.leads[state.idx];
+  if (!lead) {
+    state.currentNotesLeadId = null;
+    textarea.value = "";
+    syncSaveNoteButton();
+    return;
+  }
+  if (state.currentNotesLeadId !== lead.id) {
+    state.currentNotesLeadId = lead.id;
+    const draft = getNoteDraft(lead.id);
+    const saved = state.notes[lead.id] || {};
+    textarea.value = draft ?? (saved.note || "");
+  }
+  syncSaveNoteButton();
+}
+
+function syncSaveNoteButton() {
+  const textarea = $("call-notes");
+  const saveBtn = $("btn-save-note");
+  if (!textarea || !saveBtn) return;
+  saveBtn.disabled = !textarea.value.trim();
+}
+
+function noteDraftKey(leadId) {
+  return `dialer-note-draft:${leadId}`;
+}
+
+function getNoteDraft(leadId) {
+  try {
+    return localStorage.getItem(noteDraftKey(leadId));
+  } catch (_) {
+    return null;
+  }
+}
+
+function setNoteDraft(leadId, value) {
+  try {
+    const key = noteDraftKey(leadId);
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch (e) {
+    console.warn("note draft localStorage unavailable", e);
+  }
+}
+
+function clearNoteDraft(leadId) {
+  try {
+    localStorage.removeItem(noteDraftKey(leadId));
+  } catch (_) {}
+}
+
+function handleCallNotesInput() {
+  const lead = state.leads[state.idx];
+  const textarea = $("call-notes");
+  if (!lead || !textarea) return;
+  syncSaveNoteButton();
+  state.notes[lead.id] = {
+    ...(state.notes[lead.id] || {}),
+    lead_id: lead.id,
+    phone: (lead.phones && lead.phones[state.phoneIdx]) || "",
+    note: textarea.value,
+  };
+  clearTimeout(state.noteDraftTimer);
+  state.noteDraftTimer = setTimeout(() => setNoteDraft(lead.id, textarea.value), 500);
+}
+
+async function saveCurrentCallNote() {
+  const lead = state.leads[state.idx];
+  const textarea = $("call-notes");
+  const saveBtn = $("btn-save-note");
+  if (!lead || !textarea || !saveBtn) return;
+  const body = textarea.value.trim();
+  if (!body) { syncSaveNoteButton(); return; }
+  const prevLabel = saveBtn.textContent;
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+  const payload = {
+    ...(state.notes[lead.id] || {}),
+    lead_id: lead.id,
+    phone: (lead.phones && lead.phones[state.phoneIdx]) || "",
+    note: body,
+  };
+  try {
+    const r = await fetch("/note", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    state.notes[lead.id] = d.note;
+    clearTimeout(state.noteDraftTimer);
+    clearNoteDraft(lead.id);
+    textarea.value = "";
+    saveBtn.textContent = "Saved";
+    syncSaveNoteButton();
+    setTimeout(() => { if (saveBtn) saveBtn.textContent = prevLabel || "Save Note"; }, 1200);
+    renderQueue();
+  } catch (e) {
+    console.error("note save failed", e);
+    saveBtn.textContent = "Save failed";
+    syncSaveNoteButton();
+    setTimeout(() => { if (saveBtn) saveBtn.textContent = prevLabel || "Save Note"; }, 1200);
   }
 }
 
@@ -1233,6 +3167,24 @@ function nextLead() {
 }
 
 // ── call ─────────────────────────────────────────────────────────────────
+function startCallDuration() {
+  if (state.callDurationTimerId) clearInterval(state.callDurationTimerId);
+  state.callStartedAt = Date.now();
+  state.lastCallDurationMs = 0;
+  updateDuration();
+  state.callDurationTimerId = setInterval(updateDuration, 250);
+}
+
+function stopCallDuration() {
+  if (state.callDurationTimerId) {
+    clearInterval(state.callDurationTimerId);
+    state.callDurationTimerId = null;
+  }
+  if (state.callStartedAt) state.lastCallDurationMs = Date.now() - state.callStartedAt;
+  state.callStartedAt = null;
+  updateDuration();
+}
+
 async function makeCall() {
   const lead = state.leads[state.idx];
   if (!lead) return;
@@ -1242,7 +3194,7 @@ async function makeCall() {
   try {
     state.postCall = null;
     state.lastCallError = "";
-    state.callStartedAt = Date.now();
+    startCallDuration();
     state.ivrSuggestion = null;
     state.ivrSince = 0;
     state.dialingLeadId = lead.id;
@@ -1268,15 +3220,16 @@ async function makeCall() {
     document.body.setAttribute("data-mode", "calling");
     startIvrPolling();
     renderCurrent();
-    $("btn-call").disabled = true;
-    $("btn-hang").disabled = false;
+    if ($("btn-call")) $("btn-call").disabled = true;
+    if ($("btn-hang")) $("btn-hang").disabled = false;
     state.call.on("accept",     () => setDeviceStatus("connected · " + fmtPhone(to), "live"));
     state.call.on("ringing",    () => setDeviceStatus("ringing " + fmtPhone(to) + "…"));
     state.call.on("disconnect", () => {
       setDeviceStatus("call ended");
-      $("btn-call").disabled = false;
-      $("btn-hang").disabled = true;
+      if ($("btn-call")) $("btn-call").disabled = false;
+      if ($("btn-hang")) $("btn-hang").disabled = true;
       state.call = null;
+      stopCallDuration();
       state.dialingLeadId = null;
       document.body.setAttribute("data-mode", "idle");
       // Fetch the AI summary ~8s after disconnect (gives Haiku time to finish)
@@ -1287,19 +3240,19 @@ async function makeCall() {
       setTimeout(stopIvrPolling, 2500);
       renderQueue();
       // Auto-advance unless paused or a disposition was already pressed
-      if (!state.paused) scheduleAutoAdvance();
+      if (state.autoAdvance && !state.paused) scheduleAutoAdvance();
       else renderCurrent();
     });
-    state.call.on("error", e => { state.lastCallError = e.message || String(e); setDeviceStatus("call error: " + state.lastCallError, "err"); state.dialingLeadId = null; renderQueue(); });
+    state.call.on("error", e => { state.lastCallError = e.message || String(e); stopCallDuration(); setDeviceStatus("call error: " + state.lastCallError, "err"); state.dialingLeadId = null; renderQueue(); });
   } catch (e) {
     setDeviceStatus("connect failed: " + e.message, "err");
     state.postCall = null;
-    state.callStartedAt = null;
+    stopCallDuration();
     stopIvrPolling();
     state.dialingLeadId = null;
     renderQueue();
-    $("btn-call").disabled = false;
-    $("btn-hang").disabled = true;
+    if ($("btn-call")) $("btn-call").disabled = false;
+    if ($("btn-hang")) $("btn-hang").disabled = true;
   }
 }
 
@@ -1435,7 +3388,7 @@ function scheduleAutoAdvance() {
     return;
   }
 
-  const duration = fmtDuration(Date.now() - (state.callStartedAt || Date.now()));
+  const duration = fmtDuration(state.lastCallDurationMs || (Date.now() - (state.callStartedAt || Date.now())));
   const reason = state.lastCallError
     ? `Twilio reported: ${state.lastCallError}. Duration ${duration}.`
     : `No disposition was captured. Twilio did not report a specific hangup reason. Duration ${duration}.`;
@@ -1450,9 +3403,9 @@ function scheduleAutoAdvance() {
 }
 
 function autoDialAfterAdvance(delay = 500) {
-  if (state.paused || state.call) return;
+  if (!state.autoAdvance || state.paused || state.call) return;
   setTimeout(() => {
-    if (!state.paused && !state.call) {
+    if (state.autoAdvance && !state.paused && !state.call) {
       const lead = state.leads[state.idx];
       if (lead) logCallEvent(`Auto-dialing next lead: ${lead.business_name}.`, "ok");
       makeCall();
@@ -1661,6 +3614,11 @@ async function interestedAndBuild() {
   else autoDialAfterAdvance(600);
 }
 
+function advance(delay = 400) {
+  if (!nextLead()) setDeviceStatus("queue exhausted");
+  else autoDialAfterAdvance(delay);
+}
+
 async function disposeAndNext(code) {
   clearTimeout(state.autoAdvanceTimer);
   state.postCall = null;
@@ -1680,36 +3638,40 @@ async function disposeAndNext(code) {
   // If this lead has more phones AND code is no_answer/voicemail, try next phone
   if ((code === "no_answer" || code === "voicemail") && advanceWithinLeadPhones()) return;
   // Otherwise next lead
-  if (state.paused) return;
-  if (!nextLead()) setDeviceStatus("queue exhausted");
-  else autoDialAfterAdvance(400);
+  if (!state.autoAdvance || state.paused) return;
+  advance(400);
 }
 
 // ── pause ────────────────────────────────────────────────────────────────
 function togglePause() {
   state.paused = !state.paused;
+  state.autoAdvance = !state.paused;
   if (state.paused) clearTimeout(state.autoAdvanceTimer);
   renderCurrent();
 }
 
 // ── keyboard ─────────────────────────────────────────────────────────────
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-  if (state.call && /^[0-9*#]$/.test(e.key)) { e.preventDefault(); sendDtmf(e.key); return; }
+  if (e.key === "Escape" && closeTopOverlay()) { e.preventDefault(); return; }
+  if (isShortcutTextTarget(e.target)) return;
+  const outcomeKeyMap = {"1":"no_answer","2":"voicemail","3":"callback","5":"interested","4":"not_interested","d":"dnc","D":"dnc","n":"notes","N":"notes"};
+  if (outcomeKeyMap[e.key]) {
+    e.preventDefault();
+    markOutcome(outcomeKeyMap[e.key]);
+    return;
+  }
   if (state.postCall) {
     if (e.key === "1") { e.preventDefault(); resolvePostCall("no_answer"); return; }
     if (e.key === "2") { e.preventDefault(); resolvePostCall("voicemail"); return; }
     if (e.key === "Escape") { e.preventDefault(); resolvePostCall("skip"); return; }
   }
   if (e.key === " ") { e.preventDefault(); togglePause(); return; }
-  if (e.key === "Enter") { e.preventDefault(); if (!$("btn-call").disabled) makeCall(); return; }
+  if (e.key === "Enter") { e.preventDefault(); if (!$("btn-call") || !$("btn-call").disabled) makeCall(); return; }
   if (e.key === "Escape") { e.preventDefault(); disposeAndNext("skip"); return; }
   if (e.key === "ArrowLeft")  { e.preventDefault(); goTo(state.idx - 1); return; }
   if (e.key === "ArrowRight") { e.preventDefault(); goTo(state.idx + 1); return; }
-  const map = {"1":"no_answer","2":"voicemail","3":"callback","4":"not_interested","5":"interested"};
-  if (map[e.key]) { e.preventDefault(); disposeAndNext(map[e.key]); return; }
+  if (state.call && /^[0-9*#]$/.test(e.key)) { e.preventDefault(); sendDtmf(e.key); return; }
   if (e.key === "b" || e.key === "B") { e.preventDefault(); interestedAndBuild(); return; }
-  if (e.key === "d" || e.key === "D") { e.preventDefault(); disposeAndNext("dnc"); return; }
 });
 
 // ── init ────────────────────────────────────────────────────────────────
@@ -1727,6 +3689,412 @@ async function initDevice() {
   } catch (e) { setDeviceStatus("init failed: " + e.message, "err"); }
 }
 
+// ── header wiring ────────────────────────────────────────────────────────
+// ───── AI AGENT HOOKS — Tyler ports gates/prompts here ─────
+async function aiStartListening() {
+  // TODO: replace with port from NovaIntel LiveCoach.startAudio()
+  setAiStatus("active");
+  state.aiListening = true;
+}
+
+async function aiStopListening() {
+  setAiStatus("idle");
+  state.aiListening = false;
+}
+
+async function aiOnProspectUtterance(text) {
+  // text: final transcribed prospect turn
+  // TODO: call backend POST /api/agent/coach with {transcript, leadId, callPhase}
+  // Backend uses Tyler's gates/system prompt. Returns {suggestion, reasoning}.
+  // For now just echo:
+  showAiTip(`(stub) Respond to: "${String(text || "").slice(0, 60)}..."`);
+}
+
+async function aiOnAgentUtterance(text) {
+  // text: final transcribed agent turn — log only, don't trigger tips
+  console.log("agent utterance", text);
+}
+// ────────────────────────────────────────────────────────────
+
+function setAiStatus(status) {
+  const el = $("ai-status");
+  if (!el) return;
+  el.classList.remove("idle", "error");
+  if (status === "idle") el.classList.add("idle");
+  if (status === "error") el.classList.add("error");
+  const label = { active: "Active", idle: "Idle", error: "Error" }[status] || "Active";
+  el.innerHTML = `<span class="ai-status-dot"></span> ${label}`;
+}
+
+function syncAiAgentStatus() {
+  setAiStatus(state.aiOn && (state.autoDialer || state.demoMode) ? "active" : "idle");
+}
+
+function showAiTip(text) {
+  const card = $("ai-tip-card");
+  const tip = $("ai-tip-text");
+  if (!card || !tip) return;
+  tip.textContent = text || "";
+  card.hidden = false;
+}
+
+function clearAiTip() {
+  const card = $("ai-tip-card");
+  if (card) card.hidden = true;
+}
+
+async function useAiTip() {
+  const text = $("ai-tip-text")?.textContent || "";
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+  } catch (e) {
+    console.log("copy suggestion failed", e);
+  }
+  clearAiTip();
+}
+
+function renderHeader() {
+  const btn = $("btn-start-dialer");
+  const lbl = $("btn-start-dialer-label");
+  const icon = $("btn-start-dialer-icon");
+  if (btn && lbl && icon) {
+    if (state.autoDialer) {
+      btn.classList.add("is-active");
+      lbl.textContent = "Pause Auto-Dialer";
+      // pause icon (two bars)
+      icon.setAttribute("d", "M5 3.5h2v9H5zM9 3.5h2v9H9z");
+    } else {
+      btn.classList.remove("is-active");
+      lbl.textContent = "Start Auto-Dialer";
+      // play icon (triangle)
+      icon.setAttribute("d", "M4 3.5v9c0 .4.4.6.7.4l7-4.5c.3-.2.3-.6 0-.8l-7-4.5c-.3-.2-.7 0-.7.4z");
+    }
+  }
+  const ai = $("ai-toggle");
+  const aiState = $("ai-toggle-state");
+  if (ai && aiState) {
+    ai.setAttribute("aria-pressed", state.aiOn ? "true" : "false");
+    aiState.textContent = state.aiOn ? "On" : "Off";
+  }
+  const fill = $("progress-fill");
+  const cur = $("progress-current");
+  const tgt = $("progress-target");
+  if (fill && cur && tgt) {
+    const target = state.progressTarget || 100;
+    let current;
+    if (state.demoMode) current = 23;
+    else current = Number(state.todayDialed ?? cur.textContent) || 0;
+    cur.textContent = String(current);
+    tgt.textContent = String(target);
+    const pct = Math.max(0, Math.min(100, (current / target) * 100));
+    fill.style.width = pct + "%";
+  }
+  syncAiAgentStatus();
+  syncBottomControls();
+}
+
+function toggleAutoDialer() {
+  state.autoDialer = !state.autoDialer;
+  state.paused = !state.autoDialer;
+  state.autoAdvance = state.autoDialer;
+  if (state.paused) clearTimeout(state.autoAdvanceTimer);
+  if (state.autoDialer && state.aiOn) aiStartListening();
+  else aiStopListening();
+  renderHeader();
+}
+
+function toggleAiAgent() {
+  state.aiOn = !state.aiOn;
+  if (state.aiOn) aiStartListening();
+  else aiStopListening();
+  renderHeader();
+}
+
+function syncBottomControls() {
+  const pause = $("btn-pause-auto");
+  const autoToggle = $("auto-advance-toggle");
+  if (autoToggle) autoToggle.setAttribute("aria-checked", state.autoAdvance ? "true" : "false");
+  if (!pause) return;
+  const strong = pause.querySelector("strong");
+  const em = pause.querySelector("em");
+  if (state.autoDialer) {
+    pause.classList.add("btn-control-primary");
+    if (strong) strong.textContent = "Pause Auto-Dialer";
+    if (em) em.textContent = "Stop calling";
+  } else {
+    pause.classList.remove("btn-control-primary");
+    if (strong) strong.textContent = "Start Auto-Dialer";
+    if (em) em.textContent = "Begin calling";
+  }
+}
+
+function openDrawer(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (id === "drawer-ai-insights") {
+    renderBuilds();
+    renderCallEvents();
+  }
+  el.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+}
+
+function closeDrawer(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.setAttribute("aria-hidden", "true");
+  if (!hasOpenOverlay()) document.body.style.overflow = "";
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (id === "modal-settings") prepareSettingsModal();
+  el.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.setAttribute("aria-hidden", "true");
+  if (!hasOpenOverlay()) document.body.style.overflow = "";
+}
+
+function hasOpenOverlay() {
+  return !!document.querySelector('.drawer[aria-hidden="false"], .modal[aria-hidden="false"]');
+}
+
+function closeTopOverlay() {
+  const open = Array.from(document.querySelectorAll('.drawer[aria-hidden="false"], .modal[aria-hidden="false"]')).pop();
+  if (!open) return false;
+  if (open.classList.contains("drawer")) closeDrawer(open.id);
+  else closeModal(open.id);
+  return true;
+}
+
+function closeContainingOverlay(node) {
+  const overlay = node.closest(".drawer, .modal");
+  if (!overlay) return;
+  if (overlay.classList.contains("drawer")) closeDrawer(overlay.id);
+  else closeModal(overlay.id);
+}
+
+function prepareSettingsModal() {
+  mountSettingsStatusStrip();
+  populateAudioDevices();
+}
+
+function mountSettingsStatusStrip() {
+  const target = $("settings-status-strip");
+  const tpl = $("tpl-status-strip");
+  if (!target || !tpl) return;
+  target.innerHTML = "";
+  target.appendChild(tpl.content.cloneNode(true));
+  syncSettingsStatusStrip();
+}
+
+function syncSettingsStatusStrip() {
+  const target = $("settings-status-strip");
+  const source = $("status-strip-host");
+  if (!target || !source) return;
+  source.querySelectorAll(".status-dot").forEach(src => {
+    const tool = src.getAttribute("data-tool");
+    const dst = target.querySelector(`.status-dot[data-tool="${tool}"]`);
+    if (!dst) return;
+    dst.className = src.className;
+    dst.title = src.title;
+    const dstPip = dst.querySelector(".pip");
+    const srcPip = src.querySelector(".pip");
+    if (dstPip && srcPip) dstPip.className = srcPip.className;
+    const dstLabel = dst.querySelector(".label");
+    const srcLabel = src.querySelector(".label");
+    if (dstLabel && srcLabel) dstLabel.textContent = srcLabel.textContent;
+  });
+}
+
+async function populateAudioDevices() {
+  const mic = $("mic-device-select");
+  const out = $("output-device-select");
+  if (!mic || !out) return;
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    mic.innerHTML = '<option>Device listing unavailable</option>';
+    out.innerHTML = '<option>Device listing unavailable</option>';
+    return;
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === "audioinput");
+    const outs = devices.filter(d => d.kind === "audiooutput");
+    mic.innerHTML = (mics.length ? mics : [{ deviceId: "", label: "Default microphone" }])
+      .map((d, i) => `<option value="${escapeHtml(d.deviceId || "")}">${escapeHtml(d.label || `Microphone ${i + 1}`)}</option>`).join("");
+    out.innerHTML = (outs.length ? outs : [{ deviceId: "", label: "Default output" }])
+      .map((d, i) => `<option value="${escapeHtml(d.deviceId || "")}">${escapeHtml(d.label || `Output ${i + 1}`)}</option>`).join("");
+  } catch (e) {
+    mic.innerHTML = '<option>Permission needed</option>';
+    out.innerHTML = '<option>Permission needed</option>';
+  }
+}
+
+function testMicrophone() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 440;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => { osc.stop(); ctx.close(); }, 500);
+  } catch (e) {
+    console.log("audio test unavailable", e);
+  }
+}
+
+(function wireHeader() {
+  const start = $("btn-start-dialer");
+  if (start) start.addEventListener("click", toggleAutoDialer);
+  const ai = $("ai-toggle");
+  if (ai) ai.addEventListener("click", toggleAiAgent);
+  const help = $("btn-help");
+  if (help) help.addEventListener("click", () => console.log("TODO help modal — prompt #8"));
+  const settings = $("btn-settings");
+  if (settings) settings.addEventListener("click", () => console.log("TODO settings modal — prompt #8"));
+})();
+
+(function wirePrompt8Controls() {
+  const help = $("btn-help");
+  if (help) help.addEventListener("click", e => { e.stopImmediatePropagation(); openModal("modal-help"); }, true);
+  const settings = $("btn-settings");
+  if (settings) settings.addEventListener("click", e => { e.stopImmediatePropagation(); openModal("modal-settings"); }, true);
+  const pause = $("btn-pause-auto");
+  if (pause) pause.addEventListener("click", toggleAutoDialer);
+  const skip = $("btn-skip");
+  if (skip) skip.addEventListener("click", () => advance(400));
+  const audio = $("btn-audio");
+  if (audio) audio.addEventListener("click", () => openModal("modal-settings"));
+  const test = $("btn-test-mic");
+  if (test) test.addEventListener("click", testMicrophone);
+  const insights = $("btn-ai-insights");
+  if (insights) insights.addEventListener("click", () => openDrawer("drawer-ai-insights"));
+  const tipUse = $("ai-tip-use");
+  if (tipUse) tipUse.addEventListener("click", useAiTip);
+  const tipSkip = $("ai-tip-skip");
+  if (tipSkip) tipSkip.addEventListener("click", clearAiTip);
+  document.addEventListener("click", e => {
+    const closer = e.target.closest?.("[data-close]");
+    if (!closer) return;
+    e.preventDefault();
+    closeContainingOverlay(closer);
+  });
+})();
+
+(function wireActiveCall() {
+  const vd = $("btn-view-details");
+  if (vd) vd.addEventListener("click", openViewDetails);
+
+  // outcome buttons → existing disposeAndNext() / notes focus
+  document.querySelectorAll(".outcome").forEach(btn => {
+    const code = btn.getAttribute("data-outcome");
+    btn.addEventListener("click", () => markOutcome(code));
+  });
+})();
+
+(function wireCallNotes() {
+  const textarea = $("call-notes");
+  if (textarea) textarea.addEventListener("input", handleCallNotesInput);
+  const save = $("btn-save-note");
+  if (save) save.addEventListener("click", saveCurrentCallNote);
+})();
+
+function triggerOutcome(code) {
+  return markOutcome(code);
+}
+
+function markOutcome(code) {
+  flashQaChip(code);
+  flashOutcome(code);
+  if (code === "notes") return focusCallNotes();
+  state.lastOutcome = code;
+  if (typeof disposeAndNext === "function" && state.leads[state.idx]) return disposeAndNext(code);
+  if (typeof logCallEvent === "function") logCallEvent(`Marked outcome: ${code.replace("_", " ")}`, code === "callback" ? "warn" : "ok");
+  if (state.autoAdvance && code !== "callback" && typeof advance === "function") advance(400);
+}
+
+function focusCallNotes() {
+  const el = document.getElementById("call-notes");
+  if (el) {
+    el.closest(".notes-card")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el.focus();
+    return;
+  }
+  console.log("focus notes");
+}
+
+function flashOutcome(code) {
+  const btn = document.querySelector(`.outcome[data-outcome="${code}"]`);
+  if (!btn) return;
+  btn.classList.add("pressed");
+  setTimeout(() => btn.classList.remove("pressed"), 120);
+}
+
+function flashQaChip(code) {
+  const chip = document.querySelector(`.qa-chip[data-outcome="${code}"]`);
+  if (!chip) return;
+  chip.classList.add("pressed");
+  setTimeout(() => chip.classList.remove("pressed"), 120);
+}
+
+function isShortcutTextTarget(target) {
+  if (!target) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable || !!target.closest?.("[contenteditable='true']");
+}
+
+function updateDuration() {
+  const el = $("call-duration");
+  if (!state.callStartedAt) {
+    if (el) el.textContent = "00:00";
+    updateScriptTip(0);
+    return;
+  }
+  const s = Math.max(0, Math.floor((Date.now() - state.callStartedAt) / 1000));
+  if (el) el.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+  updateScriptTip(Date.now() - state.callStartedAt);
+}
+updateDuration();
+
+(function wireCallList() {
+  const search = $("queue-search");
+  if (search) search.addEventListener("input", applyQueueFilter);
+  const toggle = $("auto-advance-toggle");
+  if (toggle) {
+    // auto-advance ON stays synced with the existing pause behavior.
+    toggle.setAttribute("aria-checked", state.autoAdvance ? "true" : "false");
+    toggle.addEventListener("click", () => {
+      const nextOn = toggle.getAttribute("aria-checked") !== "true";
+      toggle.setAttribute("aria-checked", nextOn ? "true" : "false");
+      state.autoAdvance = nextOn;
+      state.paused = !nextOn;
+      state.autoDialer = nextOn;
+      if (state.paused) clearTimeout(state.autoAdvanceTimer);
+      if (state.autoDialer && state.aiOn) aiStartListening();
+      else aiStopListening();
+      renderHeader();
+    });
+  }
+})();
+
+renderHeader();
+// Paint fallback content immediately so the page reads correctly before
+// /leads has a chance to respond. loadQueue() will replace this with real
+// data when the backend is reachable; otherwise it re-enters demo mode.
+enterDemoMode();
+renderIllustration();
+renderScript(state.leads[state.idx] || null);
+
 loadQueue();
 initDevice();
 pollStatus();
@@ -1739,20 +4107,20 @@ setInterval(pollStatus, 30000);  // status dots refresh every 30s
   overlay.style.cssText = `
     position: fixed; inset: 0; z-index: 9999;
     display: none; align-items: flex-start; justify-content: center;
-    background: rgba(0,0,0,0.65); backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    background: rgba(15,23,42,0.35); backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
     padding-top: 14vh; animation: fadeIn 140ms ease;
   `;
   overlay.innerHTML = `
     <div id="cmdk-panel" style="
       width: 620px; max-width: 92vw;
-      background: rgba(28,28,30,0.88); color: var(--text);
-      border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      background: #ffffff; color: var(--text);
+      border: 1px solid var(--hairline); border-radius: 14px;
+      box-shadow: 0 32px 80px rgba(15,23,42,0.18);
       display: flex; flex-direction: column;
       overflow: hidden; animation: slideDown 160ms cubic-bezier(0.22,1,0.36,1);
     ">
-      <div style="display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center; gap:12px; padding:18px 22px; border-bottom: 1px solid var(--hairline);">
         <span style="opacity:0.5; font-size:18px;">⌘</span>
         <input id="cmdk-input" type="text" placeholder="Search leads by name, phone, city, or category…"
                autocomplete="off" spellcheck="false" style="
@@ -1760,12 +4128,12 @@ setInterval(pollStatus, 30000);  // status dots refresh every 30s
                  color: var(--text); font-size: 17px; font-weight: 400;
                  font-family: var(--font-body);
                ">
-        <kbd style="opacity:0.4">esc</kbd>
+        <kbd style="opacity:0.6">esc</kbd>
       </div>
       <div id="cmdk-list" style="
         max-height: 56vh; overflow-y: auto; padding: 8px;
       "></div>
-      <div style="padding: 10px 22px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: var(--text-mute); display:flex; justify-content:space-between;">
+      <div style="padding: 10px 22px; border-top: 1px solid var(--hairline); font-size: 11px; color: var(--text-mute); display:flex; justify-content:space-between;">
         <span><kbd>↑↓</kbd> navigate · <kbd>↵</kbd> jump to lead</span>
         <span id="cmdk-count"></span>
       </div>
@@ -1774,7 +4142,7 @@ setInterval(pollStatus, 30000);  // status dots refresh every 30s
       @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
       @keyframes slideDown { from { transform: translateY(-12px); opacity:0 } to { transform: translateY(0); opacity:1 } }
       .cmdk-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; cursor: pointer; }
-      .cmdk-item.active { background: rgba(10,132,255,0.18); }
+      .cmdk-item.active { background: var(--accent-soft); }
       .cmdk-item .biz { font-weight: 500; font-size: 15px; }
       .cmdk-item .sub { font-size: 12px; color: var(--text-mute); margin-top: 2px; }
       .cmdk-item .code { margin-left: auto; opacity: 0.7; }
