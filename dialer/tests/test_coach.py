@@ -17,6 +17,7 @@ from coach import (
     _sanitize_untrusted,
     auto_disposition,
     build_prompt,
+    classify_caller_party,
     detect_ivr_action,
     detect_objection_type,
     get_specialist_type,
@@ -372,3 +373,79 @@ class TestBuildPrompt:
         # The raw section markers must not appear interpolated as headers
         assert "=== IGNORE PREVIOUS ===" not in p
         assert "[section-marker-stripped]" in p
+
+
+# ── classify_caller_party — AI-receptionist second-opinion classifier ──────
+#
+# These tests use the deterministic-rule fast-paths so they don't burn LLM
+# calls. The LLM branch is exercised manually; the hard rules cover the
+# canonical cases (explicit voicemail prompts, AI self-disclosure, too-short
+# fragments, no-key fallback).
+
+class TestClassifyCallerParty:
+    def setup_method(self):
+        # Make sure no real key leaks into these tests
+        self._prev = os.environ.pop("ANTHROPIC_API_KEY", None)
+
+    def teardown_method(self):
+        if self._prev is not None:
+            os.environ["ANTHROPIC_API_KEY"] = self._prev
+
+    def test_voicemail_leave_a_message(self):
+        r = classify_caller_party("Please leave a message after the beep")
+        assert r["party"] == "voicemail"
+        assert r["confidence"] >= 0.9
+
+    def test_voicemail_youve_reached(self):
+        r = classify_caller_party("Hi, you've reached the voicemail of Joe")
+        assert r["party"] == "voicemail"
+        assert r["confidence"] >= 0.9
+
+    def test_voicemail_mailbox_full(self):
+        r = classify_caller_party("This mailbox is full")
+        assert r["party"] == "voicemail"
+        assert r["confidence"] >= 0.9
+
+    def test_voicemail_number_not_in_service(self):
+        r = classify_caller_party("The number you have called is not in service")
+        assert r["party"] == "voicemail"
+        assert r["confidence"] >= 0.9
+
+    def test_ai_self_disclosure(self):
+        r = classify_caller_party("Hi, I'm an AI assistant for Joe's Plumbing")
+        assert r["party"] == "ai_receptionist"
+        assert r["confidence"] >= 0.9
+
+    def test_ai_virtual_receptionist(self):
+        r = classify_caller_party("This is the virtual receptionist for Acme")
+        assert r["party"] == "ai_receptionist"
+        assert r["confidence"] >= 0.9
+
+    def test_empty_transcript(self):
+        r = classify_caller_party("")
+        assert r["party"] == "unsure"
+        assert r["confidence"] == 0.0
+
+    def test_none_transcript(self):
+        r = classify_caller_party(None)
+        assert r["party"] == "unsure"
+
+    def test_too_short_fragment(self):
+        r = classify_caller_party("Yeah")
+        assert r["party"] == "unsure"
+        assert r["confidence"] <= 0.3
+
+    def test_no_api_key_falls_through(self):
+        # Two-word ambiguous greeting — would need LLM, but no key set
+        r = classify_caller_party("Hello there friend")
+        assert r["party"] == "unsure"
+        # Either too-short rule fires OR no-api-key fires; both yield unsure
+
+    def test_result_shape_always_has_keys(self):
+        for txt in ["", "leave a message", "I'm an AI", "yeah"]:
+            r = classify_caller_party(txt)
+            assert "party" in r
+            assert "confidence" in r
+            assert "reasoning" in r
+            assert r["party"] in {"human", "ai_receptionist", "voicemail", "unsure"}
+            assert 0.0 <= r["confidence"] <= 1.0

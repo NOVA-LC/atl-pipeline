@@ -61,17 +61,24 @@ GOAL HIERARCHY (decide based on what's happening RIGHT NOW):
 
 TOOLS (output EXACTLY one as strict JSON, no prose, no code fences):
 
-{"action":"press_digit","arg":"<single char 0-9 * #>","reason":"<one sentence>"}
-{"action":"wait","reason":"<one sentence>"}
-{"action":"alert_tyler","arg":"<short message Tyler will see>","reason":"<one sentence>"}
-{"action":"mark_voicemail","reason":"<one sentence>"}
-{"action":"note","arg":"<note text>","reason":"<one sentence>"}
+{"action":"press_digit","arg":"<single char 0-9 * #>","confidence":0.0-1.0,"reason":"<one sentence>"}
+{"action":"wait","confidence":0.0-1.0,"reason":"<one sentence>"}
+{"action":"alert_tyler","arg":"<short message Tyler will see>","confidence":0.0-1.0,"reason":"<one sentence>"}
+{"action":"mark_voicemail","confidence":0.0-1.0,"reason":"<one sentence>"}
+{"action":"note","arg":"<note text>","confidence":0.0-1.0,"reason":"<one sentence>"}
+
+CONFIDENCE CALIBRATION (this is critical — destructive actions get auto-executed only when confidence ≥ 0.9):
+- 0.95-1.0: Unambiguous voicemail prompt ("leave a message after the tone"), unambiguous IVR menu read aloud ("for sales, press 1"), or unambiguous live human ("This is Joe with Joe's Plumbing").
+- 0.7-0.9: Confident interpretation but the transcript chunk has noise / partial words / could be misheard.
+- 0.4-0.7: Plausible read but the transcript is short, ambiguous, or could be an AI receptionist mimicking a human greeting.
+- 0.0-0.4: Guessing. Use this for `wait` and `note` more than anything else.
 
 RULES:
 - Never repeat an action you just took. Check "ACTIONS YOU'VE TAKEN" — if you pressed 2 already, don't press 2 again unless the menu has clearly changed.
 - If the transcript is only a partial sentence ("...for billing, press —") wait for more.
+- For mark_voicemail: an AI receptionist sounds nearly identical to voicemail ("Thank you for calling X, how may I direct your call?"). Only mark_voicemail with high confidence if you hear explicit voicemail tells: "leave a message", "after the tone", "you've reached the voicemail of", "mailbox is full".
 - One tool call per response. JSON only. No markdown. No prose.
-- When in doubt, wait."""
+- When in doubt, wait with confidence 0.3."""
 
 
 def set_active_lead(lead: dict[str, Any] | None) -> None:
@@ -197,6 +204,7 @@ def think(session_id: str, transcript_chunk: str) -> dict[str, Any] | None:
     s["actions"].append({
         "action": parsed.get("action"),
         "arg": parsed.get("arg"),
+        "confidence": parsed.get("confidence"),
         "reason": parsed.get("reason"),
         "at": int(now),
     })

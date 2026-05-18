@@ -816,6 +816,137 @@ def summarize_call(*, transcript: list, outcome: str | None, duration_s: int) ->
         return f"{outcome or 'call'} — see transcript"
 
 
+def classify_caller_party(transcript: str) -> dict:
+    """One-shot Haiku classifier: who's actually on the other end?
+
+    Returns {
+        "party": "human" | "ai_receptionist" | "voicemail" | "unsure",
+        "confidence": 0.0-1.0,
+        "reasoning": "one line",
+    }
+
+    This is the second-opinion classifier the server calls before firing
+    destructive auto-actions (mark_voicemail). The main IVR agent is trained
+    to favor mark_voicemail on ambiguous greetings, but an AI receptionist
+    sounds nearly identical to voicemail to a text-only model. Pipecat's
+    `VoicemailDetector` has the same blind spot — its default prompt
+    classifies "Hello?", "Speaking", "Can I help you?" all as live human,
+    which is exactly what a polite AI receptionist says.
+
+    Deterministic shortcuts fire first; LLM only runs if no rule matches.
+    Cost ~$0.0001 per call at Haiku 4.5 prices.
+    """
+    text = (transcript or "").strip()
+    if not text:
+        return {"party": "unsure", "confidence": 0.0, "reasoning": "empty transcript"}
+
+    lower = text.lower()
+
+    # Hard rules — high-confidence voicemail tells
+    voicemail_patterns = (
+        r"leave (a |your )?message",
+        r"after the (beep|tone)",
+        r"you'?ve reached (the )?voicemail",
+        r"please record (your )?(message|name)",
+        r"is not (in service|available)",
+        r"mailbox (is )?full",
+        r"has not been set up",
+    )
+    for pat in voicemail_patterns:
+        if re.search(pat, lower):
+            return {
+                "party": "voicemail",
+                "confidence": 0.95,
+                "reasoning": f"matched voicemail pattern: {pat}",
+            }
+
+    # Hard rules — AI receptionist self-disclosure (some are honest about it)
+    ai_self_disclosure = (
+        r"i'?m an? ai (assistant|receptionist|agent)",
+        r"virtual (assistant|receptionist|agent)",
+        r"automated (assistant|attendant|system)",
+        r"i'?m (a |an )?ai\b",
+    )
+    for pat in ai_self_disclosure:
+        if re.search(pat, lower):
+            return {
+                "party": "ai_receptionist",
+                "confidence": 0.95,
+                "reasoning": f"AI self-disclosure: {pat}",
+            }
+
+    # Too-short fragment — can't classify reliably
+    if len(text.split()) < 3:
+        return {"party": "unsure", "confidence": 0.2, "reasoning": "too few words to classify"}
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {"party": "unsure", "confidence": 0.0, "reasoning": "no api key"}
+
+    prompt = (
+        "Classify who just spoke on an outbound cold-call. Output strict JSON ONLY:\n"
+        '{"party":"human|ai_receptionist|voicemail|unsure","confidence":0.0-1.0,"reasoning":"one line"}\n\n'
+        "DEFINITIONS:\n"
+        "- human: a real person answering naturally. Personal greetings ('Hello?', 'Yeah?', "
+        "'This is Joe'), filler words ('uh', 'um'), spontaneous prosody, conversational "
+        "questions back at the caller ('Who is this?', 'What's up?'). Background noise / "
+        "casual phrasing is a strong human tell.\n"
+        "- ai_receptionist: synthetic scripted greeting from a business front-desk AI "
+        "('Thank you for calling [Business], how may I direct your call?', 'Please tell me "
+        "the nature of your call', 'I can help you schedule an appointment'). Perfect "
+        "prosody, no filler, no 'Hello?', often offers to route or transfer. Includes "
+        "Google Voice / RingCentral / Dialpad style AI attendants. NOT a human switchboard "
+        "operator — a real receptionist sounds rushed and casual; an AI receptionist sounds "
+        "polished and over-scripted.\n"
+        "- voicemail: 'leave a message', 'after the tone', 'you've reached the voicemail of', "
+        "'mailbox is full', carrier 'number is not in service'. Past tense, no expectation of "
+        "live response.\n"
+        "- unsure: under ~6 words, hold music description, silence, IVR menu read-aloud, "
+        "ambiguous. Prefer unsure over guessing — downstream gates on confidence.\n\n"
+        "IMPORTANT: a polite AI receptionist will sound nearly identical to a polite human. "
+        "Lean toward ai_receptionist when: the greeting starts with 'Thank you for calling', "
+        "uses the full business name unprompted, immediately offers to route, has perfect "
+        "diction with no hesitation, or asks 'the nature of your call'.\n\n"
+        f"TRANSCRIPT: \"{text[:600]}\"\n\nJSON only, no markdown."
+    )
+
+    try:
+        r = httpx.post(
+            ANTHROPIC_URL,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json={
+                "model": ANTHROPIC_SUMMARY_MODEL,
+                "max_tokens": 150,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=8.0,
+        )
+        if r.status_code != 200:
+            return {"party": "unsure", "confidence": 0.0, "reasoning": f"http {r.status_code}"}
+        data = r.json()
+        out = (data.get("content") or [{}])[0].get("text", "").strip()
+        m = re.search(r"\{[\s\S]*\}", out)
+        if not m:
+            return {"party": "unsure", "confidence": 0.0, "reasoning": "parse failed"}
+        result = json.loads(m.group(0))
+        valid_parties = {"human", "ai_receptionist", "voicemail", "unsure"}
+        if result.get("party") not in valid_parties:
+            result["party"] = "unsure"
+            result["confidence"] = 0.0
+        try:
+            result["confidence"] = max(0.0, min(1.0, float(result.get("confidence") or 0.0)))
+        except (TypeError, ValueError):
+            result["confidence"] = 0.0
+        result.setdefault("reasoning", "")
+        return result
+    except Exception as e:
+        return {"party": "unsure", "confidence": 0.0, "reasoning": f"exception: {e}"}
+
+
 def auto_disposition(*, transcript: list, duration_s: int) -> dict:
     """Analyze a finished call transcript and return:
       {outcome: 'interested'|'not_interested'|'callback'|'dnc'|'voicemail'|'no_answer',

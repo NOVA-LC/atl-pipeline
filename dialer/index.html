@@ -4779,9 +4779,23 @@ function handleIvrEvent(event) {
     return;
   }
 
-  // Agent: live human or gatekeeper — flash banner so Tyler stops navigating
+  // Agent: live human or gatekeeper — flash banner so Tyler stops navigating.
+  // The server attaches a second-opinion classifier verdict (party +
+  // party_confidence) so we can disambiguate live-human vs ai-receptionist.
+  // The earlier bug was alert_tyler firing on an AI receptionist greeting;
+  // we now label the alert accordingly so Tyler isn't misled.
   if (event.kind === "alert") {
-    flashAgentAlert(event.message || event.reason || "Live person on the line");
+    let label = event.message || event.reason || "Live person on the line";
+    const party = (event.party || "").toString();
+    const pc = Number(event.party_confidence || 0);
+    if (party === "ai_receptionist" && pc >= 0.6) {
+      label = `🤖 AI receptionist (${(pc * 100).toFixed(0)}% conf) — ${label}`;
+    } else if (party === "human" && pc >= 0.6) {
+      label = `👤 LIVE HUMAN (${(pc * 100).toFixed(0)}% conf) — ${label}`;
+    } else if (party === "voicemail" && pc >= 0.6) {
+      label = `📼 Voicemail (${(pc * 100).toFixed(0)}% conf) — ${label}`;
+    }
+    flashAgentAlert(label);
     return;
   }
 
@@ -4792,7 +4806,11 @@ function handleIvrEvent(event) {
   // prompt #28 fixed for /api/agent/coach. The fix is identical: during
   // a live call, surface a confirmation tip; never call disconnect()
   // without human approval.
-  if (event.kind === "mark_voicemail") {
+  // mark_voicemail_suggest = server downgraded mark_voicemail to a suggestion
+  // because the second-opinion classifier disagreed OR the call hadn't passed
+  // the safety gates (confidence < 0.9, or first 10s of call). Same UI as a
+  // suggestion: surface a tip, never auto-disconnect.
+  if (event.kind === "mark_voicemail" || event.kind === "mark_voicemail_suggest") {
     if (!state.aiOn) {
       logCallEvent("AI-off: voicemail detected, leaving disposition manual.", "warn");
       return;

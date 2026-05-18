@@ -196,6 +196,120 @@ class TestCallLifecycle:
         assert any(c["call_session_id"] == sid for c in calls)
 
 
+# ── _dispatch_agent_action — confidence + first-N-seconds gates ────────────
+#
+# Defense-in-depth: destructive actions (mark_voicemail, press_digit) must
+# clear BOTH the agent-confidence threshold AND the call-grace window before
+# the server emits them as auto-execute. Below-threshold actions get
+# downgraded to suggestions so the JS client never auto-disconnects mid-call.
+
+class TestDispatchAgentActionGates:
+    def setup_method(self):
+        # Reset trackers per test
+        server.IVR_EVENTS.clear()
+        server.IVR_SEQ.clear()
+        server.IVR_SESSION_STARTED_AT.clear()
+
+    def _events_for(self, sid):
+        return list(server.IVR_EVENTS.get(sid, []))
+
+    def test_mark_voicemail_in_grace_window_downgrades(self):
+        # Even with high confidence, a mark_voicemail in the first 10s gets
+        # downgraded — the call literally just connected.
+        sid = "cs_test_grace"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time()  # just now
+        decision = {"action": "mark_voicemail", "confidence": 0.99, "reason": "vm"}
+        server._dispatch_agent_action(sid, decision, "leave a message after the beep")
+        events = self._events_for(sid)
+        kinds = [e["kind"] for e in events]
+        # Should be SUGGEST, not auto
+        assert "mark_voicemail_suggest" in kinds
+        assert "mark_voicemail" not in kinds
+
+    def test_mark_voicemail_low_confidence_downgrades(self):
+        sid = "cs_test_lowconf"
+        # Past the grace window
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30.0
+        decision = {"action": "mark_voicemail", "confidence": 0.5, "reason": "vm"}
+        server._dispatch_agent_action(sid, decision, "leave a message after the beep")
+        kinds = [e["kind"] for e in self._events_for(sid)]
+        assert "mark_voicemail_suggest" in kinds
+        assert "mark_voicemail" not in kinds
+
+    def test_mark_voicemail_auto_when_all_gates_pass(self):
+        sid = "cs_test_auto"
+        # Past grace + high confidence + transcript matches voicemail rule
+        # (classify_caller_party will return party=voicemail conf=0.95 from
+        # the deterministic regex)
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30.0
+        decision = {"action": "mark_voicemail", "confidence": 0.95, "reason": "vm"}
+        server._dispatch_agent_action(sid, decision, "leave a message after the tone")
+        kinds = [e["kind"] for e in self._events_for(sid)]
+        assert "mark_voicemail" in kinds
+        # The auto-fire path also records party_confidence
+        ev = next(e for e in self._events_for(sid) if e["kind"] == "mark_voicemail")
+        assert ev.get("party") == "voicemail"
+        assert ev.get("auto") is True
+
+    def test_mark_voicemail_ai_receptionist_downgrades(self):
+        # Even with high agent confidence + past grace, if the second-opinion
+        # classifier says it's an AI receptionist (not voicemail), the
+        # auto-fire is blocked. This is the bug Tyler reported: "it wasn't
+        # even a live human it was an ai".
+        sid = "cs_test_aireception"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30.0
+        decision = {"action": "mark_voicemail", "confidence": 0.99, "reason": "vm?"}
+        server._dispatch_agent_action(
+            sid, decision,
+            "Thank you for calling Joe's Plumbing, I'm an AI assistant — how can I help?"
+        )
+        kinds = [e["kind"] for e in self._events_for(sid)]
+        assert "mark_voicemail_suggest" in kinds
+        assert "mark_voicemail" not in kinds
+        ev = next(e for e in self._events_for(sid) if e["kind"] == "mark_voicemail_suggest")
+        assert ev.get("party") == "ai_receptionist"
+
+    def test_alert_tyler_includes_party_verdict(self):
+        sid = "cs_test_alert"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30.0
+        decision = {"action": "alert_tyler", "arg": "live person", "confidence": 0.9, "reason": "greeted"}
+        server._dispatch_agent_action(
+            sid, decision,
+            "Thank you for calling Acme — I'm an AI assistant. How may I direct your call?"
+        )
+        events = self._events_for(sid)
+        assert events and events[-1]["kind"] == "alert"
+        assert events[-1].get("party") == "ai_receptionist"
+
+    def test_unknown_action_records_error(self):
+        sid = "cs_test_unknown"
+        server._dispatch_agent_action(sid, {"action": "delete_database"}, "")
+        kinds = [e["kind"] for e in self._events_for(sid)]
+        assert "agent_error" in kinds
+
+    def test_press_digit_low_confidence_downgrades_to_suggest(self):
+        sid = "cs_test_press"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30.0
+        prev_mode = server.IVR_AGENT_MODE
+        server.IVR_AGENT_MODE = "auto"
+        try:
+            server._dispatch_agent_action(
+                sid, {"action": "press_digit", "arg": "1", "confidence": 0.3, "reason": "menu"}, "for sales press 1"
+            )
+            ev = self._events_for(sid)[-1]
+            assert ev["kind"] == "ivr_digit"
+            assert ev["auto_press"] is False
+            assert ev["mode"] == "suggest"
+        finally:
+            server.IVR_AGENT_MODE = prev_mode
+
+    def test_wait_action_records_agent_wait(self):
+        sid = "cs_test_wait"
+        server._dispatch_agent_action(sid, {"action": "wait", "reason": "hold music"}, "[music]")
+        ev = self._events_for(sid)[-1]
+        assert ev["kind"] == "agent_wait"
+
+
 # ── /api/_debug/server-log access control ──────────────────────────────────
 
 class TestDebugLogEndpoint:

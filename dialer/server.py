@@ -26,6 +26,7 @@ import sqlite3
 import datetime
 import sys
 import threading
+import time
 import traceback
 import uuid
 import base64
@@ -125,6 +126,17 @@ BUILD_LOCK = threading.Lock()
 IVR_LOCK = threading.Lock()
 IVR_EVENTS = {}
 IVR_SEQ = {}
+IVR_SESSION_STARTED_AT = {}  # session_id -> epoch seconds, set on first event
+
+# Destructive auto-actions (mark_voicemail, press_digit) must clear BOTH gates
+# before the server fires them as auto rather than as a suggestion:
+#   1) the agent's self-reported confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD
+#   2) at least AUTO_ACTION_GRACE_SECONDS have elapsed since the call connected
+# This is defense-in-depth — the JS client also gates mark_voicemail on
+# state.call so a live human is never auto-hung-up. See prompt #28 +
+# commit 92d9096 for the bug that motivated this.
+AUTO_ACTION_CONFIDENCE_THRESHOLD = float(os.environ.get("AGENT_AUTO_CONFIDENCE", "0.9"))
+AUTO_ACTION_GRACE_SECONDS = float(os.environ.get("AGENT_AUTO_GRACE_SECONDS", "10"))
 
 
 # ─── Shared-secret gate for the new /api/* endpoints ─────────────────────────
@@ -449,6 +461,7 @@ def _add_ivr_event(session_id, **event):
     if not session_id:
         return
     with IVR_LOCK:
+        IVR_SESSION_STARTED_AT.setdefault(session_id, time.time())
         seq = IVR_SEQ.get(session_id, 0) + 1
         IVR_SEQ[session_id] = seq
         event.setdefault("level", "")
@@ -456,6 +469,12 @@ def _add_ivr_event(session_id, **event):
         event["seq"] = seq
         IVR_EVENTS.setdefault(session_id, []).append(event)
         IVR_EVENTS[session_id] = IVR_EVENTS[session_id][-100:]
+
+
+def _session_elapsed_s(session_id):
+    """Seconds since the first event for this session. 0 if unknown."""
+    started = IVR_SESSION_STARTED_AT.get(session_id)
+    return max(0.0, time.time() - started) if started else 0.0
 
 
 def _score_ivr_window(window):
@@ -713,14 +732,42 @@ def _handle_ivr_transcript(session_id, transcript, seen):
 
 
 def _dispatch_agent_action(session_id, decision, transcript):
-    """Translate an agent decision into an IVR event the frontend will act on."""
-    action = decision.get("action")
-    arg    = decision.get("arg") or ""
-    reason = decision.get("reason") or ""
+    """Translate an agent decision into an IVR event the frontend will act on.
+
+    Destructive actions (mark_voicemail, press_digit) are downgraded to
+    suggestions unless BOTH:
+      - decision.confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD (default 0.9)
+      - call has been live for AUTO_ACTION_GRACE_SECONDS (default 10s)
+    mark_voicemail gets a second opinion from coach.classify_caller_party
+    so an AI receptionist doesn't get auto-marked as voicemail.
+    """
+    action     = decision.get("action")
+    arg        = decision.get("arg") or ""
+    reason     = decision.get("reason") or ""
+    confidence = 0.0
+    try:
+        confidence = float(decision.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+
+    elapsed = _session_elapsed_s(session_id)
+    confident = confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD
+    past_grace = elapsed >= AUTO_ACTION_GRACE_SECONDS
+    safe_to_auto = confident and past_grace
 
     if action == "press_digit" and arg in tuple("0123456789*#"):
-        # Treat agent decisions as auto-press by default (it has higher confidence than regex).
-        auto = (IVR_AGENT_MODE == "auto") or (IVR_COPILOT_MODE == "auto")
+        # Treat agent decisions as auto-press by default (it has higher confidence than regex)
+        # BUT only if it cleared both safety gates. Otherwise suggest only.
+        mode_env_auto = (IVR_AGENT_MODE == "auto") or (IVR_COPILOT_MODE == "auto")
+        auto = mode_env_auto and safe_to_auto
+        if mode_env_auto and not safe_to_auto:
+            gate_reason = (
+                f"low confidence {confidence:.2f}<{AUTO_ACTION_CONFIDENCE_THRESHOLD:.2f}"
+                if not confident
+                else f"only {elapsed:.0f}s into call (need {AUTO_ACTION_GRACE_SECONDS:.0f}s)"
+            )
+        else:
+            gate_reason = ""
         _add_ivr_event(
             session_id,
             kind="ivr_digit",
@@ -729,8 +776,16 @@ def _dispatch_agent_action(session_id, decision, transcript):
             mode="auto" if auto else "suggest",
             transcript=transcript,
             reason=reason,
-            level="ok",
-            message=f"Agent {'auto-pressing' if auto else 'suggests pressing'} {arg}: {reason}",
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            gate_reason=gate_reason,
+            level="ok" if auto else "warn",
+            message=(
+                f"Agent auto-pressing {arg}: {reason}"
+                if auto else
+                f"Agent suggests pressing {arg}: {reason}"
+                + (f" (gated: {gate_reason})" if gate_reason else "")
+            ),
         )
     elif action == "wait":
         # No-op event for the agent log so Tyler can see it's thinking.
@@ -739,25 +794,78 @@ def _dispatch_agent_action(session_id, decision, transcript):
             kind="agent_wait",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
             message=f"Agent: waiting — {reason}",
         )
     elif action == "alert_tyler":
+        # Alerts are non-destructive (just show a UI badge), but the
+        # original bug was alert_tyler firing on an AI receptionist greeting
+        # ("it wasn't even a live human it was an ai"). Attach a
+        # second-opinion classifier verdict so the UI can label the alert
+        # as live-human vs ai-receptionist instead of conflating both.
+        try:
+            from coach import classify_caller_party
+            verdict = classify_caller_party(transcript) or {}
+        except Exception as e:
+            verdict = {"party": "unsure", "confidence": 0.0, "reasoning": f"classifier exception: {e}"}
+        party = verdict.get("party") or "unsure"
+        try:
+            verdict_conf = float(verdict.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            verdict_conf = 0.0
         _add_ivr_event(
             session_id,
             kind="alert",
             level="alert",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            party=party,
+            party_confidence=verdict_conf,
+            party_reasoning=verdict.get("reasoning") or "",
             message=arg or reason or "Agent alert",
         )
     elif action == "mark_voicemail":
+        # Defense-in-depth: confirm with an independent classifier before
+        # firing. The primary agent is trained to favor mark_voicemail on
+        # ambiguous greetings — but an AI receptionist sounds nearly
+        # identical to voicemail to a text-only classifier (Pipecat has the
+        # same blind spot — see research notes). The second-opinion classifier
+        # discriminates {human, ai_receptionist, voicemail, unsure}.
+        try:
+            from coach import classify_caller_party
+            verdict = classify_caller_party(transcript) or {}
+        except Exception as e:
+            verdict = {"party": "unsure", "confidence": 0.0, "reasoning": f"classifier exception: {e}"}
+        party = verdict.get("party") or "unsure"
+        verdict_conf = 0.0
+        try:
+            verdict_conf = float(verdict.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            verdict_conf = 0.0
+        confirmed_voicemail = (party == "voicemail" and verdict_conf >= 0.85)
+        # Even if the second opinion confirms voicemail, the call must be
+        # past the grace window AND the agent must be self-confident.
+        auto_mark = confirmed_voicemail and safe_to_auto
         _add_ivr_event(
             session_id,
-            kind="mark_voicemail",
+            kind="mark_voicemail" if auto_mark else "mark_voicemail_suggest",
             level="warn",
             transcript=transcript,
             reason=reason,
-            message=f"Agent detected voicemail: {reason}",
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            party=party,
+            party_confidence=verdict_conf,
+            party_reasoning=verdict.get("reasoning") or "",
+            auto=auto_mark,
+            message=(
+                f"Agent confirmed voicemail (party={party} {verdict_conf:.2f}): {reason}"
+                if auto_mark else
+                f"Agent suggests voicemail but gated (party={party} {verdict_conf:.2f}, "
+                f"agent_conf={confidence:.2f}, elapsed={elapsed:.0f}s): {reason}"
+            ),
         )
     elif action == "note":
         _add_ivr_event(
@@ -765,6 +873,7 @@ def _dispatch_agent_action(session_id, decision, transcript):
             kind="agent_note",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
             message=f"Agent note: {arg}",
         )
     else:
