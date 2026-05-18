@@ -107,6 +107,21 @@ AMD_ENABLED = os.environ.get("DIALER_AMD_ENABLED", "1").strip() not in ("", "0",
 # with a callback number. Leave unset to skip the drop and just record the
 # AMD verdict for the UI.
 VOICEMAIL_DROP_URL = os.environ.get("DIALER_VOICEMAIL_DROP_URL", "").strip()
+# Fallback: if no MP3 hosted, use Twilio's neural TTS to read this script.
+# Sounds ~80% as good as a real recording and removes the hosting step.
+# Set DIALER_VOICEMAIL_DROP_TEXT to your pitch (under ~600 chars).
+VOICEMAIL_DROP_TEXT = os.environ.get("DIALER_VOICEMAIL_DROP_TEXT", "").strip()
+VOICEMAIL_DROP_VOICE = os.environ.get("DIALER_VOICEMAIL_DROP_VOICE", "Polly.Matthew-Neural").strip()
+
+# ─── Call recording ─────────────────────────────────────────────────────────
+# Twilio records BOTH legs to separate audio channels (-dual) so the
+# post-call summarizer can re-listen and re-transcribe via Whisper/Deepgram
+# at higher quality than the live STT. Recording starts when the prospect
+# answers — Tyler should verbally announce "this call may be recorded" as
+# his opening line. The /twilio/recording webhook attaches RecordingUrl +
+# RecordingSid + RecordingDuration to the matching call_session.
+RECORDING_ENABLED = os.environ.get("DIALER_RECORDING_ENABLED", "0").strip() not in ("", "0", "false", "no")
+RECORDING_CONSENT_REMINDER = os.environ.get("DIALER_RECORDING_CONSENT_REMINDER", "1").strip() not in ("", "0", "false", "no")
 # Public HTTPS base used to construct amd_status_callback. Falls back to
 # DIALER_PUBLIC_BASE_URL (already used for the media stream).
 def _public_base_url():
@@ -293,6 +308,15 @@ def _db():
         ("call_summaries",   "notes",        "TEXT"),
         ("bookings",         "call_session_id", "TEXT"),
         ("bookings",         "type",            "TEXT"),
+        # Twilio call recording metadata, attached post-hoc via
+        # /twilio/recording webhook. recording_url is signed Twilio URL.
+        ("call_sessions",    "recording_url",        "TEXT"),
+        ("call_sessions",    "recording_sid",        "TEXT"),
+        ("call_sessions",    "recording_duration_s", "INTEGER"),
+        ("call_sessions",    "recording_channels",   "INTEGER"),
+        # Cached snapshot of which area/phone was dialed — needed for
+        # best-time-to-call analysis joining call_sessions to dispositions
+        ("call_sessions",    "phone",                "TEXT"),
     ):
         try:
             c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
@@ -1885,7 +1909,20 @@ def voice():
         stream = start.stream(url=MEDIA_STREAM_URL, track="outbound_track")
         if session_id:
             stream.parameter(name="session_id", value=session_id)
-    dial = Dial(caller_id=FROM_NUMBER, answer_on_bridge=True, time_limit=3600)
+    dial_kwargs = dict(caller_id=FROM_NUMBER, answer_on_bridge=True, time_limit=3600)
+    # Call recording, applied to BOTH legs of the bridge in separate channels.
+    # The status callback fires once Twilio has finalized the recording and
+    # has a stable URL to share.
+    if RECORDING_ENABLED and PUBLIC_BASE_URL:
+        from urllib.parse import quote as _qr
+        rec_cb = f"{PUBLIC_BASE_URL}/twilio/recording?session_id={_qr(session_id)}"
+        dial_kwargs.update({
+            "record": "record-from-answer-dual",
+            "recording_status_callback": rec_cb,
+            "recording_status_callback_method": "POST",
+            "recording_status_callback_event": "completed",
+        })
+    dial = Dial(**dial_kwargs)
     number_kwargs = {}
     # Carrier-level AMD on the prospect's leg. Only enable when we have a
     # public HTTPS endpoint for Twilio to POST the verdict back to.
@@ -1906,6 +1943,57 @@ def voice():
     dial.number(to, **number_kwargs)
     resp.append(dial)
     return str(resp), 200, {"Content-Type": "text/xml"}
+
+
+@app.route("/twilio/recording", methods=["POST"])
+def twilio_recording_callback():
+    """Twilio recording-completed status callback.
+
+    Receives RecordingUrl, RecordingSid, RecordingDuration, RecordingChannels.
+    Stores them against the call_session matched by ?session_id=... in the
+    callback URL. The URL is a signed Twilio media URL — anyone with the URL
+    can stream it, so treat it as semi-secret.
+    """
+    rec_url       = (request.values.get("RecordingUrl") or "").strip()
+    rec_sid       = (request.values.get("RecordingSid") or "").strip()
+    rec_duration  = request.values.get("RecordingDuration") or "0"
+    rec_channels  = request.values.get("RecordingChannels") or "1"
+    session_id    = (request.values.get("session_id") or "").strip()
+
+    try:
+        duration_s = int(rec_duration)
+    except (TypeError, ValueError):
+        duration_s = 0
+    try:
+        channels = int(rec_channels)
+    except (TypeError, ValueError):
+        channels = 1
+
+    if session_id and rec_url:
+        try:
+            with _db() as c:
+                c.execute(
+                    "UPDATE call_sessions SET recording_url=?, recording_sid=?, "
+                    "recording_duration_s=?, recording_channels=? "
+                    "WHERE call_session_id=?",
+                    (rec_url, rec_sid, duration_s, channels, session_id),
+                )
+                c.commit()
+        except Exception as e:
+            # Don't 500 — Twilio will retry forever. Log + ack.
+            print(f"[recording-cb] db update failed for {session_id}: {e}", file=sys.stderr)
+
+        _add_ivr_event(
+            session_id,
+            kind="recording_complete",
+            recording_url=rec_url,
+            recording_sid=rec_sid,
+            duration_s=duration_s,
+            channels=channels,
+            message=f"Recording saved: {duration_s}s, {channels}ch — {rec_sid}",
+        )
+
+    return ("", 200)
 
 
 @app.route("/twilio/amd", methods=["POST"])
@@ -1939,7 +2027,13 @@ def twilio_amd_callback():
     # Try the voicemail drop. We do this BEFORE logging so the event reflects
     # what actually happened (or didn't). Fire-and-forget — REST API failures
     # shouldn't break the AMD flow.
-    if is_machine and VOICEMAIL_DROP_URL and call_sid:
+    # Two emit modes:
+    #   <Play>URL</Play>   when DIALER_VOICEMAIL_DROP_URL is set (real recording)
+    #   <Say>text</Say>    when DIALER_VOICEMAIL_DROP_TEXT is set (TTS fallback,
+    #                      no file hosting needed — sounds ~80% as good using
+    #                      Polly Neural voices).
+    have_drop_audio = bool(VOICEMAIL_DROP_URL or VOICEMAIL_DROP_TEXT)
+    if is_machine and have_drop_audio and call_sid:
         try:
             from twilio.rest import Client as TwilioClient
             auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
@@ -1947,14 +2041,17 @@ def twilio_amd_callback():
                 drop_error = "TWILIO_AUTH_TOKEN not set"
             else:
                 tw = TwilioClient(ACCOUNT_SID, auth_token)
+                from xml.sax.saxutils import escape as _esc
+                if VOICEMAIL_DROP_URL:
+                    body = f'<Play>{_esc(VOICEMAIL_DROP_URL, {chr(34): "&quot;"})}</Play>'
+                else:
+                    body = (
+                        f'<Say voice="{_esc(VOICEMAIL_DROP_VOICE)}">'
+                        f'{_esc(VOICEMAIL_DROP_TEXT)}</Say>'
+                    )
                 # Small pause lets the carrier-side beep finish before our
                 # audio starts so we don't talk over the greeting tail.
-                from xml.sax.saxutils import escape as _esc
-                twiml = (
-                    f'<Response><Pause length="1"/>'
-                    f'<Play>{_esc(VOICEMAIL_DROP_URL, {chr(34): "&quot;"})}</Play>'
-                    f'<Hangup/></Response>'
-                )
+                twiml = f'<Response><Pause length="1"/>{body}<Hangup/></Response>'
                 tw.calls(call_sid).update(twiml=twiml)
                 drop_fired = True
         except Exception as e:
@@ -1976,7 +2073,7 @@ def twilio_amd_callback():
                 + (
                     " — voicemail drop fired" if drop_fired
                     else (f" — drop error: {drop_error}" if drop_error
-                          else (" — would drop but no URL configured" if is_machine and not VOICEMAIL_DROP_URL
+                          else (" — would drop but no DROP_URL or DROP_TEXT configured" if is_machine and not have_drop_audio
                                 else ""))
                 )
             ),
@@ -2675,13 +2772,14 @@ def api_list_bookings():
 def api_call_start():
     body = request.get_json(force=True, silent=True) or {}
     lead_id = body.get("lead_id") or ""
+    phone   = (body.get("phone") or "").strip()
     if not lead_id:
         return {"error": "lead_id required"}, 400
     call_session_id = f"cs_{uuid.uuid4().hex[:12]}"
     with _db() as c:
         c.execute(
-            "INSERT INTO call_sessions(call_session_id, lead_id, started_at) VALUES (?,?,?)",
-            (call_session_id, lead_id, _now_ms()),
+            "INSERT INTO call_sessions(call_session_id, lead_id, started_at, phone) VALUES (?,?,?,?)",
+            (call_session_id, lead_id, _now_ms(), phone or None),
         )
         c.commit()
     return {"call_session_id": call_session_id}
@@ -2802,7 +2900,8 @@ def api_call_lead_history(lead_id):
     with _db() as c:
         rows = c.execute(
             """SELECT s.call_session_id, s.outcome, s.summary, s.duration_s, s.notes,
-                      s.created_at, t.started_at, t.ended_at
+                      s.created_at, t.started_at, t.ended_at,
+                      t.recording_url, t.recording_sid, t.recording_duration_s
                FROM call_session_summaries s
                JOIN call_sessions t ON t.call_session_id = s.call_session_id
                WHERE s.lead_id = ?
@@ -2811,6 +2910,125 @@ def api_call_lead_history(lead_id):
             (lead_id,),
         ).fetchall()
     return {"calls": [dict(r) for r in rows]}
+
+
+# ── Best-time-to-call analytics ────────────────────────────────────────────
+#
+# Pulls historical outcomes from the dispositions table, buckets by
+# hour-of-day in America/New_York (Tyler's TZ), and surfaces the buckets
+# with the best pickup rate. "Pickup" = disposition code ∈ ANSWERED_CODES;
+# "miss" = disposition ∈ MISSED_CODES. Buckets with fewer than MIN_SAMPLES
+# total calls are filtered out so we don't recommend off a sample of 1.
+
+ANSWERED_CODES = ("interested", "callback", "not_interested", "dnc")
+MISSED_CODES   = ("voicemail", "no_answer", "skip")
+LOCAL_TZ_OFFSET_HOURS = -4  # ET (May = EDT). Crude but correct for May 2026.
+BEST_HOURS_MIN_SAMPLES = 2
+
+
+def _hour_bucket(ts_iso_or_ms):
+    """Return local hour (0-23) for either an ISO timestamp string or ms-int.
+
+    Crude UTC→ET shift; good enough for hour-bucketing. Tyler can swap in
+    zoneinfo later if he ever calls leads across multiple zones.
+    """
+    if ts_iso_or_ms is None:
+        return None
+    try:
+        if isinstance(ts_iso_or_ms, (int, float)):
+            dt = datetime.datetime.utcfromtimestamp(ts_iso_or_ms / 1000.0)
+        else:
+            s = str(ts_iso_or_ms).replace(" ", "T").rstrip("Z")
+            dt = datetime.datetime.fromisoformat(s)
+    except Exception:
+        return None
+    dt = dt + datetime.timedelta(hours=LOCAL_TZ_OFFSET_HOURS)
+    return dt.hour
+
+
+def compute_best_hours(rows):
+    """Aggregate disposition rows into 24 hour-of-day buckets.
+
+    Args:
+      rows: iterable of dicts/Row with keys `code` and `at` (timestamp).
+
+    Returns:
+      {
+        "buckets":     [{"hour":0..23, "answered":N, "missed":N, "total":N, "pickup_rate":0..1}, …],
+        "best_hour":   int or None,
+        "worst_hour":  int or None,
+        "sample_size": int,
+      }
+    """
+    buckets = {h: {"answered": 0, "missed": 0, "total": 0} for h in range(24)}
+    total_samples = 0
+    for r in rows:
+        code = (r.get("code") if isinstance(r, dict) else r["code"]) or ""
+        at   = (r.get("at")   if isinstance(r, dict) else r["at"])
+        h = _hour_bucket(at)
+        if h is None:
+            continue
+        if code in ANSWERED_CODES:
+            buckets[h]["answered"] += 1
+        elif code in MISSED_CODES:
+            buckets[h]["missed"] += 1
+        else:
+            continue  # ignore unknown codes
+        buckets[h]["total"] += 1
+        total_samples += 1
+    out_buckets = []
+    for h in range(24):
+        b = buckets[h]
+        pickup_rate = (b["answered"] / b["total"]) if b["total"] > 0 else 0.0
+        out_buckets.append({
+            "hour": h,
+            "answered": b["answered"],
+            "missed": b["missed"],
+            "total": b["total"],
+            "pickup_rate": round(pickup_rate, 3),
+        })
+    # Pick best/worst from buckets meeting min-samples threshold
+    eligible = [b for b in out_buckets if b["total"] >= BEST_HOURS_MIN_SAMPLES]
+    best  = max(eligible, key=lambda b: (b["pickup_rate"], b["total"]), default=None)
+    worst = min(eligible, key=lambda b: (b["pickup_rate"], -b["total"]), default=None)
+    return {
+        "buckets": out_buckets,
+        "best_hour":   best["hour"]  if best  else None,
+        "worst_hour":  worst["hour"] if worst else None,
+        "sample_size": total_samples,
+    }
+
+
+@app.get("/api/leads/<lead_id>/best-hours")
+def api_lead_best_hours(lead_id):
+    """Per-lead best-hour-of-day analysis.
+
+    Reads from the local `dispositions` table (every recorded call outcome
+    has a row there with `at` timestamp + `code`). Returns 24 hour buckets
+    + best/worst hours. Falls back to global cross-lead aggregation when
+    the lead has fewer than BEST_HOURS_MIN_SAMPLES total dispositions.
+    """
+    with _db() as c:
+        rows = c.execute(
+            "SELECT code, at FROM dispositions WHERE lead_id=? ORDER BY at",
+            (lead_id,),
+        ).fetchall()
+    per_lead = compute_best_hours([dict(r) for r in rows])
+    if per_lead["sample_size"] >= BEST_HOURS_MIN_SAMPLES:
+        return {"scope": "lead", "lead_id": lead_id, **per_lead}
+    # Not enough lead-specific data — fall back to global pickup-by-hour
+    with _db() as c:
+        global_rows = c.execute("SELECT code, at FROM dispositions").fetchall()
+    g = compute_best_hours([dict(r) for r in global_rows])
+    return {"scope": "global", "lead_id": lead_id, **g}
+
+
+@app.get("/api/leads/best-hours")
+def api_global_best_hours():
+    """Cross-lead best-hour aggregation — useful for queue prioritization."""
+    with _db() as c:
+        rows = c.execute("SELECT code, at FROM dispositions").fetchall()
+    return {"scope": "global", **compute_best_hours([dict(r) for r in rows])}
 
 
 @app.get("/api/call/<call_session_id>/transcript")

@@ -463,6 +463,216 @@ class TestTwilioAMD:
         assert "TWILIO_AUTH_TOKEN" in ev["voicemail_drop_error"]
 
 
+# ── Call recording ─────────────────────────────────────────────────────────
+
+class TestCallRecording:
+    def setup_method(self):
+        self._prev_rec  = server.RECORDING_ENABLED
+        self._prev_base = server.PUBLIC_BASE_URL
+        self._prev_amd  = server.AMD_ENABLED
+        server.AMD_ENABLED = False  # isolate recording test from AMD assertions
+        server.IVR_EVENTS.clear()
+        server.IVR_SEQ.clear()
+
+    def teardown_method(self):
+        server.RECORDING_ENABLED = self._prev_rec
+        server.PUBLIC_BASE_URL   = self._prev_base
+        server.AMD_ENABLED       = self._prev_amd
+
+    def test_voice_twiml_includes_record_when_enabled(self, client):
+        server.RECORDING_ENABLED = True
+        server.PUBLIC_BASE_URL   = "https://example.test"
+        r = client.post("/voice", data={"To": "+14045551234", "SessionId": "cs_rec"})
+        assert r.status_code == 200
+        body = r.data.decode("utf-8")
+        assert "record-from-answer-dual" in body
+        assert "recordingStatusCallback" in body
+        assert "session_id=cs_rec" in body
+
+    def test_voice_twiml_omits_record_when_disabled(self, client):
+        server.RECORDING_ENABLED = False
+        server.PUBLIC_BASE_URL   = "https://example.test"
+        r = client.post("/voice", data={"To": "+14045551234"})
+        body = r.data.decode("utf-8")
+        assert "record-from-answer-dual" not in body
+        assert "recordingStatusCallback" not in body
+
+    def test_recording_callback_persists_to_call_session(self, client, cleanup_demo):
+        # Set up a call_session row first
+        sid = client.post("/api/call/start", json={"lead_id": "test-rec"}).get_json()["call_session_id"]
+        r = client.post(f"/twilio/recording?session_id={sid}", data={
+            "RecordingUrl": "https://api.twilio.com/.../RE123.mp3",
+            "RecordingSid": "RE" + "0" * 32,
+            "RecordingDuration": "42",
+            "RecordingChannels": "2",
+        })
+        assert r.status_code == 200
+        with server._db() as db:
+            row = db.execute(
+                "SELECT recording_url, recording_sid, recording_duration_s, recording_channels "
+                "FROM call_sessions WHERE call_session_id=?",
+                (sid,),
+            ).fetchone()
+        assert row is not None
+        assert row["recording_url"].endswith("RE123.mp3")
+        assert row["recording_sid"] == "RE" + "0" * 32
+        assert row["recording_duration_s"] == 42
+        assert row["recording_channels"] == 2
+
+    def test_recording_callback_logs_ivr_event(self, client, cleanup_demo):
+        sid = client.post("/api/call/start", json={"lead_id": "test-rec2"}).get_json()["call_session_id"]
+        client.post(f"/twilio/recording?session_id={sid}", data={
+            "RecordingUrl": "https://api.twilio.com/x.mp3",
+            "RecordingSid": "RE" + "1" * 32,
+            "RecordingDuration": "10",
+        })
+        events = list(server.IVR_EVENTS.get(sid, []))
+        assert events and events[-1]["kind"] == "recording_complete"
+        assert events[-1]["duration_s"] == 10
+
+
+# ── Voicemail-drop <Say> TTS fallback (no MP3 needed) ──────────────────────
+
+class TestVoicemailDropSayFallback:
+    def setup_method(self):
+        self._prev_url  = server.VOICEMAIL_DROP_URL
+        self._prev_text = server.VOICEMAIL_DROP_TEXT
+        server.IVR_EVENTS.clear()
+        server.IVR_SEQ.clear()
+
+    def teardown_method(self):
+        server.VOICEMAIL_DROP_URL  = self._prev_url
+        server.VOICEMAIL_DROP_TEXT = self._prev_text
+
+    def test_drop_uses_say_when_only_text_configured(self, client, monkeypatch):
+        server.VOICEMAIL_DROP_URL  = ""
+        server.VOICEMAIL_DROP_TEXT = "Hey, this is Tyler with Nova. Call me back."
+        os.environ["TWILIO_AUTH_TOKEN"] = "fake-test"
+        captured = []
+
+        class FakeCtx:
+            def __init__(self, sid):
+                self.sid = sid
+            def update(self, twiml=None, **kw):
+                captured.append({"sid": self.sid, "twiml": twiml})
+
+        class FakeClient:
+            def __init__(self, *a, **k): pass
+            def calls(self, sid): return FakeCtx(sid)
+
+        import twilio.rest
+        monkeypatch.setattr(twilio.rest, "Client", FakeClient)
+
+        try:
+            r = client.post("/twilio/amd?session_id=cs_say", data={
+                "AnsweredBy": "machine_end_beep",
+                "CallSid": "CA" + "5" * 32,
+            })
+            assert r.status_code == 200
+            assert len(captured) == 1
+            twiml = captured[0]["twiml"]
+            assert "<Say" in twiml
+            assert "Polly" in twiml
+            assert "Tyler" in twiml
+            assert "<Play>" not in twiml
+            assert "<Hangup/>" in twiml
+        finally:
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+
+# ── Best-time-to-call analytics ────────────────────────────────────────────
+
+class TestComputeBestHours:
+    def test_empty_returns_no_recommendation(self):
+        r = server.compute_best_hours([])
+        assert r["best_hour"] is None
+        assert r["worst_hour"] is None
+        assert r["sample_size"] == 0
+        assert len(r["buckets"]) == 24
+
+    def test_single_call_below_min_samples(self):
+        # Min samples = 2; one call should NOT trigger a best-hour pick
+        rows = [{"code": "interested", "at": "2026-05-18T15:00:00"}]
+        r = server.compute_best_hours(rows)
+        assert r["sample_size"] == 1
+        # 11am ET = 15:00 UTC - 4 = 11
+        bucket_11 = next(b for b in r["buckets"] if b["hour"] == 11)
+        assert bucket_11["answered"] == 1
+        # No recommendation yet — only 1 sample, below threshold
+        assert r["best_hour"] is None
+
+    def test_picks_highest_pickup_rate_hour(self):
+        # Bucket 11am: 2 answered, 0 missed → 1.0 pickup
+        # Bucket 14pm: 1 answered, 2 missed → 0.33 pickup
+        rows = [
+            {"code": "interested",   "at": "2026-05-18T15:00:00"},  # 11am ET
+            {"code": "callback",     "at": "2026-05-18T15:30:00"},  # 11am ET
+            {"code": "interested",   "at": "2026-05-18T18:00:00"},  # 2pm ET
+            {"code": "voicemail",    "at": "2026-05-18T18:30:00"},  # 2pm ET
+            {"code": "no_answer",    "at": "2026-05-18T18:45:00"},  # 2pm ET
+        ]
+        r = server.compute_best_hours(rows)
+        assert r["best_hour"] == 11
+        assert r["worst_hour"] == 14
+        assert r["sample_size"] == 5
+
+    def test_ignores_unknown_codes(self):
+        rows = [{"code": "garbage_code", "at": "2026-05-18T15:00:00"}]
+        r = server.compute_best_hours(rows)
+        assert r["sample_size"] == 0
+
+    def test_ms_int_timestamp_works(self):
+        # 2026-05-18 15:00:00 UTC = 11am ET. ms epoch:
+        ts_ms = 1779800400000  # approximately
+        rows = [
+            {"code": "interested", "at": ts_ms},
+            {"code": "interested", "at": ts_ms + 60000},
+        ]
+        r = server.compute_best_hours(rows)
+        assert r["sample_size"] == 2
+        assert r["best_hour"] is not None  # crosses threshold
+
+
+class TestBestHoursEndpoint:
+    def setup_method(self):
+        with server._db() as db:
+            db.execute("DELETE FROM dispositions WHERE lead_id LIKE 'bh-test-%'")
+            db.commit()
+
+    def teardown_method(self):
+        with server._db() as db:
+            db.execute("DELETE FROM dispositions WHERE lead_id LIKE 'bh-test-%'")
+            db.commit()
+
+    def test_global_endpoint_returns_buckets(self, client):
+        r = client.get("/api/leads/best-hours")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["scope"] == "global"
+        assert len(body["buckets"]) == 24
+
+    def test_lead_endpoint_falls_back_to_global_when_no_data(self, client):
+        r = client.get("/api/leads/bh-test-nonexistent/best-hours")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["scope"] == "global"  # no data for this lead → global
+
+    def test_lead_endpoint_uses_lead_scope_with_enough_data(self, client):
+        with server._db() as db:
+            for code in ("interested", "callback", "voicemail"):
+                db.execute(
+                    "INSERT INTO dispositions(lead_id, phone, code, note, pass, at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    ("bh-test-A", "+14045551234", code, "", 1, "2026-05-18 15:00:00"),
+                )
+            db.commit()
+        r = client.get("/api/leads/bh-test-A/best-hours")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["scope"] == "lead"
+        assert body["sample_size"] == 3
+
+
 # ── /api/_debug/server-log access control ──────────────────────────────────
 
 class TestDebugLogEndpoint:
