@@ -1896,6 +1896,16 @@ def token():
     return jsonify({"token": tok.to_jwt(), "identity": "dialer"})
 
 
+@app.route("/voicemail-drop.mp3")
+def voicemail_drop_mp3():
+    """Dedicated route for the voicemail-drop audio. We can't rely on Flask's
+    static-folder serving alone because the running process was launched
+    before the file existed and Werkzeug's static handler doesn't pick up
+    new root-level files on this Windows/OneDrive setup. An explicit route
+    resolves the path on every request via send_from_directory."""
+    return send_from_directory(str(HERE), "voicemail-drop.mp3", mimetype="audio/mpeg")
+
+
 @app.route("/voice", methods=["POST"])
 def voice():
     to   = request.values.get("To", "")

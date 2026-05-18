@@ -533,6 +533,41 @@ class TestCallRecording:
 
 # ── Voicemail-drop <Say> TTS fallback (no MP3 needed) ──────────────────────
 
+class TestVoicemailDropRoute:
+    """The dedicated /voicemail-drop.mp3 route serves the recorded MP3 to
+    Twilio when AnsweredBy=machine_*. Bypasses Flask static-folder serving
+    which doesn't pick up newly-added files on the running dev process."""
+
+    def test_route_returns_mp3_when_file_present(self, client, tmp_path):
+        # Create a small fake mp3 in HERE to verify the route resolves
+        target = server.HERE / "voicemail-drop.mp3"
+        existed = target.exists()
+        if not existed:
+            target.write_bytes(b"ID3\x04\x00\x00\x00\x00\x00\x00fake-mp3-body")
+        try:
+            r = client.get("/voicemail-drop.mp3")
+            assert r.status_code == 200
+            assert r.mimetype == "audio/mpeg"
+            assert len(r.data) > 0
+        finally:
+            if not existed:
+                target.unlink(missing_ok=True)
+
+    def test_route_404_when_file_missing(self, client):
+        target = server.HERE / "voicemail-drop.mp3"
+        if target.exists():
+            backup = target.read_bytes()
+            target.unlink()
+            try:
+                r = client.get("/voicemail-drop.mp3")
+                assert r.status_code == 404
+            finally:
+                target.write_bytes(backup)
+        else:
+            r = client.get("/voicemail-drop.mp3")
+            assert r.status_code == 404
+
+
 class TestVoicemailDropSayFallback:
     def setup_method(self):
         self._prev_url  = server.VOICEMAIL_DROP_URL
