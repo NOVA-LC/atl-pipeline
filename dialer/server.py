@@ -1363,6 +1363,31 @@ def single():
     return send_from_directory(str(HERE), "single.html")
 
 
+@app.route("/api/_debug/server-log")
+def api_debug_server_log():
+    """Tail of server.out.log + server.err.log for the in-browser debug overlay.
+    No auth gate — this is dev-only diagnostic and only returns the LAST 200
+    lines from each, with secrets-shaped tokens redacted."""
+    out_path = HERE / "server.out.log"
+    err_path = HERE / "server.err.log"
+    def _read_tail(p, n=200):
+        if not p.exists():
+            return []
+        try:
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()[-n:]
+            return [l.rstrip("\n") for l in lines]
+        except Exception as e:
+            return [f"[read error: {e}]"]
+    def _redact(line):
+        # Coarse redactor: anything that looks like an API key or token
+        return re.sub(r"(api[_-]?key|token|secret|password|sid)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_\-]{16,}",
+                      r"\1=[REDACTED]", line, flags=re.IGNORECASE)
+    out_lines = [_redact(l) for l in _read_tail(out_path)]
+    err_lines = [_redact(l) for l in _read_tail(err_path)]
+    return jsonify({"stdout": out_lines, "stderr": err_lines})
+
+
 @app.route("/healthz")
 def healthz():
     return jsonify({

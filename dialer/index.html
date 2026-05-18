@@ -7206,6 +7206,328 @@ function showSummaryCard(summary, leadId) {
   `;
   document.body.appendChild(card);
 }
+
+// ═════════════════════════════════════════════════════════════════════════
+// DEBUG OVERLAY — Ctrl+Shift+L to toggle, persists across refresh
+// Captures: console.*, fetch requests/responses, state transitions,
+// AI coach traffic, uncaught errors. Buffer cap 500. Export as JSON.
+// ═════════════════════════════════════════════════════════════════════════
+(function installDebugOverlay() {
+  const MAX = 500;
+  const KEY = "dialer.debug.log";
+  const STATE_KEY = "dialer.debug.visible";
+  let buffer = [];
+  try {
+    const stored = localStorage.getItem(KEY);
+    if (stored) buffer = JSON.parse(stored).slice(-MAX);
+  } catch (_) {}
+
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(buffer.slice(-MAX))); } catch (_) {}
+  }
+
+  function _dbg(level, source, message, data) {
+    const entry = {
+      t: new Date().toISOString().slice(11, 23),  // HH:MM:SS.mmm
+      level: level || "info",                       // info|warn|err|net|state|ai|call
+      source: source || "",
+      message: String(message || ""),
+      data: data === undefined ? null : (typeof data === "string" ? data : safeStringify(data)),
+    };
+    buffer.push(entry);
+    if (buffer.length > MAX) buffer = buffer.slice(-MAX);
+    persist();
+    renderDebugPanel();
+  }
+  window._dbg = _dbg;
+
+  function safeStringify(o) {
+    try {
+      const seen = new WeakSet();
+      return JSON.stringify(o, (k, v) => {
+        if (typeof v === "object" && v !== null) {
+          if (seen.has(v)) return "[circular]";
+          seen.add(v);
+        }
+        if (typeof v === "function") return "[fn]";
+        return v;
+      }, 2);
+    } catch (e) { return "[unstringifiable: " + e.message + "]"; }
+  }
+
+  // Monkey-patch console.* — original calls still fire through to DevTools
+  ["log", "info", "warn", "error", "debug"].forEach(method => {
+    const original = console[method].bind(console);
+    console[method] = function (...args) {
+      original(...args);
+      const lvl = method === "warn" ? "warn" : (method === "error" ? "err" : "info");
+      const msg = args.map(a => typeof a === "string" ? a : safeStringify(a)).join(" ");
+      _dbg(lvl, "console." + method, msg);
+    };
+  });
+
+  // Monkey-patch fetch — capture URL, method, status, duration, body preview
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = typeof input === "string" ? input : (input && input.url) || "";
+    const method = (init && init.method) || "GET";
+    const t0 = performance.now();
+    _dbg("net", "fetch ->", `${method} ${url}`,
+         init && init.body ? { body: typeof init.body === "string" ? init.body.slice(0, 400) : "[non-string body]" } : null);
+    try {
+      const res = await origFetch(input, init);
+      const dt = Math.round(performance.now() - t0);
+      const level = res.ok ? "net" : "err";
+      _dbg(level, "fetch <-", `${res.status} ${method} ${url}  (${dt}ms)`,
+           { status: res.status, ct: res.headers.get("content-type") || "" });
+      return res;
+    } catch (e) {
+      const dt = Math.round(performance.now() - t0);
+      _dbg("err", "fetch xx", `FAIL ${method} ${url}  (${dt}ms): ${e.message}`);
+      throw e;
+    }
+  };
+
+  // Uncaught errors and unhandled rejections
+  window.addEventListener("error", e => {
+    _dbg("err", "window.onerror", `${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`);
+  });
+  window.addEventListener("unhandledrejection", e => {
+    const reason = e.reason && (e.reason.stack || e.reason.message || e.reason);
+    _dbg("err", "unhandledrejection", String(reason));
+  });
+
+  // Hook logCallEvent → debug buffer too (so the UI Call Events log isn't
+  // the only place these go)
+  if (typeof window.logCallEvent === "function") {
+    const orig = window.logCallEvent;
+    window.logCallEvent = function (msg, level) {
+      orig(msg, level);
+      _dbg(level === "err" ? "err" : (level === "warn" ? "warn" : "call"), "call-event", msg);
+    };
+  }
+
+  // State-flag watcher — polls every 500ms and logs transitions on the
+  // flags that matter most for diagnosis
+  const WATCH = ["callLive", "autoDialer", "autoAdvance", "paused",
+                 "pauseAfterCurrent", "waitingForResume", "dialingLeadId",
+                 "currentCallSessionId", "lastOutcome", "idx", "aiOn", "demoMode"];
+  let lastSnapshot = {};
+  setInterval(() => {
+    if (typeof state === "undefined") return;
+    const next = {};
+    WATCH.forEach(k => { next[k] = state[k]; });
+    Object.keys(next).forEach(k => {
+      if (next[k] !== lastSnapshot[k]) {
+        _dbg("state", "state." + k, `${JSON.stringify(lastSnapshot[k])} → ${JSON.stringify(next[k])}`);
+      }
+    });
+    lastSnapshot = next;
+  }, 500);
+
+  // Build the overlay DOM
+  const css = document.createElement("style");
+  css.textContent = `
+    #debug-overlay {
+      position: fixed; right: 12px; bottom: 12px; z-index: 99999;
+      width: 540px; max-width: calc(100vw - 24px);
+      height: 420px; max-height: 70vh;
+      background: #0b1220; color: #e2e8f0;
+      border: 1px solid #334155; border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+      font: 11px/1.4 ui-monospace, "JetBrains Mono", Consolas, monospace;
+      display: none; flex-direction: column;
+    }
+    #debug-overlay.open { display: flex; }
+    #debug-overlay header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 8px; background: #1e293b;
+      border-bottom: 1px solid #334155;
+      border-radius: 8px 8px 0 0;
+    }
+    #debug-overlay header strong { color: #f59e0b; }
+    #debug-overlay header button {
+      background: transparent; color: #cbd5e1; border: 1px solid #475569;
+      border-radius: 4px; padding: 2px 8px; font: inherit; cursor: pointer;
+    }
+    #debug-overlay header button:hover { background: #334155; color: #fff; }
+    #debug-overlay header input {
+      flex: 1; background: #0f172a; color: #e2e8f0;
+      border: 1px solid #475569; border-radius: 4px;
+      padding: 2px 6px; font: inherit;
+    }
+    #debug-overlay-body {
+      flex: 1; overflow-y: auto; padding: 4px 8px;
+      font-size: 11px;
+    }
+    #debug-overlay-body .row { padding: 1px 0; display: grid;
+      grid-template-columns: 60px 50px 110px 1fr; gap: 6px;
+      border-bottom: 1px solid #1e293b; }
+    #debug-overlay-body .row .t   { color: #64748b; }
+    #debug-overlay-body .row .lvl { font-weight: 700; }
+    #debug-overlay-body .row.info  .lvl { color: #94a3b8; }
+    #debug-overlay-body .row.warn  .lvl { color: #fbbf24; }
+    #debug-overlay-body .row.err   .lvl { color: #f87171; background: #450a0a; }
+    #debug-overlay-body .row.err            { background: #1f0a0a; }
+    #debug-overlay-body .row.net   .lvl { color: #60a5fa; }
+    #debug-overlay-body .row.state .lvl { color: #c084fc; }
+    #debug-overlay-body .row.call  .lvl { color: #34d399; }
+    #debug-overlay-body .row.ai    .lvl { color: #f472b6; }
+    #debug-overlay-body .row .src { color: #94a3b8; }
+    #debug-overlay-body .row .msg { white-space: pre-wrap; word-break: break-word; }
+    #debug-overlay-body .row .msg pre { margin: 2px 0 0; color: #64748b; font-size: 10px;
+      white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+    #debug-trigger {
+      position: fixed; right: 12px; bottom: 12px; z-index: 99998;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #1e293b; color: #f59e0b; border: 1px solid #475569;
+      cursor: pointer; font: 16px/30px ui-monospace, monospace; text-align: center;
+      opacity: 0.6;
+    }
+    #debug-trigger:hover { opacity: 1; }
+    #debug-overlay.open ~ #debug-trigger { display: none; }
+  `;
+  document.head.appendChild(css);
+
+  const overlay = document.createElement("div");
+  overlay.id = "debug-overlay";
+  overlay.innerHTML = `
+    <header>
+      <strong>🐞 Dialer Debug</strong>
+      <input id="debug-filter" placeholder="filter… (e.g. fetch, state, err)" />
+      <button id="debug-server" type="button" title="Pull server.out + server.err tails">Server</button>
+      <button id="debug-clear" type="button">Clear</button>
+      <button id="debug-export" type="button">Export</button>
+      <button id="debug-close" type="button">×</button>
+    </header>
+    <div id="debug-overlay-body"></div>
+  `;
+  document.body.appendChild(overlay);
+
+  const trigger = document.createElement("button");
+  trigger.id = "debug-trigger";
+  trigger.title = "Open debug log (Ctrl+Shift+L)";
+  trigger.textContent = "🐞";
+  trigger.addEventListener("click", () => toggleDebugPanel(true));
+  document.body.appendChild(trigger);
+
+  const body = overlay.querySelector("#debug-overlay-body");
+  const filterInput = overlay.querySelector("#debug-filter");
+
+  function escapeHtmlLite(s) {
+    return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  }
+
+  function renderDebugPanel() {
+    if (!overlay.classList.contains("open")) return;
+    const q = (filterInput.value || "").toLowerCase();
+    const rows = buffer.slice(-MAX).filter(e => {
+      if (!q) return true;
+      return (e.level + " " + e.source + " " + e.message + " " + (e.data || "")).toLowerCase().includes(q);
+    });
+    body.innerHTML = rows.map(e => `
+      <div class="row ${e.level}">
+        <span class="t">${e.t}</span>
+        <span class="lvl">${e.level.toUpperCase()}</span>
+        <span class="src">${escapeHtmlLite(e.source)}</span>
+        <span class="msg">${escapeHtmlLite(e.message)}${e.data ? `<pre>${escapeHtmlLite(e.data)}</pre>` : ""}</span>
+      </div>
+    `).join("");
+    body.scrollTop = body.scrollHeight;
+  }
+  window._renderDebugPanel = renderDebugPanel;
+  // Replace the stub _dbg-internal call to renderDebugPanel with the real one
+  const realRender = renderDebugPanel;
+  renderDebugPanel = realRender;
+
+  function toggleDebugPanel(force) {
+    const want = force === undefined ? !overlay.classList.contains("open") : !!force;
+    overlay.classList.toggle("open", want);
+    try { localStorage.setItem(STATE_KEY, want ? "1" : "0"); } catch (_) {}
+    if (want) renderDebugPanel();
+  }
+  window.toggleDebugPanel = toggleDebugPanel;
+
+  overlay.querySelector("#debug-close").addEventListener("click", () => toggleDebugPanel(false));
+  overlay.querySelector("#debug-clear").addEventListener("click", () => {
+    buffer = [];
+    persist();
+    renderDebugPanel();
+    _dbg("info", "debug", "Buffer cleared by user");
+  });
+  overlay.querySelector("#debug-server").addEventListener("click", async () => {
+    try {
+      const r = await origFetch("/api/_debug/server-log");
+      const data = await r.json();
+      const allLines = [
+        ...(data.stdout || []).map(l => ({ stream: "stdout", line: l })),
+        ...(data.stderr || []).map(l => ({ stream: "stderr", line: l })),
+      ];
+      _dbg("info", "server-log", `Pulled ${allLines.length} server lines (last 200/200)`);
+      allLines.slice(-100).forEach(({ stream, line }) => {
+        const lvl = /error|fail|exception|traceback/i.test(line) ? "err"
+                  : /warn/i.test(line) ? "warn"
+                  : stream === "stderr" ? "warn" : "info";
+        _dbg(lvl, "server:" + stream, line);
+      });
+    } catch (e) {
+      _dbg("err", "server-log", "Failed to fetch /api/_debug/server-log: " + e.message);
+    }
+  });
+  overlay.querySelector("#debug-export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(buffer, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dialer-debug-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  });
+  filterInput.addEventListener("input", renderDebugPanel);
+
+  // Keyboard shortcut: Ctrl+Shift+L
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) {
+      e.preventDefault();
+      toggleDebugPanel();
+    }
+  });
+
+  // Restore visibility
+  try {
+    if (localStorage.getItem(STATE_KEY) === "1") toggleDebugPanel(true);
+  } catch (_) {}
+
+  // Patch _dbg to render
+  const origDbg = _dbg;
+  window._dbg = function (level, source, message, data) {
+    origDbg(level, source, message, data);
+    if (overlay.classList.contains("open")) renderDebugPanel();
+  };
+
+  // Hook key dialer functions to log their entry points
+  function wrap(name, level) {
+    const fn = window[name];
+    if (typeof fn !== "function") return;
+    window[name] = function (...args) {
+      window._dbg(level || "call", name, `(${args.map(a =>
+        typeof a === "object" ? "{...}" : JSON.stringify(a) || String(a)
+      ).join(", ")})`);
+      return fn.apply(this, args);
+    };
+  }
+  // Defer wrapping until next tick so all top-level functions are defined
+  setTimeout(() => {
+    ["makeCall", "hangUpAndStop", "hangUp", "toggleAutoDialer", "togglePauseAfterCurrent",
+     "recallLastLead", "markOutcome", "disposeAndNext", "advanceScript", "scriptBack",
+     "goTo", "nextLead", "autoDispose", "maybeExecuteAutonomousAction",
+     "aiOnProspectUtterance", "aiOnAgentUtterance", "useIvrSuggestion",
+     "openModal", "closeModal", "openDrawer", "closeDrawer"].forEach(n => wrap(n, "call"));
+    window._dbg("info", "debug", "Debug overlay installed. Ctrl+Shift+L to toggle. " + buffer.length + " entries restored.");
+  }, 0);
+})();
 </script>
 </body>
 </html>
