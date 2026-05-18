@@ -1251,8 +1251,11 @@
     border: 1px solid #dbeafe;
     margin-bottom: var(--s-4);
   }
-  .now-calling-status .dot.live {
+  .now-calling-status .dot {
     width: 8px; height: 8px; border-radius: 50%;
+    background: #cbd5e1;
+  }
+  .now-calling-status .dot.live {
     background: var(--green);
     box-shadow: 0 0 0 3px var(--green-soft);
     animation: nc-pulse 1.6s ease-in-out infinite;
@@ -2427,7 +2430,7 @@
   <main class="col-center">
   <section class="active-call-panel lead-card" id="lead-card">
     <article class="now-calling-card" id="now-calling-card" data-empty="true">
-      <span class="now-calling-status"><span class="dot live"></span> Now Calling...</span>
+      <span class="now-calling-status" id="now-calling-status"><span class="dot"></span> <span id="now-calling-status-text">Ready to dial</span></span>
       <div class="now-calling-grid">
         <div class="now-calling-info">
           <div class="phone-hero" id="lead-phone-hero" onclick="cyclePhone()" title="Click to cycle to next number"></div>
@@ -5958,11 +5961,20 @@ function maybeExecuteAutonomousAction(result) {
     const code = action.split(':', 2)[1];
     const allowed = ['no_answer', 'voicemail', 'dnc', 'not_interested'];
     if (!allowed.includes(code)) return;
-    if (autonomous) {
+    // SAFETY: NEVER auto-hangup a live call. Even in fully-autonomous mode,
+    // a dispose action that would end an active call must wait for human
+    // confirmation. Auto-dispose only fires when there's no call in flight
+    // (post-hangup classification). Prevents the AI from killing a live
+    // conversation on a misread.
+    if (autonomous && !state.call) {
       autoDispose(code, result.reasoning || 'AI autonomous disposition');
     } else {
-      showAiTip(`Suggested outcome: ${code.replace('_', ' ')} — click to confirm.`);
+      const liveTag = state.call ? ' (would END the call)' : '';
+      showAiTip(`Suggested outcome${liveTag}: ${code.replace('_', ' ')} — click to confirm.`);
       wireAiTipAction(() => markOutcome(code));
+      if (typeof logCallEvent === 'function') {
+        logCallEvent(`AI suggests outcome "${code.replace('_', ' ')}" — awaiting confirmation${state.call ? ' (call still live)' : ''}`, 'warn');
+      }
     }
     return;
   }
@@ -6306,6 +6318,25 @@ const BTN_ICON_PAUSE_CLOCK = '<circle cx="10" cy="11" r="6.5" stroke="currentCol
 const BTN_ICON_PLAY_ARROW = '<path d="M6 4.5v11l9-5.5z" fill="currentColor"/>';
 
 function renderBottomControls() {
+  // Sync the "Now Calling..." pill at the top of the active-call card to the
+  // real call state so the status line doesn't always read "Now Calling..."
+  // even after hangup.
+  const ncStatus = document.getElementById("now-calling-status");
+  const ncText   = document.getElementById("now-calling-status-text");
+  const ncDot    = ncStatus ? ncStatus.querySelector(".dot") : null;
+  if (ncText && ncDot) {
+    if (state.callLive) {
+      ncText.textContent = "Now Calling...";
+      ncDot.className = "dot live";
+    } else if (state.autoDialer) {
+      ncText.textContent = "Dialing next…";
+      ncDot.className = "dot";
+    } else {
+      ncText.textContent = "Ready to dial";
+      ncDot.className = "dot";
+    }
+  }
+
   const primaryBtn   = document.getElementById("btn-primary-action");
   const primaryLabel = document.getElementById("btn-primary-label");
   const primarySub   = document.getElementById("btn-primary-sub");
