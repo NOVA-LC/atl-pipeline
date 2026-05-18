@@ -3363,7 +3363,7 @@ async function refreshCallHistory(leadId) {
     return;
   }
   try {
-    const r = await fetch(`/api/call/lead/${encodeURIComponent(leadId)}/history`);
+    const r = await apiFetch(`/api/call/lead/${encodeURIComponent(leadId)}/history`);
     const data = await r.json();
     const calls = data.calls || [];
     if (!calls.length) {
@@ -3382,7 +3382,7 @@ async function refreshCallHistory(leadId) {
         if (!body.dataset.loaded) {
           body.innerHTML = '<div class="call-history-loading">Loading transcript…</div>';
           try {
-            const t = await fetch(`/api/call/${id}/transcript`).then(r => r.json());
+            const t = await apiFetch(`/api/call/${id}/transcript`).then(r => r.json());
             body.innerHTML = renderTranscriptEntries(t.entries || []);
             body.dataset.loaded = '1';
           } catch (e) {
@@ -3402,7 +3402,7 @@ async function refreshBookings(leadId) {
   const wrap = document.getElementById('bookings-list');
   if (!wrap || !leadId) return;
   try {
-    const r = await fetch(`/api/booking/lead/${encodeURIComponent(leadId)}`);
+    const r = await apiFetch(`/api/booking/lead/${encodeURIComponent(leadId)}`);
     const data = await r.json();
     const bookings = (data.bookings || [])
       .filter(b => new Date(b.start_iso) >= new Date(Date.now() - 86400000));
@@ -4391,7 +4391,7 @@ async function saveNotesNow() {
   const textarea = $("call-notes");
   if (!lead?.id || !textarea) return;
   try {
-    const r = await fetch(`/api/notes/${encodeURIComponent(lead.id)}`, {
+    const r = await apiFetch(`/api/notes/${encodeURIComponent(lead.id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ body: textarea.value }),
@@ -4429,7 +4429,7 @@ async function loadNotesForLead(leadId) {
   if (!textarea) return;
   if (!leadId) { textarea.value = ""; syncSaveNoteButton(); return; }
   try {
-    const r = await fetch(`/api/notes/${encodeURIComponent(leadId)}`);
+    const r = await apiFetch(`/api/notes/${encodeURIComponent(leadId)}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     textarea.value = d.body || "";
@@ -4602,7 +4602,7 @@ async function makeCall() {
         // Fire-and-forget — disposition runs in background.
         (async () => {
           try {
-            const r = await fetch('/api/agent/disposition', {
+            const r = await apiFetch('/api/agent/disposition', {
               method: 'POST',
               headers: {'Content-Type':'application/json'},
               body: JSON.stringify({call_session_id: sessionId}),
@@ -5381,7 +5381,7 @@ function _getTwilioRemoteStream() {
 async function startMicCapture() {
   if (!state.aiOn || state.mic.active || state.mic.socket) return;
   try {
-    const tokenRes = await fetch('/api/deepgram-token');
+    const tokenRes = await apiFetch('/api/deepgram-token');
     const tokenData = await tokenRes.json();
     if (!tokenData.key) throw new Error(tokenData.error || 'No Deepgram key');
 
@@ -5633,7 +5633,7 @@ async function aiOnProspectUtterance(text) {
   setAiStatus('thinking');
   let finalResult = null;
   try {
-    const res = await fetch('/api/agent/coach', {
+    const res = await apiFetch('/api/agent/coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
@@ -5904,17 +5904,34 @@ function dispatchCoachAction(action) {
   console.warn('Unknown coach action', action);
 }
 
-async function postJson(url, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  // Pick up DIALER_AUTH_TOKEN from a meta tag or localStorage so production
-  // deploys can authenticate without baking the token into source.
-  const token = (document.querySelector('meta[name="dialer-token"]') || {}).content
-              || (window.localStorage ? localStorage.getItem('dialer.token') : '') || '';
+// Central /api/* fetch with auth header injection.
+// EVERY caller hitting /api/* MUST go through this. Direct fetch() bypasses
+// the X-Dialer-Token header and will 401 once DIALER_AUTH_TOKEN is set on
+// the server. See server.py:_enforce_dialer_auth.
+function _dialerToken() {
+  const meta = document.querySelector('meta[name="dialer-token"]');
+  return (meta && meta.content)
+      || (window.localStorage ? localStorage.getItem('dialer.token') : '')
+      || '';
+}
+
+async function apiFetch(url, opts) {
+  opts = opts || {};
+  const headers = Object.assign({}, opts.headers || {});
+  const token = _dialerToken();
   if (token) headers['X-Dialer-Token'] = token;
-  const res = await fetch(url, {
+  // Default JSON Content-Type only when there's a body and caller didn't set one
+  if (opts.body && !headers['Content-Type'] && typeof opts.body === 'string') {
+    headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
+async function postJson(url, body) {
+  const res = await apiFetch(url, {
     method: 'POST',
-    headers,
     body: JSON.stringify(body || {}),
+    headers: { 'Content-Type': 'application/json' },
   });
   if (!res.ok) throw new Error(`${url} ${res.status}`);
   return res.json();
@@ -6024,18 +6041,26 @@ function handleScheduleAction(spec, autonomous) {
   const human  = fmtScheduleHuman(start, duration);
 
   // Persist regardless of mode — booking history is the source of truth in-app.
-  fetch('/api/booking', {
+  // Route through apiFetch so the auth header gets injected in production AND
+  // surface failures via logCallEvent so silent drops don't happen.
+  apiFetch('/api/booking', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       lead_id: lead && lead.id || '',
+      type: 'callback',
       phone,
       business_name: lead && lead.business_name || '',
-      title, start, duration_min: duration, notes,
+      title, start_iso: start, duration_min: duration, notes,
       session_id: state.sessionId,
       gcal_url: gcalUrl,
     }),
-  }).catch(e => console.error('booking persist failed', e));
+  })
+    .then(r => { if (!r.ok) throw new Error(`booking ${r.status}`); return r.json(); })
+    .catch(e => {
+      console.error('booking persist failed', e);
+      if (typeof logCallEvent === 'function') logCallEvent(`Booking persist failed: ${e.message}`, 'err');
+    });
 
   if (autonomous) {
     try { window.open(gcalUrl, '_blank', 'noopener,noreferrer'); } catch (_) {}
@@ -6056,7 +6081,7 @@ async function autoDispose(code, reason) {
   if (!lead) return;
   const phone = (lead.phones && lead.phones[state.phoneIdx]) || '';
   try {
-    await fetch('/api/agent/auto-dispose', {
+    await apiFetch('/api/agent/auto-dispose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -6276,8 +6301,22 @@ function toggleAutoDialer() {
   // mute. Trigger makeCall() on the leading edge if a lead is selected
   // and no call is in flight. Auto-advance picks up subsequent leads from
   // the disconnect handler as before.
-  if (state.autoDialer && !state.call && state.leads && state.leads[state.idx]) {
-    setTimeout(() => { if (state.autoDialer && !state.call) makeCall(); }, 50);
+  // I6 fix: guard against rapid clicks during slow Twilio device.connect()
+  // by setting state.dialingLeadId SYNCHRONOUSLY here. The setTimeout guard
+  // alone would let a second click during the 50ms window fire makeCall
+  // twice on the same lead. dialingLeadId is cleared by the disconnect
+  // handler and the makeCall catch block.
+  if (state.autoDialer && !state.call && !state.dialingLeadId &&
+      state.leads && state.leads[state.idx]) {
+    state.dialingLeadId = state.leads[state.idx].id;
+    setTimeout(() => {
+      if (state.autoDialer && !state.call) {
+        makeCall();
+      } else {
+        // Toggle flipped off during the 50ms window — release the guard
+        state.dialingLeadId = null;
+      }
+    }, 50);
   }
 }
 
@@ -7240,7 +7279,9 @@ try { (function installDebugOverlay() {
       buffer.push(entry);
       if (buffer.length > MAX) buffer = buffer.slice(-MAX);
       persist();
-      try { renderDebugPanel(); } catch (_) {}
+      // I1 fix: don't call renderDebugPanel here — the wrapped window._dbg
+      // below handles rendering. Calling it both places caused 2x innerHTML
+      // rewrites per log entry under load.
     } catch (_) {}
   }
   window._dbg = _dbg;
@@ -7317,13 +7358,27 @@ try { (function installDebugOverlay() {
                  "pauseAfterCurrent", "waitingForResume", "dialingLeadId",
                  "currentCallSessionId", "lastOutcome", "idx", "aiOn", "demoMode"];
   let lastSnapshot = {};
+  function _leadLabel(idx) {
+    try {
+      const lead = state.leads && state.leads[idx];
+      if (lead) return `${lead.business_name || "(no name)"} [${lead.id || "?"}]`;
+    } catch (_) {}
+    return "(no lead)";
+  }
   setInterval(() => {
     if (typeof state === "undefined") return;
     const next = {};
     WATCH.forEach(k => { next[k] = state[k]; });
     Object.keys(next).forEach(k => {
       if (next[k] !== lastSnapshot[k]) {
-        _dbg("state", "state." + k, `${JSON.stringify(lastSnapshot[k])} → ${JSON.stringify(next[k])}`);
+        // I2 fix: when idx changes, include the lead label so the log entry
+        // is interpretable after queue resort changes which lead an index
+        // points at.
+        let msg = `${JSON.stringify(lastSnapshot[k])} → ${JSON.stringify(next[k])}`;
+        if (k === "idx") {
+          msg += `   (now: ${_leadLabel(next[k])})`;
+        }
+        _dbg("state", "state." + k, msg);
       }
     });
     lastSnapshot = next;
@@ -7459,7 +7514,11 @@ try { (function installDebugOverlay() {
   });
   overlay.querySelector("#debug-server").addEventListener("click", async () => {
     try {
-      const r = await origFetch("/api/_debug/server-log");
+      // Use apiFetch so the auth header is injected; fall back to origFetch
+      // (the unwrapped fetch we captured before monkey-patching) so this
+      // log-the-log-fetch doesn't recursively log itself.
+      const fetcher = (typeof window.apiFetch === "function") ? window.apiFetch : origFetch;
+      const r = await fetcher("/api/_debug/server-log");
       const data = await r.json();
       const allLines = [
         ...(data.stdout || []).map(l => ({ stream: "stdout", line: l })),

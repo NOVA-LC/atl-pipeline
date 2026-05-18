@@ -879,6 +879,15 @@ def auto_disposition(*, transcript: list, duration_s: int) -> dict:
         result.setdefault("confidence", 0.0)
         result.setdefault("callback_iso", None)
         result.setdefault("reasoning", "")
+        # Validate callback_iso shape — must be ISO 8601 with timezone. The LLM
+        # sometimes emits naive datetimes or natural-language strings; downstream
+        # scheduling code can't trust those, so null them out.
+        cb = result.get("callback_iso")
+        if cb and isinstance(cb, str):
+            if not re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:?\d{2}|Z)$", cb.strip()):
+                result["callback_iso"] = None
+        else:
+            result["callback_iso"] = None
         return result
     except Exception as e:
         return {"outcome": "", "confidence": 0.0, "callback_iso": None, "reasoning": f"exception: {e}"}

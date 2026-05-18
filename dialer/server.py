@@ -271,7 +271,12 @@ def _now_ms() -> int:
 
 
 def _short_call_summary(transcript_text: str, business_name: str, owner_name: str = "") -> str:
-    """Deterministic ≤12-word summary for calls too short to bother an LLM."""
+    """Deterministic ≤12-word summary for calls too short to bother an LLM.
+
+    Serves the LEGACY single-blob transcript path (call_transcripts table).
+    The newer structured-entries path uses coach.summarize_call instead.
+    These two helpers intentionally accept different input shapes and
+    shouldn't be merged without first migrating all legacy callers."""
     text = (transcript_text or "").strip()
     if not text:
         return "No answer"
@@ -1363,11 +1368,48 @@ def single():
     return send_from_directory(str(HERE), "single.html")
 
 
+_SECRET_PATTERNS = [
+    # key=value style (catches positive cases the dev would expect)
+    (re.compile(r"(api[_-]?key|token|secret|password|sid|authorization)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_\-\.]{16,}",
+                re.IGNORECASE), r"\1=[REDACTED]"),
+    # Anthropic keys: sk-ant-...
+    (re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{20,}\b"), "[REDACTED_ANTHROPIC_KEY]"),
+    # Twilio Account SIDs (AC + 32 hex) and API Key SIDs (SK + 32 hex)
+    (re.compile(r"\bAC[a-f0-9]{32}\b"), "[REDACTED_TWILIO_AC]"),
+    (re.compile(r"\bSK[a-f0-9]{32}\b"), "[REDACTED_TWILIO_SK]"),
+    # JWTs (header.payload.sig)
+    (re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{6,}\b"), "[REDACTED_JWT]"),
+    # Bearer tokens / Basic auth headers
+    (re.compile(r"\b(Bearer|Basic)\s+[A-Za-z0-9._\-=]{16,}\b"), r"\1 [REDACTED]"),
+    # OpenAI keys
+    (re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"), "[REDACTED_OPENAI_KEY]"),
+    # Deepgram keys (40-hex)
+    (re.compile(r"\b[a-f0-9]{40}\b"), "[REDACTED_HEX40]"),
+]
+
+
+def _redact_log_line(line):
+    """Belt-and-suspenders secret scrubber for the debug log endpoint."""
+    s = line
+    for pat, repl in _SECRET_PATTERNS:
+        s = pat.sub(repl, s)
+    return s
+
+
 @app.route("/api/_debug/server-log")
 def api_debug_server_log():
     """Tail of server.out.log + server.err.log for the in-browser debug overlay.
-    No auth gate — this is dev-only diagnostic and only returns the LAST 200
-    lines from each, with secrets-shaped tokens redacted."""
+    Requires DIALER_AUTH_TOKEN even in dev mode — the @before_request gate
+    skips when the token env var is unset, but here we require it always
+    because the log content is more sensitive than other /api/* endpoints
+    (it can contain raw API keys, JWTs, account SIDs from tracebacks)."""
+    if DIALER_AUTH_TOKEN:
+        # Normal /api/* gate already enforced in @before_request — fine
+        pass
+    else:
+        # Dev mode (no token configured): allow but only from localhost
+        if request.remote_addr not in {"127.0.0.1", "::1"}:
+            return jsonify({"error": "debug log restricted to localhost when DIALER_AUTH_TOKEN unset"}), 403
     out_path = HERE / "server.out.log"
     err_path = HERE / "server.err.log"
     def _read_tail(p, n=200):
@@ -1379,12 +1421,8 @@ def api_debug_server_log():
             return [l.rstrip("\n") for l in lines]
         except Exception as e:
             return [f"[read error: {e}]"]
-    def _redact(line):
-        # Coarse redactor: anything that looks like an API key or token
-        return re.sub(r"(api[_-]?key|token|secret|password|sid)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_\-]{16,}",
-                      r"\1=[REDACTED]", line, flags=re.IGNORECASE)
-    out_lines = [_redact(l) for l in _read_tail(out_path)]
-    err_lines = [_redact(l) for l in _read_tail(err_path)]
+    out_lines = [_redact_log_line(l) for l in _read_tail(out_path)]
+    err_lines = [_redact_log_line(l) for l in _read_tail(err_path)]
     return jsonify({"stdout": out_lines, "stderr": err_lines})
 
 
@@ -2329,13 +2367,14 @@ def api_booking_create():
     except (TypeError, ValueError):
         duration_min = 15
 
-    # Validate gcal_url to prevent javascript: / data: URL footguns. The client
-    # only ever generates calendar.google.com URLs from `handleScheduleAction`,
-    # but a manipulated LLM response could otherwise smuggle a hostile URL into
-    # the bookings table to fire later when the row is rendered.
+    # Validate gcal_url. Reject explicitly (400) rather than silently dropping —
+    # silent-drop creates a stealth failure where the booking row persists with
+    # an empty URL and the user has no signal that the LLM emitted a hostile
+    # value. Whitelist Google Calendar hosts only.
     raw_url = (body.get("gcal_url") or "").strip()
     if raw_url and not raw_url.startswith(("https://calendar.google.com/", "https://www.google.com/calendar/")):
-        raw_url = ""  # silently drop unsafe URLs; client can still rebuild from fields
+        return jsonify({"error": "gcal_url must point at calendar.google.com",
+                        "got": raw_url[:80]}), 400
 
     with _db() as c:
         cur = c.execute(
@@ -2438,9 +2477,9 @@ def api_call_entry(call_session_id):
             (call_session_id,),
         ).fetchone()
         if ended is None:
-            return {"ok": False, "reason": "unknown call_session_id"}, 404
+            return jsonify({"ok": False, "reason": "unknown call_session_id"}), 404
         if ended["ended_at"] is not None:
-            return {"ok": False, "reason": "session ended"}, 410
+            return jsonify({"ok": False, "reason": "session ended"}), 410
         c.execute(
             "INSERT INTO call_session_entries(call_session_id, role, text, ts) VALUES (?,?,?,?)",
             (call_session_id, role, text[:4000], ts),
@@ -2451,6 +2490,10 @@ def api_call_entry(call_session_id):
 
 @app.post("/api/call/<call_session_id>/end")
 def api_call_end(call_session_id):
+    """Idempotent. First call wins; subsequent calls return the existing
+    summary instead of regenerating + overwriting. Eliminates the
+    race-condition class where hangUpAndStop and the Twilio disconnect
+    handler both fire /end and race on INSERT OR REPLACE."""
     from coach import summarize_call
     body = request.get_json(force=True, silent=True) or {}
     outcome = body.get("outcome") or ""
@@ -2462,14 +2505,31 @@ def api_call_end(call_session_id):
             (call_session_id,),
         ).fetchone()
         if not row:
-            return {"error": "unknown call_session_id"}, 404
+            return jsonify({"error": "unknown call_session_id"}), 404
+
+        # Idempotency: if session already ended AND a summary exists, return it
+        if row["ended_at"] is not None:
+            existing = c.execute(
+                "SELECT outcome, summary, duration_s FROM call_session_summaries WHERE call_session_id=?",
+                (call_session_id,),
+            ).fetchone()
+            if existing:
+                return jsonify({
+                    "call_session_id": call_session_id,
+                    "outcome": existing["outcome"],
+                    "summary": existing["summary"],
+                    "duration_s": existing["duration_s"],
+                    "already_ended": True,
+                })
+            # No summary yet (ended_at set, summary missing) → re-derive below
+
         lead_id    = row["lead_id"]
         started_at = row["started_at"]
-        ended_at   = _now_ms()
+        ended_at   = row["ended_at"] or _now_ms()
         duration_s = max(0, (ended_at - started_at) // 1000)
 
         c.execute(
-            "UPDATE call_sessions SET ended_at=? WHERE call_session_id=?",
+            "UPDATE call_sessions SET ended_at=? WHERE call_session_id=? AND ended_at IS NULL",
             (ended_at, call_session_id),
         )
         entry_rows = c.execute(
@@ -2486,20 +2546,26 @@ def api_call_end(call_session_id):
         summary_text = f"{outcome or 'call'} — see transcript"
 
     with _db() as c:
-        c.execute(
-            "INSERT OR REPLACE INTO call_session_summaries "
-            "(call_session_id, lead_id, outcome, summary, duration_s, notes, created_at) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (call_session_id, lead_id, outcome, summary_text, duration_s, notes, _now_ms()),
-        )
-        c.commit()
+        # Only INSERT if no summary exists yet — never overwrite a prior one
+        existing = c.execute(
+            "SELECT 1 FROM call_session_summaries WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+        if not existing:
+            c.execute(
+                "INSERT INTO call_session_summaries "
+                "(call_session_id, lead_id, outcome, summary, duration_s, notes, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (call_session_id, lead_id, outcome, summary_text, duration_s, notes, _now_ms()),
+            )
+            c.commit()
 
-    return {
+    return jsonify({
         "call_session_id": call_session_id,
         "outcome": outcome,
         "summary": summary_text,
         "duration_s": duration_s,
-    }
+    })
 
 
 @app.get("/api/call/lead/<lead_id>/history")
