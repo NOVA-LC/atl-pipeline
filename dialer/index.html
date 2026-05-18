@@ -846,6 +846,53 @@
   .action.not_interested:hover { color: var(--red); border-color: var(--red); background: var(--red-soft); }
   .action.interested:hover     { color: var(--green); border-color: var(--green); background: var(--green-soft); }
   .action.dnc:hover            { color: var(--red); border-color: var(--red); background: var(--red-soft); }
+  /* Build button stateful UI — morphs through idle → building → complete in same slot */
+  .build-card-wrap { display: contents; }
+  .build-card-wrap > #build-button { display: flex; }
+  .build-card-wrap > .bb-complete { display: flex; }
+  .build-card-wrap[data-state="idle"]     > .bb-complete { display: none; }
+  .build-card-wrap[data-state="building"] > .bb-complete { display: none; }
+  .build-card-wrap[data-state="error"]    > .bb-complete { display: none; }
+  .build-card-wrap[data-state="complete"] > #build-button { display: none; }
+  /* hide internal slots based on parent state */
+  .build-card-wrap[data-state="building"] #build-button .bb-idle,
+  .build-card-wrap[data-state="error"]    #build-button .bb-idle { display: none; }
+  .build-card-wrap[data-state="idle"]     #build-button .bb-building,
+  .build-card-wrap[data-state="complete"] #build-button .bb-building,
+  .build-card-wrap[data-state="error"]    #build-button .bb-building { display: none; }
+  .build-card-wrap[data-state="idle"]     #build-button .bb-error,
+  .build-card-wrap[data-state="building"] #build-button .bb-error,
+  .build-card-wrap[data-state="complete"] #build-button .bb-error { display: none; }
+  .build-card-wrap[data-state="building"] #build-button { cursor: progress; opacity: .92; }
+  .build-card-wrap[data-state="building"] #build-button { background: linear-gradient(180deg, #10b981 0%, #059669 100%); color: #fff; }
+  .build-card-wrap[data-state="complete"] .bb-complete { background: linear-gradient(180deg, #059669 0%, #047857 100%); color: #fff; border-color: #047857; }
+  .build-card-wrap[data-state="error"] #build-button { background: #fef2f2; border-color: var(--red); color: #991b1b; }
+
+  /* Building state internals */
+  .bb-building { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 4px 8px; width: 100%; }
+  .bb-spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: bb-spin .9s linear infinite; }
+  @keyframes bb-spin { to { transform: rotate(360deg); } }
+  .bb-phase { font-size: .82rem; font-weight: 700; text-align: center; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bb-progress-track { width: 100%; height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; overflow: hidden; }
+  .bb-progress-fill { height: 100%; background: #fff; width: 5%; transition: width .5s ease; border-radius: 2px; }
+  .bb-meta { font-size: .68rem; opacity: .85; font-weight: 500; }
+
+  /* Complete state */
+  .bb-complete { flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; cursor: default; }
+  .bb-complete-title { font-size: .9rem; font-weight: 700; letter-spacing: .5px; }
+  .bb-complete-meta { font-size: .68rem; opacity: .9; text-align: center; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .bb-complete-actions { display: flex; gap: 6px; width: 100%; margin-top: 2px; }
+  .bb-open { flex: 1; padding: 6px 8px; background: #fff; color: #047857; border-radius: 6px; text-decoration: none; font-size: .75rem; font-weight: 700; text-align: center; }
+  .bb-open:hover { background: #f0fdf4; }
+  .bb-sms { flex: 1; padding: 6px 8px; background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; font-size: .75rem; font-weight: 700; cursor: pointer; }
+  .bb-sms:hover { background: rgba(255,255,255,0.28); }
+  .bb-sms.sent { background: #064e3b; border-color: #064e3b; cursor: default; }
+
+  /* Error state */
+  .bb-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .bb-error-title { font-size: .9rem; font-weight: 700; }
+  .bb-error-sub { font-size: .72rem; opacity: .85; }
+
   .action.build {
     grid-column: 1 / -1;
     background: var(--green-soft);
@@ -2437,14 +2484,40 @@
         <div class="duration-time" id="call-duration">00:00</div>
         <div class="duration-label">Call Duration</div>
       </div>
-      <button class="outcome outcome-interested" data-outcome="build" data-key="5" type="button">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
-          <path d="M6.5 10.2l2.4 2.4L13.8 7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="outcome-title">BUILD</span>
-        <span class="outcome-sub">Start Website Build</span>
-      </button>
+      <div id="build-card" class="build-card-wrap" data-state="idle">
+        <button id="build-button" class="outcome outcome-interested" data-outcome="build" data-key="5" type="button">
+          <!-- IDLE state -->
+          <div class="bb-idle">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M6.5 10.2l2.4 2.4L13.8 7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="outcome-title">BUILD</span>
+            <span class="outcome-sub">Start Website Build</span>
+          </div>
+          <!-- BUILDING state -->
+          <div class="bb-building" hidden>
+            <div class="bb-spinner" aria-hidden="true"></div>
+            <div class="bb-phase">Queued.</div>
+            <div class="bb-progress-track"><div class="bb-progress-fill"></div></div>
+            <div class="bb-meta">0m 0s elapsed</div>
+          </div>
+          <!-- ERROR state -->
+          <div class="bb-error" hidden>
+            <div class="bb-error-title">BUILD FAILED</div>
+            <div class="bb-error-sub">Click to retry</div>
+          </div>
+        </button>
+        <!-- COMPLETE state — replaces the button visually -->
+        <div class="bb-complete outcome outcome-interested" hidden>
+          <div class="bb-complete-title">✓ SITE READY</div>
+          <div class="bb-complete-meta"></div>
+          <div class="bb-complete-actions">
+            <a class="bb-open" href="#" target="_blank" rel="noopener">Open Preview ↗</a>
+            <button class="bb-sms" type="button">Send via SMS</button>
+          </div>
+        </div>
+      </div>
       <button class="outcome outcome-not-interested" data-outcome="not_interested" data-key="4" type="button">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M13 3h2.5a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5H13" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -3052,6 +3125,15 @@ async function loadQueue() {
     state.leads = d.leads;
     state.dispositions = d.dispositions || {};
     state.notes = d.notes || {};
+    // On page load, push any lead that already has a recorded disposition
+    // (no_answer / voicemail / interested / dnc / not_interested / callback /
+    // skip) to the BOTTOM of the queue, sorted by most-recent-touch last.
+    // Net effect: every time Tyler reopens the dialer, the top of the list
+    // is a fresh, never-called lead. Within each group (called / not-called),
+    // the original server order is preserved (stable sort).
+    sortQueueCalledToBottom();
+    state.idx = 0;
+    state.phoneIdx = 0;
     if ($("from-badge")) $("from-badge").textContent = "FROM " + d.from_number;
     if ($("src-badge")) {
       $("src-badge").textContent = "SRC " + (d.source || "").toUpperCase();
@@ -3064,6 +3146,31 @@ async function loadQueue() {
     enterDemoMode();
     focusCurrentLead("auto");
   }
+}
+
+// Stable sort: leads with no disposition first, leads with any disposition
+// after them. Within each group, original order preserved. Within the
+// "already-called" group, sort by most-recent disposition timestamp
+// ascending (oldest at top of the called-group, newest at the very bottom)
+// so freshly-finished calls don't immediately reappear near the top after
+// a refresh.
+function sortQueueCalledToBottom() {
+  if (!Array.isArray(state.leads)) return;
+  const dispMap = state.dispositions || {};
+  const withMeta = state.leads.map((lead, origIdx) => {
+    const disps = dispMap[lead.id] || [];
+    const lastAt = disps.length ? (disps[disps.length - 1].at || "") : "";
+    return { lead, origIdx, called: disps.length > 0, lastAt };
+  });
+  withMeta.sort((a, b) => {
+    if (a.called !== b.called) return a.called ? 1 : -1;        // fresh first
+    if (a.called && b.called) {
+      // both called: oldest disposition first inside the called group
+      if (a.lastAt !== b.lastAt) return a.lastAt < b.lastAt ? -1 : 1;
+    }
+    return a.origIdx - b.origIdx;                                // stable
+  });
+  state.leads = withMeta.map(m => m.lead);
 }
 
 // ── render ───────────────────────────────────────────────────────────────
@@ -4811,6 +4918,142 @@ function activeBuild(job) {
   return job && ["queued", "researching", "rendering"].includes(job.status);
 }
 
+// ─── Build button stateful renderer ──────────────────────────────────────
+// Map orchestrator event names → human phase labels (filling _pretty_event_message gaps)
+const BB_PHASE_LABELS = {
+  queued: "Queued.",
+  researching: "Researching prospect...",
+  research_done: "Research done.",
+  gathering_assets: "Downloading prospect photos...",
+  picking_inspiration: "Picking inspiration refs...",
+  inspiration_picked: "Inspiration picked.",
+  blueprint_generating: "Drawing blueprint mockup...",
+  blueprint_done: "Blueprint ready.",
+  slot_extraction_starting: "Analyzing photo slots...",
+  slot_extraction_done: "Photo slots extracted.",
+  slot_photos_starting: "Generating per-slot photos...",
+  slot_photo_generating: "Generating photo for a slot...",
+  slot_photo_done: "Slot photo done.",
+  building_first_draft: "Sonnet writing HTML...",
+  builder_done: "First draft built.",
+  validator_running: "Validating data binding...",
+  validator_done: "Validator passed.",
+  cycle_starting: "ReLook cycle starting...",
+  cycle_done: "ReLook cycle complete.",
+  relook_done: "ReLook all cycles done.",
+  section_polishing: "Polishing a section...",
+  section_finisher_done: "Section polish done.",
+  deploying: "Deploying to Vercel...",
+  deploy_done: "Site live on Vercel!",
+  deploy_failed: "Deploy failed.",
+  done: "Build complete.",
+  completed: "Build complete.",
+  error: "Build failed.",
+};
+
+// Rough % progress per phase — used to fill the progress bar
+const BB_PHASE_PCT = {
+  queued: 3, researching: 8, research_done: 12,
+  gathering_assets: 18, picking_inspiration: 22, inspiration_picked: 26,
+  blueprint_generating: 32, blueprint_done: 38,
+  slot_extraction_starting: 40, slot_extraction_done: 44,
+  slot_photos_starting: 48, slot_photo_generating: 52, slot_photo_done: 56,
+  building_first_draft: 62, builder_done: 66,
+  validator_running: 68, validator_done: 70,
+  cycle_starting: 72, cycle_done: 80, relook_done: 84,
+  section_polishing: 88, section_finisher_done: 92,
+  deploying: 96, deploy_done: 99,
+  done: 100, completed: 100, error: 100,
+};
+
+function bbPhaseLabel(job) {
+  if (!job) return "";
+  const friendly = BB_PHASE_LABELS[job.status];
+  if (friendly) return friendly;
+  // Fall back to server message, then status, then a default
+  return (job.message || job.status || "Building...").slice(0, 80);
+}
+
+function bbPhasePct(job) {
+  if (!job) return 0;
+  return BB_PHASE_PCT[job.status] ?? (job.events ? Math.min(95, job.events.length * 8) : 10);
+}
+
+function bbElapsed(job) {
+  if (!job || !job.started_at) return "—";
+  const start = new Date(job.started_at).getTime();
+  if (isNaN(start)) return "—";
+  const sec = Math.max(0, Math.floor((Date.now() - start) / 1000));
+  return `${Math.floor(sec / 60)}m ${sec % 60}s elapsed`;
+}
+
+function _bbJobForCurrentLead() {
+  // Try the currently displayed lead (active call)
+  const currentLeadId = state.currentLead && state.currentLead.id;
+  if (currentLeadId && state.buildJobs[currentLeadId]) return state.buildJobs[currentLeadId];
+  // Fallback: any active job (during testing without a "current lead" concept)
+  const active = Object.values(state.buildJobs).find(j => ["queued","researching","rendering","completed","error"].includes(j.status));
+  return active || null;
+}
+
+function renderBuildCard() {
+  const card = document.getElementById("build-card");
+  if (!card) return;
+  const job = _bbJobForCurrentLead();
+  const phaseEl = card.querySelector(".bb-phase");
+  const metaEl = card.querySelector(".bb-meta");
+  const fillEl = card.querySelector(".bb-progress-fill");
+  const completeMetaEl = card.querySelector(".bb-complete-meta");
+  const openEl = card.querySelector(".bb-open");
+  const smsEl = card.querySelector(".bb-sms");
+
+  if (!job) {
+    card.dataset.state = "idle";
+    return;
+  }
+
+  if (job.status === "completed" && job.preview_url) {
+    card.dataset.state = "complete";
+    if (completeMetaEl) completeMetaEl.textContent = (job.message || "").replace(/^Site ready · /, "");
+    if (openEl) openEl.href = job.preview_url;
+    if (smsEl) {
+      if (job.rep_approved) {
+        smsEl.classList.add("sent");
+        smsEl.textContent = "SMS sent ✓";
+        smsEl.onclick = null;
+      } else {
+        smsEl.classList.remove("sent");
+        smsEl.textContent = "Send via SMS";
+        smsEl.onclick = (e) => { e.stopPropagation(); approveBuild(job.id, job.lead_id); };
+      }
+    }
+    return;
+  }
+
+  if (job.status === "error" || job.status === "build_unfit") {
+    card.dataset.state = "error";
+    return;
+  }
+
+  // BUILDING — any in-flight status
+  card.dataset.state = "building";
+  if (phaseEl) phaseEl.textContent = bbPhaseLabel(job);
+  if (fillEl) fillEl.style.width = bbPhasePct(job) + "%";
+  if (metaEl) metaEl.textContent = bbElapsed(job);
+}
+
+// Tick the elapsed-time meta every second while a build is in flight
+setInterval(() => {
+  const card = document.getElementById("build-card");
+  if (card && card.dataset.state === "building") {
+    const job = _bbJobForCurrentLead();
+    if (job) {
+      const metaEl = card.querySelector(".bb-meta");
+      if (metaEl) metaEl.textContent = bbElapsed(job);
+    }
+  }
+}, 1000);
+
 async function startBuildForLead(lead) {
   const existing = state.buildJobs[lead.id];
   if (activeBuild(existing) || existing?.status === "done") return existing;
@@ -4824,6 +5067,7 @@ async function startBuildForLead(lead) {
   };
   state.buildJobs[lead.id] = tempJob;
   renderAll();
+  renderBuildCard();
   try {
     const r = await fetch("/build", {
       method: "POST",
@@ -4834,6 +5078,7 @@ async function startBuildForLead(lead) {
     if (!r.ok) throw new Error(job.error || `HTTP ${r.status}`);
     state.buildJobs[lead.id] = job;
     renderAll();
+    renderBuildCard();
     pollBuild(job.id, lead.id);
     return job;
   } catch (e) {
@@ -4860,8 +5105,10 @@ async function pollBuild(jobId, leadId) {
       state.buildEventCount[jobId] = job.events.length;
     }
     renderAll();
-    // Pop the rep-approval card when build is complete + not yet approved
-    if (job.status === "completed" && job.preview_url && !job.rep_approved) {
+    renderBuildCard();   // ← inline state on the BUILD button itself
+    // Floating modal: only pop if the rep has moved off this lead (so they don't miss the URL)
+    const isCurrentLead = state.currentLead && state.currentLead.id === (leadId || job.lead_id);
+    if (job.status === "completed" && job.preview_url && !job.rep_approved && !isCurrentLead) {
       showRepApprovalCard(job, leadId || job.lead_id);
     }
     if (!["completed", "error", "build_unfit", "done"].includes(job.status)) {
