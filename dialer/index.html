@@ -1831,6 +1831,37 @@
   .dialpad-key:active { transform: scale(0.96); }
   .dialpad-key.pressed { background: var(--accent); color: #fff; }
   .dialpad-hint { font-size: 12px; color: var(--text-dim); text-align: center; margin: 0; }
+  .dialpad-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 0 2px;
+  }
+  .dialpad-call-btn, .dialpad-hang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 999px;
+    border: 0;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform .08s, opacity .15s, background .15s;
+  }
+  .dialpad-call-btn {
+    background: #16a34a;
+    color: #fff;
+  }
+  .dialpad-call-btn:hover { background: #15803d; }
+  .dialpad-call-btn:active { transform: scale(0.97); }
+  .dialpad-call-btn:disabled { background: #94a3b8; cursor: not-allowed; opacity: 0.65; }
+  .dialpad-hang-btn {
+    background: #dc2626;
+    color: #fff;
+  }
+  .dialpad-hang-btn:hover { background: #b91c1c; }
+  .dialpad-hang-btn:active { transform: scale(0.97); }
 
   .ai-tip-card {
     margin-top: var(--s-3);
@@ -2692,7 +2723,21 @@
           <button class="dialpad-clear" id="dialpad-clear" type="button" aria-label="Clear">&times;</button>
         </div>
         <div class="dialpad-grid" aria-label="Phone keypad"></div>
-        <p class="dialpad-hint">Sends DTMF tones through the active call.</p>
+        <div class="dialpad-actions" id="dialpad-actions">
+          <button class="dialpad-call-btn" id="dialpad-call-btn" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.58l2.2-2.21a1 1 0 0 0 .25-1.02A11.4 11.4 0 0 1 8.5 4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1A17 17 0 0 0 20 21a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1z"/>
+            </svg>
+            <span id="dialpad-call-btn-label">Call</span>
+          </button>
+          <button class="dialpad-hang-btn" id="dialpad-hang-btn" type="button" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 9c-1.66 0-3.27.27-4.77.77v3.13c0 .38-.23.71-.55.85-1.05.46-2.01 1.04-2.88 1.74-.18.13-.38.21-.6.21-.27 0-.51-.11-.69-.29L.29 12.94a.997.997 0 0 1-.29-.7c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.53c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.22 2.47c-.18.18-.43.29-.71.29-.21 0-.41-.08-.59-.21a13.7 13.7 0 0 0-2.88-1.74c-.32-.14-.55-.47-.55-.85V9.77C15.27 9.27 13.66 9 12 9z"/>
+            </svg>
+            <span>Hang Up</span>
+          </button>
+        </div>
+        <p class="dialpad-hint" id="dialpad-hint">Type a number to call.</p>
       </div>
     </section>
     <section class="notes-card">
@@ -5356,6 +5401,19 @@ document.addEventListener("keydown", e => {
       e.preventDefault();
       return;
     }
+    // Enter dials the buffered number when not on a call.
+    if (e.key === "Enter" && !state.call && state.dialpadBuffer) {
+      dialpadDialNumber();
+      e.preventDefault();
+      return;
+    }
+    // Backspace edits the buffered number when not on a call.
+    if (e.key === "Backspace" && !state.call && state.dialpadBuffer) {
+      state.dialpadBuffer = state.dialpadBuffer.slice(0, -1);
+      refreshDialpadReadout();
+      e.preventDefault();
+      return;
+    }
   }
 
   // Backspace → undo last script-node step
@@ -6236,6 +6294,11 @@ function switchAiCardMode() {
   if (dialpadBody) dialpadBody.hidden = isAi;
   const micError = $("ai-mic-error");
   if (micError && !isAi) micError.hidden = true;
+  // When the dialpad becomes visible, refresh its buttons + hint so the
+  // Call/Hang state matches whether a call is currently active.
+  if (!isAi && typeof refreshDialpadControls === "function") {
+    refreshDialpadControls();
+  }
 }
 
 function syncAiCardMode() {
@@ -6443,6 +6506,8 @@ const BTN_ICON_PAUSE_CLOCK = '<circle cx="10" cy="11" r="6.5" stroke="currentCol
 const BTN_ICON_PLAY_ARROW = '<path d="M6 4.5v11l9-5.5z" fill="currentColor"/>';
 
 function renderBottomControls() {
+  // Keep the dialpad Call/Hang button in sync with the live call state.
+  if (typeof refreshDialpadControls === "function") refreshDialpadControls();
   // Sync the "Now Calling..." pill at the top of the active-call card to the
   // real call state so the status line doesn't always read "Now Calling..."
   // even after hangup.
@@ -6993,15 +7058,143 @@ async function transcribeBlob(blob) {
 })();
 
 function pressDialpadKey(d) {
-  if (typeof sendDtmf === "function") sendDtmf(d);
-  state.dialpadBuffer = (state.dialpadBuffer + d).slice(-12);
-  const readout = $("dialpad-readout");
-  if (readout) readout.textContent = state.dialpadBuffer || "\u2014";
+  // Two modes:
+  //   1) Active call \u2192 send DTMF tone through the live Twilio connection.
+  //   2) No call    \u2192 buffer the digit so Tyler can type a number + press Call.
+  // We don't dual-purpose (send DTMF *and* buffer) because if there's no call,
+  // sendDtmf is a no-op anyway and buffering an irrelevant digit is fine; but
+  // when there IS a call, we want pure DTMF entry without re-using the buffer
+  // for some half-typed manual-dial number.
+  if (state.call) {
+    if (typeof sendDtmf === "function") sendDtmf(d);
+  } else {
+    state.dialpadBuffer = (state.dialpadBuffer + d).slice(-15);
+    refreshDialpadReadout();
+  }
   const safeDigit = window.CSS && CSS.escape ? CSS.escape(d) : d.replace(/"/g, '\\"');
   const btn = document.querySelector(`.dialpad-key[data-digit="${safeDigit}"]`);
   if (btn) {
     btn.classList.add("pressed");
     setTimeout(() => btn.classList.remove("pressed"), 140);
+  }
+}
+
+function refreshDialpadReadout() {
+  const readout = $("dialpad-readout");
+  if (!readout) return;
+  const buf = state.dialpadBuffer || "";
+  // Pretty-format US numbers as the user types:
+  //   3 digits         "555"
+  //   3+ digits        "(555) 12"
+  //   6+ digits        "(555) 123-45"
+  //   10 digits        "(555) 123-4567"
+  let display = buf;
+  const digits = buf.replace(/\D/g, "");
+  if (digits.length >= 1 && digits.length <= 3) display = digits;
+  else if (digits.length <= 6) display = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+  else if (digits.length <= 10) display = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  else display = `+${digits.slice(0,1)} (${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7,11)}` + (digits.length > 11 ? digits.slice(11) : "");
+  readout.textContent = display || "\u2014";
+  refreshDialpadControls();
+}
+
+function refreshDialpadControls() {
+  const callBtn = $("dialpad-call-btn");
+  const hangBtn = $("dialpad-hang-btn");
+  const hint    = $("dialpad-hint");
+  if (!callBtn || !hangBtn || !hint) return;
+  if (state.call) {
+    // On a call \u2192 show hang up, hide call.
+    callBtn.hidden = true;
+    hangBtn.hidden = false;
+    hint.textContent = "Sends DTMF tones through the active call.";
+  } else {
+    callBtn.hidden = false;
+    hangBtn.hidden = true;
+    const digits = (state.dialpadBuffer || "").replace(/\D/g, "");
+    const dialable = digits.length === 10 || digits.length === 11;
+    callBtn.disabled = !dialable;
+    hint.textContent = dialable
+      ? "Tap Call to dial this number."
+      : (digits.length === 0
+          ? "Type a number to call."
+          : `Type ${10 - digits.length} more digit${10 - digits.length === 1 ? '' : 's'}\u2026`);
+  }
+}
+
+async function dialpadDialNumber() {
+  if (state.call) return;  // already on a call \u2014 button shouldn't be visible
+  const digits = (state.dialpadBuffer || "").replace(/\D/g, "");
+  if (digits.length !== 10 && digits.length !== 11) {
+    setDeviceStatus("Enter a 10-digit US number to dial.", "warn");
+    return;
+  }
+  // Normalize to E.164: 10 digits \u2192 +1XXXXXXXXXX; 11 digits assumed leading 1
+  const to = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+
+  if (!state.device) {
+    setDeviceStatus("Phone not ready \u2014 refresh the page.", "err");
+    return;
+  }
+  try {
+    state.sessionId = `manual_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    state.ivrSince = 0;
+    setDeviceStatus(`dialing ${to}\u2026`);
+    state.call = await state.device.connect({ params: { To: to, SessionId: state.sessionId } });
+    state.callLive = true;
+    state.dialingLeadId = null;  // manual dial, not from queue
+
+    // Create a call_session row so AMD / recording / disposition still
+    // have something to attach to. Use a synthetic lead_id so it doesn't
+    // contaminate real lead history.
+    try {
+      const r = await postJson('/api/call/start', {
+        lead_id: `manual-${digits}`,
+        phone: to,
+      });
+      state.currentCallSessionId = r.call_session_id;
+    } catch (e) {
+      console.warn('manual call/start failed', e);
+      state.currentCallSessionId = null;
+    }
+
+    refreshDialpadControls();
+    if (typeof renderHeader === "function") renderHeader();
+    document.body.setAttribute("data-mode", "calling");
+    startIvrPolling();
+
+    state.call.on("accept",     () => setDeviceStatus("connected \u00b7 " + to, "live"));
+    state.call.on("ringing",    () => setDeviceStatus("ringing " + to + "\u2026"));
+    state.call.on("disconnect", () => {
+      const sid = state.currentCallSessionId;
+      state.call = null;
+      state.callLive = false;
+      state.currentCallSessionId = null;
+      stopIvrPolling();
+      setDeviceStatus("call ended");
+      document.body.setAttribute("data-mode", "idle");
+      refreshDialpadControls();
+      if (sid) {
+        fetch(`/api/call/${sid}/end`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json",
+                     ...(window.DIALER_AUTH_TOKEN ? {"X-Dialer-Token": window.DIALER_AUTH_TOKEN} : {}) },
+          body: JSON.stringify({ outcome: "" }),
+        }).catch(() => {});
+      }
+    });
+    state.call.on("error", err => {
+      console.warn("manual call error", err);
+      setDeviceStatus(`call error: ${err && err.message ? err.message : err}`, "err");
+      state.call = null;
+      state.callLive = false;
+      refreshDialpadControls();
+    });
+  } catch (e) {
+    setDeviceStatus(`dial failed: ${e && e.message ? e.message : e}`, "err");
+    state.call = null;
+    state.callLive = false;
+    refreshDialpadControls();
   }
 }
 
@@ -7020,9 +7213,17 @@ function pressDialpadKey(d) {
   });
   $("dialpad-clear")?.addEventListener("click", () => {
     state.dialpadBuffer = "";
-    const readout = $("dialpad-readout");
-    if (readout) readout.textContent = "\u2014";
+    refreshDialpadReadout();
   });
+  $("dialpad-call-btn")?.addEventListener("click", () => dialpadDialNumber());
+  $("dialpad-hang-btn")?.addEventListener("click", () => {
+    if (state.call) {
+      try { state.call.disconnect(); } catch (_) {}
+    }
+  });
+  // Initial paint \u2014 show the Call button + correct hint if we boot with
+  // no active call.
+  refreshDialpadControls();
   switchAiCardMode();
 })();
 
