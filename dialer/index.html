@@ -6012,6 +6012,14 @@ function toggleAutoDialer() {
   if (state.autoDialer && state.aiOn) aiStartListening();
   else aiStopListening();
   renderHeader();
+  // BUG FIX (prompt #28): flipping autoDialer ON only set a flag — nothing
+  // actually dialed. The primary bottom-controls button was therefore
+  // mute. Trigger makeCall() on the leading edge if a lead is selected
+  // and no call is in flight. Auto-advance picks up subsequent leads from
+  // the disconnect handler as before.
+  if (state.autoDialer && !state.call && state.leads && state.leads[state.idx]) {
+    setTimeout(() => { if (state.autoDialer && !state.call) makeCall(); }, 50);
+  }
 }
 
 function toggleAiAgent() {
