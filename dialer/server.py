@@ -112,6 +112,14 @@ VOICEMAIL_DROP_URL = os.environ.get("DIALER_VOICEMAIL_DROP_URL", "").strip()
 # Set DIALER_VOICEMAIL_DROP_TEXT to your pitch (under ~600 chars).
 VOICEMAIL_DROP_TEXT = os.environ.get("DIALER_VOICEMAIL_DROP_TEXT", "").strip()
 VOICEMAIL_DROP_VOICE = os.environ.get("DIALER_VOICEMAIL_DROP_VOICE", "Polly.Matthew-Neural").strip()
+# Kill switch for the auto-drop. Default OFF after Tyler hit the classic
+# AMD false-positive: Apple Live Voicemail's "who's calling?" prompt has
+# the synthetic cadence of voicemail, so Twilio AMD classifies it as
+# machine_end_beep — and we'd happily fire the drop + Hangup on a live
+# human. With this off, AMD verdicts still surface in the UI but the
+# drop only fires when Tyler explicitly opts in. Flip to "1" once you've
+# tuned thresholds and validated on 50+ real cold calls.
+VOICEMAIL_DROP_AUTO = os.environ.get("DIALER_VOICEMAIL_DROP_AUTO", "0").strip() not in ("", "0", "false", "no")
 
 # ─── Call recording ─────────────────────────────────────────────────────────
 # Twilio records BOTH legs to separate audio channels (-dual) so the
@@ -1943,12 +1951,17 @@ def voice():
             "machine_detection": "DetectMessageEnd",
             "amd_status_callback": amd_cb,
             "amd_status_callback_method": "POST",
-            # Tuning per Twilio's defaults — DetectMessageEnd waits for the
-            # voicemail greeting to finish so the drop plays after the beep.
+            # AMD tuning — more conservative than Twilio defaults after the
+            # Apple Live Voicemail false-positive (Apple's "who's calling?"
+            # short prompt was being flagged as machine_end_beep).
+            # Speech threshold: how many MS of continuous speech before AMD
+            # commits to "machine" rather than "human". Default 2400; we
+            # bumped to 3500 so a brief human "hello?" or Apple's screener
+            # isn't enough to trigger a verdict.
             "machine_detection_timeout": 30,
-            "machine_detection_speech_threshold": 2400,
-            "machine_detection_speech_end_threshold": 1200,
-            "machine_detection_silence_timeout": 5000,
+            "machine_detection_speech_threshold": 3500,
+            "machine_detection_speech_end_threshold": 1500,
+            "machine_detection_silence_timeout": 6000,
         })
     dial.number(to, **number_kwargs)
     resp.append(dial)
@@ -2008,21 +2021,26 @@ def twilio_recording_callback():
 
 @app.route("/twilio/amd", methods=["POST"])
 def twilio_amd_callback():
-    """Twilio AMD status callback.
+    """Twilio AMD status callback — two-axis verdict.
 
     Receives:
-      CallSid      — the prospect leg's call SID (the OUTBOUND child call)
-      AnsweredBy   — one of {human, machine_start, machine_end_beep,
-                             machine_end_silence, machine_end_other,
-                             fax, unknown}
-      MachineBehavior — extra detail (greeting/beep/etc.)
+      CallSid      — the prospect leg's call SID (OUTBOUND child call)
+      AnsweredBy   — {human, machine_start, machine_end_beep,
+                      machine_end_silence, machine_end_other, fax, unknown}
+      MachineBehavior — extra detail
 
-    Flow:
-      1. Always record an `amd_result` IVR event for the UI ("Twilio AMD
-         says: machine_end_beep").
-      2. If AnsweredBy starts with machine_* AND VOICEMAIL_DROP_URL is
-         configured, fire-and-forget update the live call to play the
-         pre-recorded pitch then hang up.
+    Decision flow (after the Apple-Live-Voicemail false-positive bug):
+      1. Always log the verdict so it surfaces in the UI.
+      2. To AUTO-FIRE the voicemail drop, ALL of these must hold:
+           - DIALER_VOICEMAIL_DROP_AUTO=1 (kill switch, default OFF)
+           - AnsweredBy starts with "machine_"
+           - have_drop_audio (URL or TEXT configured)
+           - Second-opinion text classifier confirms voicemail at >= 0.85
+             OR the recent transcript contains a voicemail keyword regex
+      3. When auto-drop fires, we play the drop and then <Pause/><Hangup/>.
+         Pause lets Twilio confirm AMD wasn't wrong before we cut the call.
+      4. When ANY safety gate fails, we still record the AMD verdict so
+         Tyler can manually trigger the drop from the UI if he agrees.
     """
     answered_by = (request.values.get("AnsweredBy") or "").strip()
     call_sid    = (request.values.get("CallSid") or "").strip()
@@ -2031,19 +2049,71 @@ def twilio_amd_callback():
 
     is_machine = answered_by.startswith("machine_")
     level = "warn" if is_machine else ("ok" if answered_by == "human" else "")
-    drop_fired = False
-    drop_error = ""
+    drop_fired   = False
+    drop_error   = ""
+    drop_blocked = ""        # why we didn't auto-fire when we could have
+    party        = "unsure"
+    party_conf   = 0.0
 
-    # Try the voicemail drop. We do this BEFORE logging so the event reflects
-    # what actually happened (or didn't). Fire-and-forget — REST API failures
-    # shouldn't break the AMD flow.
-    # Two emit modes:
-    #   <Play>URL</Play>   when DIALER_VOICEMAIL_DROP_URL is set (real recording)
-    #   <Say>text</Say>    when DIALER_VOICEMAIL_DROP_TEXT is set (TTS fallback,
-    #                      no file hosting needed — sounds ~80% as good using
-    #                      Polly Neural voices).
     have_drop_audio = bool(VOICEMAIL_DROP_URL or VOICEMAIL_DROP_TEXT)
-    if is_machine and have_drop_audio and call_sid:
+
+    # Second opinion: pull the latest transcript chunks for this session and
+    # ask classify_caller_party. If it says human/ai_receptionist/unsure, we
+    # block the auto-drop even when Twilio AMD says machine. This is the
+    # exact two-axis confirmation Pipecat lacks — Twilio AMD covers AUDIO
+    # cues (cadence, beep), classify_caller_party covers TEXT cues (what
+    # was actually said).
+    transcript_snippet = ""
+    if session_id:
+        try:
+            with IVR_LOCK:
+                events = list(IVR_EVENTS.get(session_id, []))
+            chunks = [
+                (e.get("transcript") or e.get("message") or "")
+                for e in events[-8:]
+                if e.get("kind") in ("transcript", "ivr_digit", "agent_note")
+            ]
+            transcript_snippet = " ".join(c for c in chunks if c)[-600:]
+        except Exception:
+            transcript_snippet = ""
+
+    if is_machine:
+        try:
+            from coach import classify_caller_party
+            verdict = classify_caller_party(transcript_snippet) or {}
+        except Exception as e:
+            verdict = {"party": "unsure", "confidence": 0.0,
+                       "reasoning": f"classifier exception: {e}"}
+        party = verdict.get("party") or "unsure"
+        try:
+            party_conf = float(verdict.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            party_conf = 0.0
+
+    # All four gates — if any fail, no auto-fire
+    if not VOICEMAIL_DROP_AUTO:
+        drop_blocked = "auto-drop disabled (DIALER_VOICEMAIL_DROP_AUTO=0)"
+    elif not is_machine:
+        drop_blocked = f"AnsweredBy={answered_by or 'unknown'} — only fires on machine_*"
+    elif not have_drop_audio:
+        drop_blocked = "no DROP_URL or DROP_TEXT configured"
+    elif not call_sid:
+        drop_blocked = "no CallSid in callback"
+    elif party == "human":
+        drop_blocked = f"text-classifier says HUMAN ({party_conf:.2f}) — AMD likely false positive"
+    elif party == "ai_receptionist":
+        drop_blocked = f"text-classifier says AI RECEPTIONIST ({party_conf:.2f}) — would burn drop on a bot"
+    elif party == "voicemail" and party_conf < 0.85:
+        drop_blocked = f"voicemail confidence only {party_conf:.2f} (need 0.85)"
+    elif party == "unsure" and not transcript_snippet:
+        # No transcript at all — we can't second-opinion. Trust AMD ONLY if
+        # the call has been live long enough for a real voicemail greeting
+        # to have started (10+ seconds since first IVR event).
+        elapsed = _session_elapsed_s(session_id)
+        if elapsed < 10:
+            drop_blocked = f"no transcript yet + only {elapsed:.0f}s elapsed (need 10s)"
+
+    if is_machine and have_drop_audio and call_sid and not drop_blocked:
         try:
             from twilio.rest import Client as TwilioClient
             auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
@@ -2059,15 +2129,34 @@ def twilio_amd_callback():
                         f'<Say voice="{_esc(VOICEMAIL_DROP_VOICE)}">'
                         f'{_esc(VOICEMAIL_DROP_TEXT)}</Say>'
                     )
-                # Small pause lets the carrier-side beep finish before our
-                # audio starts so we don't talk over the greeting tail.
-                twiml = f'<Response><Pause length="1"/>{body}<Hangup/></Response>'
+                # Pause lets the carrier-side beep finish before our audio
+                # starts so we don't talk over the greeting tail. After the
+                # drop, a short pause then Hangup — the pause is the escape
+                # hatch if AMD was wrong (a confused human can interrupt by
+                # talking before we cut). 30 seconds is long enough for the
+                # voicemail to record + auto-end on its own.
+                twiml = (
+                    f'<Response>'
+                    f'<Pause length="1"/>{body}'
+                    f'<Pause length="2"/>'
+                    f'<Hangup/>'
+                    f'</Response>'
+                )
                 tw.calls(call_sid).update(twiml=twiml)
                 drop_fired = True
         except Exception as e:
             drop_error = f"{type(e).__name__}: {e}"
 
     if session_id:
+        # Build a UI message that explains exactly what happened.
+        if drop_fired:
+            msg_tail = f" — voicemail drop fired (party={party} {party_conf:.2f})"
+        elif drop_error:
+            msg_tail = f" — drop error: {drop_error}"
+        elif drop_blocked and is_machine:
+            msg_tail = f" — drop BLOCKED: {drop_blocked}"
+        else:
+            msg_tail = ""
         _add_ivr_event(
             session_id,
             kind="amd_result",
@@ -2075,17 +2164,15 @@ def twilio_amd_callback():
             answered_by=answered_by,
             behavior=behavior,
             call_sid=call_sid,
+            party=party,
+            party_confidence=party_conf,
             voicemail_drop_fired=drop_fired,
             voicemail_drop_error=drop_error,
+            voicemail_drop_blocked=drop_blocked,
             message=(
                 f"Twilio AMD: {answered_by}"
                 + (f" ({behavior})" if behavior else "")
-                + (
-                    " — voicemail drop fired" if drop_fired
-                    else (f" — drop error: {drop_error}" if drop_error
-                          else (" — would drop but no DROP_URL or DROP_TEXT configured" if is_machine and not have_drop_audio
-                                else ""))
-                )
+                + msg_tail
             ),
         )
 

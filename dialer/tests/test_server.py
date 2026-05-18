@@ -314,17 +314,19 @@ class TestDispatchAgentActionGates:
 
 class TestTwilioAMD:
     def setup_method(self):
-        self._prev_enabled = server.AMD_ENABLED
-        self._prev_base    = server.PUBLIC_BASE_URL
-        self._prev_drop    = server.VOICEMAIL_DROP_URL
+        self._prev_enabled  = server.AMD_ENABLED
+        self._prev_base     = server.PUBLIC_BASE_URL
+        self._prev_drop     = server.VOICEMAIL_DROP_URL
+        self._prev_drop_auto = server.VOICEMAIL_DROP_AUTO
         server.IVR_EVENTS.clear()
         server.IVR_SEQ.clear()
         server.IVR_SESSION_STARTED_AT.clear()
 
     def teardown_method(self):
-        server.AMD_ENABLED       = self._prev_enabled
-        server.PUBLIC_BASE_URL   = self._prev_base
-        server.VOICEMAIL_DROP_URL = self._prev_drop
+        server.AMD_ENABLED         = self._prev_enabled
+        server.PUBLIC_BASE_URL     = self._prev_base
+        server.VOICEMAIL_DROP_URL  = self._prev_drop
+        server.VOICEMAIL_DROP_AUTO = self._prev_drop_auto
 
     def test_voice_twiml_includes_machine_detection_when_amd_enabled(self, client):
         server.AMD_ENABLED     = True
@@ -381,8 +383,19 @@ class TestTwilioAMD:
         assert ev["voicemail_drop_fired"] is False
 
     def test_amd_callback_attempts_drop_when_url_configured(self, client, monkeypatch):
-        """Verify the REST-API path is invoked for machine_* with drop URL set."""
-        server.VOICEMAIL_DROP_URL = "https://example.test/pitch.mp3"
+        """Verify the REST-API path is invoked for machine_* with drop URL set
+        AND the auto-drop kill switch enabled AND classifier confirms voicemail."""
+        server.VOICEMAIL_DROP_URL  = "https://example.test/pitch.mp3"
+        server.VOICEMAIL_DROP_AUTO = True
+        # Seed an event so the session is past the 10s grace + has transcript
+        # the classifier can use to confirm voicemail.
+        sid = "cs_d"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30
+        server.IVR_EVENTS[sid] = [{
+            "kind": "transcript",
+            "transcript": "please leave a message after the tone",
+            "seq": 1,
+        }]
         os.environ["TWILIO_AUTH_TOKEN"] = "fake-token-for-test"
 
         # Patch the TwilioClient before its first import inside the handler.
@@ -409,7 +422,7 @@ class TestTwilioAMD:
         monkeypatch.setattr(twilio.rest, "Client", FakeClient)
 
         try:
-            r = client.post("/twilio/amd?session_id=cs_d", data={
+            r = client.post(f"/twilio/amd?session_id={sid}", data={
                 "AnsweredBy": "machine_end_beep",
                 "CallSid": "CA" + "2" * 32,
             })
@@ -420,7 +433,7 @@ class TestTwilioAMD:
             assert "<Play>" in sent["twiml"]
             assert "https://example.test/pitch.mp3" in sent["twiml"]
             assert "<Hangup/>" in sent["twiml"]
-            ev = list(server.IVR_EVENTS.get("cs_d", []))[-1]
+            ev = list(server.IVR_EVENTS.get(sid, []))[-1]
             assert ev["voicemail_drop_fired"] is True
         finally:
             os.environ.pop("TWILIO_AUTH_TOKEN", None)
@@ -450,17 +463,80 @@ class TestTwilioAMD:
             os.environ.pop("TWILIO_AUTH_TOKEN", None)
 
     def test_amd_callback_records_drop_error_when_no_auth_token(self, client):
-        """When TWILIO_AUTH_TOKEN is missing, drop fails gracefully."""
-        server.VOICEMAIL_DROP_URL = "https://example.test/pitch.mp3"
+        """When auto-drop is enabled + classifier confirms voicemail BUT
+        TWILIO_AUTH_TOKEN is missing, drop fails gracefully with an error."""
+        server.VOICEMAIL_DROP_URL  = "https://example.test/pitch.mp3"
+        server.VOICEMAIL_DROP_AUTO = True
+        sid = "cs_e"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30
+        server.IVR_EVENTS[sid] = [{
+            "kind": "transcript",
+            "transcript": "please leave a message after the tone",
+            "seq": 1,
+        }]
         os.environ.pop("TWILIO_AUTH_TOKEN", None)
-        r = client.post("/twilio/amd?session_id=cs_e", data={
+        r = client.post(f"/twilio/amd?session_id={sid}", data={
             "AnsweredBy": "machine_end_beep",
             "CallSid": "CA" + "4" * 32,
         })
         assert r.status_code == 200
-        ev = list(server.IVR_EVENTS.get("cs_e", []))[-1]
+        ev = list(server.IVR_EVENTS.get(sid, []))[-1]
         assert ev["voicemail_drop_fired"] is False
         assert "TWILIO_AUTH_TOKEN" in ev["voicemail_drop_error"]
+
+    def test_amd_callback_blocks_drop_when_auto_disabled(self, client):
+        """The default kill-switch state — DIALER_VOICEMAIL_DROP_AUTO=0 — must
+        block the auto-drop even with everything else configured perfectly."""
+        server.VOICEMAIL_DROP_URL  = "https://example.test/pitch.mp3"
+        server.VOICEMAIL_DROP_AUTO = False  # explicitly disabled
+        sid = "cs_kill"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30
+        server.IVR_EVENTS[sid] = [{
+            "kind": "transcript",
+            "transcript": "please leave a message after the tone",
+            "seq": 1,
+        }]
+        os.environ["TWILIO_AUTH_TOKEN"] = "fake"
+        try:
+            r = client.post(f"/twilio/amd?session_id={sid}", data={
+                "AnsweredBy": "machine_end_beep",
+                "CallSid": "CA" + "k" * 32,
+            })
+            assert r.status_code == 200
+            ev = list(server.IVR_EVENTS.get(sid, []))[-1]
+            assert ev["voicemail_drop_fired"] is False
+            assert "auto-drop disabled" in ev["voicemail_drop_blocked"]
+        finally:
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+    def test_amd_callback_blocks_drop_when_classifier_says_human(self, client):
+        """The Apple-Live-Voicemail bug fix — even if Twilio AMD says machine,
+        the text-classifier second opinion must override and block the drop
+        if the transcript contains human-speech cues."""
+        server.VOICEMAIL_DROP_URL  = "https://example.test/pitch.mp3"
+        server.VOICEMAIL_DROP_AUTO = True
+        sid = "cs_apple"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30
+        # Apple Live Voicemail's AI disclosure — coach.classify_caller_party's
+        # deterministic regex catches this as ai_receptionist.
+        server.IVR_EVENTS[sid] = [{
+            "kind": "transcript",
+            "transcript": "hi this is the virtual receptionist for tyler",
+            "seq": 1,
+        }]
+        os.environ["TWILIO_AUTH_TOKEN"] = "fake"
+        try:
+            r = client.post(f"/twilio/amd?session_id={sid}", data={
+                "AnsweredBy": "machine_end_beep",
+                "CallSid": "CA" + "a" * 32,
+            })
+            assert r.status_code == 200
+            ev = list(server.IVR_EVENTS.get(sid, []))[-1]
+            assert ev["voicemail_drop_fired"] is False
+            assert ev["party"] == "ai_receptionist"
+            assert "AI RECEPTIONIST" in ev["voicemail_drop_blocked"]
+        finally:
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
 
 
 # ── Call recording ─────────────────────────────────────────────────────────
@@ -570,18 +646,29 @@ class TestVoicemailDropRoute:
 
 class TestVoicemailDropSayFallback:
     def setup_method(self):
-        self._prev_url  = server.VOICEMAIL_DROP_URL
-        self._prev_text = server.VOICEMAIL_DROP_TEXT
+        self._prev_url       = server.VOICEMAIL_DROP_URL
+        self._prev_text      = server.VOICEMAIL_DROP_TEXT
+        self._prev_auto      = server.VOICEMAIL_DROP_AUTO
         server.IVR_EVENTS.clear()
         server.IVR_SEQ.clear()
+        server.IVR_SESSION_STARTED_AT.clear()
 
     def teardown_method(self):
         server.VOICEMAIL_DROP_URL  = self._prev_url
         server.VOICEMAIL_DROP_TEXT = self._prev_text
+        server.VOICEMAIL_DROP_AUTO = self._prev_auto
 
     def test_drop_uses_say_when_only_text_configured(self, client, monkeypatch):
         server.VOICEMAIL_DROP_URL  = ""
         server.VOICEMAIL_DROP_TEXT = "Hey, this is Tyler with Nova. Call me back."
+        server.VOICEMAIL_DROP_AUTO = True
+        sid = "cs_say"
+        server.IVR_SESSION_STARTED_AT[sid] = __import__("time").time() - 30
+        server.IVR_EVENTS[sid] = [{
+            "kind": "transcript",
+            "transcript": "please leave a message after the tone",
+            "seq": 1,
+        }]
         os.environ["TWILIO_AUTH_TOKEN"] = "fake-test"
         captured = []
 
@@ -599,7 +686,7 @@ class TestVoicemailDropSayFallback:
         monkeypatch.setattr(twilio.rest, "Client", FakeClient)
 
         try:
-            r = client.post("/twilio/amd?session_id=cs_say", data={
+            r = client.post(f"/twilio/amd?session_id={sid}", data={
                 "AnsweredBy": "machine_end_beep",
                 "CallSid": "CA" + "5" * 32,
             })
