@@ -6404,15 +6404,52 @@ function endCurrentCall() {
   }
 }
 
+// Bulletproof hard-reset. Works in three failure modes:
+//   1. Real live call → disconnect Twilio, normal cleanup
+//   2. State stuck (callLive=true but state.call=null after a race or AI auto-dispose)
+//      → still resets all UI state so the red Hang Up button doesn't lie
+//   3. Already idle → noop on Twilio side, still re-renders to a consistent baseline
+// Idempotent. Safe to call any number of times.
 function hangUpAndStop() {
-  if (!state.callLive) return;
+  // 1. Best-effort end the Twilio call (no-op if state.call already null)
   endCurrentCall();
+  // 2. Best-effort finalize the server-side call_session if one is still open.
+  //    This was previously only done by the disconnect handler — a stuck
+  //    state where disconnect never fired would leave the session forever
+  //    "in progress" on the server.
+  if (state.currentCallSessionId) {
+    const sessionId = state.currentCallSessionId;
+    state.currentCallSessionId = null;
+    const outcome = state.lastOutcome || "manual_stop";
+    if (typeof postJson === "function") {
+      postJson(`/api/call/${sessionId}/end`, { outcome, notes: "manual hangUpAndStop" })
+        .catch(e => console.warn("call/end (hangUpAndStop) failed", e));
+    }
+  }
+  // 3. Force-reset every flag that drives "are we on a call" rendering.
+  //    Order matters: clear state BEFORE re-rendering so the bottom controls
+  //    flip from red "Hang Up" → blue "Start Auto-Dialer".
+  state.call = null;
+  state.callLive = false;
+  state.dialingLeadId = null;
   state.autoDialer = false;
   state.autoAdvance = false;
   state.pauseAfterCurrent = false;
   state.waitingForResume = false;
+  state.recallReturnIdx = null;
+  if (typeof stopCallDuration === "function") stopCallDuration();
+  if (typeof stopMicCapture === "function") stopMicCapture();
+  if (typeof stopIvrPolling === "function") stopIvrPolling();
+  // 4. Tell Twilio device-side we're not "dialing" anymore (matches the
+  //    natural disconnect-handler's data-mode reset).
+  document.body.setAttribute("data-mode", "idle");
+  if (typeof setDeviceStatus === "function") setDeviceStatus("call ended");
+  // 5. Re-render every surface that reads call state.
   if (typeof renderHeader === "function") renderHeader();
-  renderBottomControls();
+  if (typeof renderBottomControls === "function") renderBottomControls();
+  if (typeof renderQueue === "function") renderQueue();
+  if (typeof renderCurrent === "function") renderCurrent();
+  if (typeof logCallEvent === "function") logCallEvent("Hang Up & Stop pressed — call cleared", "warn");
 }
 
 function recallLastLead() {
