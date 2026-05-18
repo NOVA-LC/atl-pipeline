@@ -1724,6 +1724,20 @@
     color: var(--green);
     background: var(--green-soft);
   }
+  .ai-coach-hint.agent-alert {
+    color: #065f46;
+    background: #22c55e;
+    box-shadow: 0 4px 18px rgba(34,197,94,.35);
+    animation: aiCoachHintPulse 1s ease-in-out infinite alternate;
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+  @keyframes aiCoachHintPulse {
+    from { filter: brightness(1); transform: scale(1); }
+    to   { filter: brightness(1.15); transform: scale(1.02); }
+  }
 
   .ai-transcript {
     min-height: 180px;
@@ -4771,18 +4785,35 @@ function handleIvrEvent(event) {
     return;
   }
 
-  // Agent: detected voicemail — auto-mark + advance (still pauseable)
+  // Agent: detected voicemail — SUGGEST, never auto-hangup. This was the
+  // bug that killed Tyler's first two calls in the 17:14 session — the
+  // Haiku IVR agent classified real human conversations as voicemail and
+  // the client unilaterally disconnected. Same class of mistake as
+  // prompt #28 fixed for /api/agent/coach. The fix is identical: during
+  // a live call, surface a confirmation tip; never call disconnect()
+  // without human approval.
   if (event.kind === "mark_voicemail") {
     if (!state.aiOn) {
       logCallEvent("AI-off: voicemail detected, leaving disposition manual.", "warn");
       return;
     }
     const lead = state.leads[state.idx];
-    if (lead) {
-      const phone = lead.phones[state.phoneIdx];
-      logCallEvent(`Agent marked ${lead.business_name} as voicemail. Hanging up.`, "warn");
+    if (!lead) return;
+    const phone = lead.phones[state.phoneIdx];
+    if (state.call) {
+      // Live call — show tip with explicit confirm. Do NOT auto-hangup.
+      showAiTip(`Possible voicemail (would END the call): mark and hang up?`);
+      if (typeof wireAiTipAction === "function") {
+        wireAiTipAction(() => {
+          sendDisposition(lead.id, phone, "voicemail", event.reason || "agent");
+          if (state.call) try { state.call.disconnect(); } catch (_) {}
+        });
+      }
+      logCallEvent(`AI suggests voicemail for ${lead.business_name} — awaiting confirmation (call still live)`, "warn");
+    } else {
+      // Call already ended — safe to record the disposition retroactively
+      logCallEvent(`Agent marked ${lead.business_name} as voicemail (call already ended).`, "warn");
       sendDisposition(lead.id, phone, "voicemail", event.reason || "agent");
-      if (state.call) try { state.call.disconnect(); } catch (_) {}
     }
     return;
   }
@@ -4805,26 +4836,42 @@ function handleIvrEvent(event) {
 }
 
 function flashAgentAlert(message) {
-  let bar = document.getElementById("agent-alert");
-  if (!bar) {
-    bar = document.createElement("div");
-    bar.id = "agent-alert";
-    bar.style.cssText =
-      "position:fixed;top:0;left:0;right:0;z-index:9999;background:#22c55e;color:#000;" +
-      "font-weight:700;font-size:1.1rem;padding:14px 20px;text-align:center;" +
-      "box-shadow:0 4px 20px rgba(34,197,94,.4);cursor:pointer;" +
-      "animation:agentAlertPulse 1s ease-in-out infinite alternate";
-    bar.onclick = () => bar.remove();
-    document.body.appendChild(bar);
-    if (!document.getElementById("agent-alert-style")) {
-      const s = document.createElement("style");
-      s.id = "agent-alert-style";
-      s.textContent = "@keyframes agentAlertPulse{from{filter:brightness(1)}to{filter:brightness(1.25)}}";
-      document.head.appendChild(s);
-    }
+  // Clean up any legacy top-of-page banner from older sessions
+  const legacy = document.getElementById("agent-alert");
+  if (legacy && legacy.parentNode) legacy.parentNode.removeChild(legacy);
+  // Surface "live human answered" / similar agent alerts INSIDE the AI Agent
+  // Assistant card on the right column, not as a screen-top banner. Previous
+  // implementation appended a fixed-position bar to <body> which Tyler found
+  // intrusive ("I told you I wanted this in that little bubble").
+  // The alert pulses, plays a short beep, and auto-clears in 12s OR on click.
+  const hint = document.getElementById("ai-coach-hint");
+  if (hint) {
+    hint.classList.remove("idle");
+    hint.classList.add("agent-alert");
+    hint.textContent = "🔔  " + message;
+    hint.style.cursor = "pointer";
+    hint.title = "Click to dismiss";
+    hint.onclick = () => {
+      hint.classList.remove("agent-alert");
+      hint.classList.add("idle");
+      hint.textContent = state.callLive ? "Listening..." : "Idle — start a call to begin listening";
+      hint.style.cursor = "";
+      hint.onclick = null;
+    };
+    // Auto-clear after 12s so it doesn't get stuck on screen forever
+    if (state._agentAlertTimer) clearTimeout(state._agentAlertTimer);
+    state._agentAlertTimer = setTimeout(() => {
+      if (hint.classList.contains("agent-alert")) hint.onclick();
+    }, 12000);
+  } else {
+    // AI card not in DOM (shouldn't happen in normal flow) — fall back to logging
+    console.warn("ai-coach-hint missing, alert routed to logCallEvent:", message);
+    if (typeof logCallEvent === "function") logCallEvent("🔔 " + message, "warn");
   }
-  bar.textContent = "🔔  " + message + "  (click to dismiss)";
-  // Audible cue — short beep via Web Audio
+  if (typeof logCallEvent === "function") {
+    logCallEvent("🔔 " + message, "warn");
+  }
+  // Audible cue — short beep via Web Audio (kept; cheap signal across UI surfaces)
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const o = ctx.createOscillator(); const g = ctx.createGain();
