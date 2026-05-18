@@ -26,6 +26,7 @@ import sqlite3
 import datetime
 import sys
 import threading
+import time
 import traceback
 import uuid
 import base64
@@ -33,7 +34,16 @@ from html import unescape
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 import requests
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, send_from_directory, jsonify, Response
+from coach import (
+    is_social_turn,
+    auto_disposition,
+    detect_objection_type,
+    get_specialist_type,
+    build_prompt,
+    stream_anthropic,
+    postprocess,
+)
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial
@@ -79,6 +89,46 @@ DASHBOARD_URL = os.environ.get(
 IVR_COPILOT_MODE = os.environ.get("IVR_COPILOT_MODE", "suggest").lower()  # off | suggest | auto
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 
+# ─── Twilio Answering Machine Detection (AMD) ───────────────────────────────
+# Twilio's carrier-level AMD analyzes the called party's audio (cadence,
+# beep, pause-after-greeting) and posts the verdict to amd_status_callback.
+# AnsweredBy ∈ {human, machine_start, machine_end_beep, machine_end_silence,
+# machine_end_other, fax, unknown}. This is the AUDIO-side classifier that
+# pairs with coach.classify_caller_party (text-side). Two-axis voicemail
+# detection — text alone can't tell an AI receptionist from voicemail; AMD
+# audio cues catch the polished-prosody case where text-classification gets
+# fooled.
+# Set AMD_ENABLED=1 to turn on. Adds ~1.5-3s of detection latency before
+# dial connects; turn off for hot-dial workflows. Pricing: ~$0.0005/call.
+AMD_ENABLED = os.environ.get("DIALER_AMD_ENABLED", "1").strip() not in ("", "0", "false", "no")
+# Pre-recorded voicemail-drop MP3. When AMD fires machine_end_*, Twilio's
+# REST API is invoked to update the live call with <Play>VOICEMAIL_DROP_URL</Play>
+# then <Hangup/>. The recording should be Tyler's 15-25 second pitch ending
+# with a callback number. Leave unset to skip the drop and just record the
+# AMD verdict for the UI.
+VOICEMAIL_DROP_URL = os.environ.get("DIALER_VOICEMAIL_DROP_URL", "").strip()
+# Fallback: if no MP3 hosted, use Twilio's neural TTS to read this script.
+# Sounds ~80% as good as a real recording and removes the hosting step.
+# Set DIALER_VOICEMAIL_DROP_TEXT to your pitch (under ~600 chars).
+VOICEMAIL_DROP_TEXT = os.environ.get("DIALER_VOICEMAIL_DROP_TEXT", "").strip()
+VOICEMAIL_DROP_VOICE = os.environ.get("DIALER_VOICEMAIL_DROP_VOICE", "Polly.Matthew-Neural").strip()
+
+# ─── Call recording ─────────────────────────────────────────────────────────
+# Twilio records BOTH legs to separate audio channels (-dual) so the
+# post-call summarizer can re-listen and re-transcribe via Whisper/Deepgram
+# at higher quality than the live STT. Recording starts when the prospect
+# answers — Tyler should verbally announce "this call may be recorded" as
+# his opening line. The /twilio/recording webhook attaches RecordingUrl +
+# RecordingSid + RecordingDuration to the matching call_session.
+RECORDING_ENABLED = os.environ.get("DIALER_RECORDING_ENABLED", "0").strip() not in ("", "0", "false", "no")
+RECORDING_CONSENT_REMINDER = os.environ.get("DIALER_RECORDING_CONSENT_REMINDER", "1").strip() not in ("", "0", "false", "no")
+# Public HTTPS base used to construct amd_status_callback. Falls back to
+# DIALER_PUBLIC_BASE_URL (already used for the media stream).
+def _public_base_url():
+    base = os.environ.get("DIALER_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    return base
+PUBLIC_BASE_URL = _public_base_url()
+
 # Agent mode: when "agent" or "auto", Haiku reasons about each transcript chunk and
 # decides actions (press digit, alert Tyler, mark voicemail, etc). "regex" is the
 # legacy pattern-matching path. Default to "agent" if Anthropic credentials present.
@@ -116,6 +166,37 @@ BUILD_LOCK = threading.Lock()
 IVR_LOCK = threading.Lock()
 IVR_EVENTS = {}
 IVR_SEQ = {}
+IVR_SESSION_STARTED_AT = {}  # session_id -> epoch seconds, set on first event
+
+# Destructive auto-actions (mark_voicemail, press_digit) must clear BOTH gates
+# before the server fires them as auto rather than as a suggestion:
+#   1) the agent's self-reported confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD
+#   2) at least AUTO_ACTION_GRACE_SECONDS have elapsed since the call connected
+# This is defense-in-depth — the JS client also gates mark_voicemail on
+# state.call so a live human is never auto-hung-up. See prompt #28 +
+# commit 92d9096 for the bug that motivated this.
+AUTO_ACTION_CONFIDENCE_THRESHOLD = float(os.environ.get("AGENT_AUTO_CONFIDENCE", "0.9"))
+AUTO_ACTION_GRACE_SECONDS = float(os.environ.get("AGENT_AUTO_GRACE_SECONDS", "10"))
+
+
+# ─── Shared-secret gate for the new /api/* endpoints ─────────────────────────
+# Set DIALER_AUTH_TOKEN in production. If unset, the gate is disabled so local
+# dev / file:// frontends keep working. Only the new /api/* surface is gated —
+# Twilio voice webhooks and the legacy /leads etc. routes are untouched so
+# Twilio's signed webhooks keep working.
+DIALER_AUTH_TOKEN = os.environ.get("DIALER_AUTH_TOKEN", "").strip()
+
+@app.before_request
+def _enforce_dialer_auth():
+    if not DIALER_AUTH_TOKEN:
+        return  # dev mode: no token configured
+    if not request.path.startswith("/api/"):
+        return  # only gate the new API surface
+    if request.method == "OPTIONS":
+        return  # let CORS preflight through
+    supplied = (request.headers.get("X-Dialer-Token") or "").strip()
+    if supplied != DIALER_AUTH_TOKEN:
+        return jsonify({"error": "unauthorized"}), 401
 
 
 # ─── local SQLite for dispositions ────────────────────────────────────────────
@@ -173,7 +254,110 @@ def _db():
         cost_usd      REAL,
         created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
+    # ── Prompt #22 — structured-entry transcripts + per-session summaries.
+    # Renamed from the spec (call_transcripts / call_summaries) to
+    # call_sessions / call_session_summaries so they don't collide with the
+    # pre-existing prompt-#19 tables of the same names (different schema).
+    c.execute("""CREATE TABLE IF NOT EXISTS call_sessions (
+        call_session_id TEXT PRIMARY KEY,
+        lead_id         TEXT NOT NULL,
+        started_at      INTEGER NOT NULL,
+        ended_at        INTEGER
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_lead ON call_sessions(lead_id, started_at DESC)")
+    c.execute("""CREATE TABLE IF NOT EXISTS call_session_entries (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        call_session_id TEXT NOT NULL,
+        role            TEXT NOT NULL,
+        text            TEXT NOT NULL,
+        ts              INTEGER NOT NULL
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_entries_session ON call_session_entries(call_session_id, ts)")
+    c.execute("""CREATE TABLE IF NOT EXISTS call_session_summaries (
+        call_session_id TEXT PRIMARY KEY,
+        lead_id         TEXT NOT NULL,
+        outcome         TEXT,
+        summary         TEXT,
+        duration_s      INTEGER,
+        notes           TEXT,
+        created_at      INTEGER NOT NULL
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_summaries_lead ON call_session_summaries(lead_id, created_at DESC)")
+    # Bookings — scheduled callbacks/demos created from coach action=schedule.
+    # v1: source='gcal_url' (Google Calendar URL handoff). v2: source='gcal_api'.
+    c.execute("""CREATE TABLE IF NOT EXISTS bookings (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        lead_id         TEXT NOT NULL,
+        call_session_id TEXT,
+        type            TEXT NOT NULL,
+        title           TEXT NOT NULL,
+        start_iso       TEXT NOT NULL,
+        duration_min    INTEGER NOT NULL DEFAULT 15,
+        notes           TEXT,
+        gcal_url        TEXT,
+        created_at      INTEGER NOT NULL
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_bookings_lead ON bookings(lead_id, start_iso)")
+    # ── Idempotent schema upgrades for prompt #19 ────────────────────────
+    # call_transcripts.entries_json — structured per-utterance list
+    # call_summaries.summary / duration_s / notes — short summary + duration
+    for table, col, decl in (
+        ("call_transcripts", "entries_json", "TEXT"),
+        ("call_summaries",   "summary",      "TEXT"),
+        ("call_summaries",   "duration_s",   "INTEGER"),
+        ("call_summaries",   "notes",        "TEXT"),
+        ("bookings",         "call_session_id", "TEXT"),
+        ("bookings",         "type",            "TEXT"),
+        # Twilio call recording metadata, attached post-hoc via
+        # /twilio/recording webhook. recording_url is signed Twilio URL.
+        ("call_sessions",    "recording_url",        "TEXT"),
+        ("call_sessions",    "recording_sid",        "TEXT"),
+        ("call_sessions",    "recording_duration_s", "INTEGER"),
+        ("call_sessions",    "recording_channels",   "INTEGER"),
+        # Cached snapshot of which area/phone was dialed — needed for
+        # best-time-to-call analysis joining call_sessions to dispositions
+        ("call_sessions",    "phone",                "TEXT"),
+    ):
+        try:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return c
+
+
+def _now_ms() -> int:
+    """Milliseconds since epoch — matches the prompt #22 schema's ts/started_at."""
+    import time
+    return int(time.time() * 1000)
+
+
+def _short_call_summary(transcript_text: str, business_name: str, owner_name: str = "") -> str:
+    """Deterministic ≤12-word summary for calls too short to bother an LLM.
+
+    Serves the LEGACY single-blob transcript path (call_transcripts table).
+    The newer structured-entries path uses coach.summarize_call instead.
+    These two helpers intentionally accept different input shapes and
+    shouldn't be merged without first migrating all legacy callers."""
+    text = (transcript_text or "").strip()
+    if not text:
+        return "No answer"
+    low = text.lower()
+    if re.search(r"\b(voicemail|leave (a )?message|after the (tone|beep))\b", low):
+        return "Voicemail"
+    if re.search(r"\b(receptionist|front desk|out of the office|not (here|in|available)|busy with a customer)\b", low):
+        owner = owner_name or "owner"
+        return f"Gatekeeper — {owner} unavailable"
+    if len(text.split()) <= 6:
+        return "Picked up + hung up immediately"
+    return "Short exchange — no decision"
+
+
+def _utterance_count(transcript_text: str) -> int:
+    """Cheap heuristic: count sentence-ish chunks in the captured transcript."""
+    if not transcript_text:
+        return 0
+    chunks = re.split(r"(?<=[.!?])\s+|\n+", transcript_text.strip())
+    return sum(1 for ch in chunks if ch.strip())
 
 
 # ─── phone helpers ────────────────────────────────────────────────────────────
@@ -326,6 +510,7 @@ def _add_ivr_event(session_id, **event):
     if not session_id:
         return
     with IVR_LOCK:
+        IVR_SESSION_STARTED_AT.setdefault(session_id, time.time())
         seq = IVR_SEQ.get(session_id, 0) + 1
         IVR_SEQ[session_id] = seq
         event.setdefault("level", "")
@@ -333,6 +518,12 @@ def _add_ivr_event(session_id, **event):
         event["seq"] = seq
         IVR_EVENTS.setdefault(session_id, []).append(event)
         IVR_EVENTS[session_id] = IVR_EVENTS[session_id][-100:]
+
+
+def _session_elapsed_s(session_id):
+    """Seconds since the first event for this session. 0 if unknown."""
+    started = IVR_SESSION_STARTED_AT.get(session_id)
+    return max(0.0, time.time() - started) if started else 0.0
 
 
 def _score_ivr_window(window):
@@ -427,18 +618,55 @@ def _finalize_transcript(session_id):
 
 def _generate_call_summary(session_id):
     """Read the transcript, ask Haiku for a structured post-call summary.
-    Persists to call_summaries. Idempotent — skips if a row already exists."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return
+    Persists to call_summaries. Idempotent — skips if a row already exists.
+
+    Short calls (< 45s OR < 4 utterances) take the deterministic short-summary
+    fast path and skip the LLM entirely (~free). Substantive calls bundle the
+    ≤12-word summary into the same JSON the existing LLM call returns, so
+    we still issue exactly one LLM request per substantive call (~1¢).
+    """
     try:
         with _db() as c:
-            t = c.execute("SELECT transcript, lead_id, business_name FROM call_transcripts WHERE session_id = ?", (session_id,)).fetchone()
+            t = c.execute(
+                "SELECT transcript, lead_id, business_name, started_at, ended_at "
+                "FROM call_transcripts WHERE session_id = ?", (session_id,)
+            ).fetchone()
             existing = c.execute("SELECT 1 FROM call_summaries WHERE session_id = ?", (session_id,)).fetchone()
         if not t or existing:
             return
         transcript = (t["transcript"] or "").strip()
-        if len(transcript) < 40:
-            return  # too short to summarize
+        # Duration in seconds (best-effort; sqlite TIMESTAMP DEFAULTs are UTC strings)
+        duration_s = None
+        try:
+            if t["started_at"] and t["ended_at"]:
+                start_dt = datetime.datetime.fromisoformat(str(t["started_at"]).replace(" ", "T"))
+                end_dt   = datetime.datetime.fromisoformat(str(t["ended_at"]).replace(" ", "T"))
+                duration_s = max(0, int((end_dt - start_dt).total_seconds()))
+        except Exception:
+            duration_s = None
+
+        # Short-call fast path — deterministic rule, no LLM
+        utt_count = _utterance_count(transcript)
+        too_short = (duration_s is not None and duration_s < 45) or utt_count < 4 or len(transcript) < 40
+        if too_short:
+            short = _short_call_summary(transcript, t["business_name"] or "", "")
+            with _db() as c:
+                c.execute(
+                    "INSERT OR REPLACE INTO call_summaries "
+                    "(session_id, lead_id, outcome, summary, duration_s, sentiment, key_objections, follow_up_actions, key_quotes, suggested_disposition, confidence, model, cost_usd) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (session_id, t["lead_id"],
+                     "voicemail" if short == "Voicemail" else ("gatekeeper" if "Gatekeeper" in short else "no_answer"),
+                     short, duration_s,
+                     "neutral", json.dumps([]), json.dumps([]), json.dumps([]),
+                     "no_answer" if short == "No answer" else "voicemail" if short == "Voicemail" else "skip",
+                     0.5, "deterministic", 0.0),
+                )
+                c.commit()
+            return
+
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            return
         from anthropic import Anthropic
         client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         model = os.environ.get("CALL_SUMMARY_MODEL", "claude-haiku-4-5-20251001")
@@ -454,6 +682,7 @@ def _generate_call_summary(session_id):
             "Return JSON with these keys exactly:\n"
             "  outcome           : one of [booked, interested, callback, not_interested, dnc, voicemail, gatekeeper, no_decision]\n"
             "  sentiment         : one of [positive, neutral, negative]\n"
+            "  summary           : ≤12 word plain-English recap suitable as a one-line row label\n"
             "  key_objections    : list of strings, verbatim or close paraphrase\n"
             "  follow_up_actions : list of imperative bullets ('text demo link Friday', 'email Joe at joe@...')\n"
             "  key_quotes        : list of strings — the 1-3 most useful verbatim quotes\n"
@@ -472,11 +701,21 @@ def _generate_call_summary(session_id):
             return
         usage = resp.usage
         cost = round(getattr(usage, "input_tokens", 0) * 1.0 / 1_000_000 + getattr(usage, "output_tokens", 0) * 5.0 / 1_000_000, 4)
+        # Trim the LLM's summary to ≤12 words for the call-history row label
+        short_summary = " ".join(str(data.get("summary") or "").split())
+        if short_summary:
+            words = short_summary.split(" ")
+            if len(words) > 12:
+                short_summary = " ".join(words[:12]).rstrip(",.;:") + "…"
+        if not short_summary:
+            short_summary = _short_call_summary(transcript, t["business_name"] or "", "")
         with _db() as c:
             c.execute(
-                "INSERT OR REPLACE INTO call_summaries (session_id, lead_id, outcome, sentiment, key_objections, follow_up_actions, key_quotes, suggested_disposition, confidence, model, cost_usd) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (session_id, t["lead_id"], data.get("outcome"), data.get("sentiment"),
+                "INSERT OR REPLACE INTO call_summaries "
+                "(session_id, lead_id, outcome, summary, duration_s, sentiment, key_objections, follow_up_actions, key_quotes, suggested_disposition, confidence, model, cost_usd) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (session_id, t["lead_id"], data.get("outcome"), short_summary, duration_s,
+                 data.get("sentiment"),
                  json.dumps(data.get("key_objections") or []),
                  json.dumps(data.get("follow_up_actions") or []),
                  json.dumps(data.get("key_quotes") or []),
@@ -542,14 +781,42 @@ def _handle_ivr_transcript(session_id, transcript, seen):
 
 
 def _dispatch_agent_action(session_id, decision, transcript):
-    """Translate an agent decision into an IVR event the frontend will act on."""
-    action = decision.get("action")
-    arg    = decision.get("arg") or ""
-    reason = decision.get("reason") or ""
+    """Translate an agent decision into an IVR event the frontend will act on.
+
+    Destructive actions (mark_voicemail, press_digit) are downgraded to
+    suggestions unless BOTH:
+      - decision.confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD (default 0.9)
+      - call has been live for AUTO_ACTION_GRACE_SECONDS (default 10s)
+    mark_voicemail gets a second opinion from coach.classify_caller_party
+    so an AI receptionist doesn't get auto-marked as voicemail.
+    """
+    action     = decision.get("action")
+    arg        = decision.get("arg") or ""
+    reason     = decision.get("reason") or ""
+    confidence = 0.0
+    try:
+        confidence = float(decision.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+
+    elapsed = _session_elapsed_s(session_id)
+    confident = confidence >= AUTO_ACTION_CONFIDENCE_THRESHOLD
+    past_grace = elapsed >= AUTO_ACTION_GRACE_SECONDS
+    safe_to_auto = confident and past_grace
 
     if action == "press_digit" and arg in tuple("0123456789*#"):
-        # Treat agent decisions as auto-press by default (it has higher confidence than regex).
-        auto = (IVR_AGENT_MODE == "auto") or (IVR_COPILOT_MODE == "auto")
+        # Treat agent decisions as auto-press by default (it has higher confidence than regex)
+        # BUT only if it cleared both safety gates. Otherwise suggest only.
+        mode_env_auto = (IVR_AGENT_MODE == "auto") or (IVR_COPILOT_MODE == "auto")
+        auto = mode_env_auto and safe_to_auto
+        if mode_env_auto and not safe_to_auto:
+            gate_reason = (
+                f"low confidence {confidence:.2f}<{AUTO_ACTION_CONFIDENCE_THRESHOLD:.2f}"
+                if not confident
+                else f"only {elapsed:.0f}s into call (need {AUTO_ACTION_GRACE_SECONDS:.0f}s)"
+            )
+        else:
+            gate_reason = ""
         _add_ivr_event(
             session_id,
             kind="ivr_digit",
@@ -558,8 +825,16 @@ def _dispatch_agent_action(session_id, decision, transcript):
             mode="auto" if auto else "suggest",
             transcript=transcript,
             reason=reason,
-            level="ok",
-            message=f"Agent {'auto-pressing' if auto else 'suggests pressing'} {arg}: {reason}",
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            gate_reason=gate_reason,
+            level="ok" if auto else "warn",
+            message=(
+                f"Agent auto-pressing {arg}: {reason}"
+                if auto else
+                f"Agent suggests pressing {arg}: {reason}"
+                + (f" (gated: {gate_reason})" if gate_reason else "")
+            ),
         )
     elif action == "wait":
         # No-op event for the agent log so Tyler can see it's thinking.
@@ -568,25 +843,78 @@ def _dispatch_agent_action(session_id, decision, transcript):
             kind="agent_wait",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
             message=f"Agent: waiting — {reason}",
         )
     elif action == "alert_tyler":
+        # Alerts are non-destructive (just show a UI badge), but the
+        # original bug was alert_tyler firing on an AI receptionist greeting
+        # ("it wasn't even a live human it was an ai"). Attach a
+        # second-opinion classifier verdict so the UI can label the alert
+        # as live-human vs ai-receptionist instead of conflating both.
+        try:
+            from coach import classify_caller_party
+            verdict = classify_caller_party(transcript) or {}
+        except Exception as e:
+            verdict = {"party": "unsure", "confidence": 0.0, "reasoning": f"classifier exception: {e}"}
+        party = verdict.get("party") or "unsure"
+        try:
+            verdict_conf = float(verdict.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            verdict_conf = 0.0
         _add_ivr_event(
             session_id,
             kind="alert",
             level="alert",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            party=party,
+            party_confidence=verdict_conf,
+            party_reasoning=verdict.get("reasoning") or "",
             message=arg or reason or "Agent alert",
         )
     elif action == "mark_voicemail":
+        # Defense-in-depth: confirm with an independent classifier before
+        # firing. The primary agent is trained to favor mark_voicemail on
+        # ambiguous greetings — but an AI receptionist sounds nearly
+        # identical to voicemail to a text-only classifier (Pipecat has the
+        # same blind spot — see research notes). The second-opinion classifier
+        # discriminates {human, ai_receptionist, voicemail, unsure}.
+        try:
+            from coach import classify_caller_party
+            verdict = classify_caller_party(transcript) or {}
+        except Exception as e:
+            verdict = {"party": "unsure", "confidence": 0.0, "reasoning": f"classifier exception: {e}"}
+        party = verdict.get("party") or "unsure"
+        verdict_conf = 0.0
+        try:
+            verdict_conf = float(verdict.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            verdict_conf = 0.0
+        confirmed_voicemail = (party == "voicemail" and verdict_conf >= 0.85)
+        # Even if the second opinion confirms voicemail, the call must be
+        # past the grace window AND the agent must be self-confident.
+        auto_mark = confirmed_voicemail and safe_to_auto
         _add_ivr_event(
             session_id,
-            kind="mark_voicemail",
+            kind="mark_voicemail" if auto_mark else "mark_voicemail_suggest",
             level="warn",
             transcript=transcript,
             reason=reason,
-            message=f"Agent detected voicemail: {reason}",
+            confidence=confidence,
+            elapsed_s=round(elapsed, 1),
+            party=party,
+            party_confidence=verdict_conf,
+            party_reasoning=verdict.get("reasoning") or "",
+            auto=auto_mark,
+            message=(
+                f"Agent confirmed voicemail (party={party} {verdict_conf:.2f}): {reason}"
+                if auto_mark else
+                f"Agent suggests voicemail but gated (party={party} {verdict_conf:.2f}, "
+                f"agent_conf={confidence:.2f}, elapsed={elapsed:.0f}s): {reason}"
+            ),
         )
     elif action == "note":
         _add_ivr_event(
@@ -594,6 +922,7 @@ def _dispatch_agent_action(session_id, decision, transcript):
             kind="agent_note",
             transcript=transcript,
             reason=reason,
+            confidence=confidence,
             message=f"Agent note: {arg}",
         )
     else:
@@ -1197,6 +1526,64 @@ def single():
     return send_from_directory(str(HERE), "single.html")
 
 
+_SECRET_PATTERNS = [
+    # key=value style (catches positive cases the dev would expect)
+    (re.compile(r"(api[_-]?key|token|secret|password|sid|authorization)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_\-\.]{16,}",
+                re.IGNORECASE), r"\1=[REDACTED]"),
+    # Anthropic keys: sk-ant-...
+    (re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{20,}\b"), "[REDACTED_ANTHROPIC_KEY]"),
+    # Twilio Account SIDs (AC + 32 hex) and API Key SIDs (SK + 32 hex)
+    (re.compile(r"\bAC[a-f0-9]{32}\b"), "[REDACTED_TWILIO_AC]"),
+    (re.compile(r"\bSK[a-f0-9]{32}\b"), "[REDACTED_TWILIO_SK]"),
+    # JWTs (header.payload.sig)
+    (re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{6,}\b"), "[REDACTED_JWT]"),
+    # Bearer tokens / Basic auth headers
+    (re.compile(r"\b(Bearer|Basic)\s+[A-Za-z0-9._\-=]{16,}\b"), r"\1 [REDACTED]"),
+    # OpenAI keys
+    (re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"), "[REDACTED_OPENAI_KEY]"),
+    # Deepgram keys (40-hex)
+    (re.compile(r"\b[a-f0-9]{40}\b"), "[REDACTED_HEX40]"),
+]
+
+
+def _redact_log_line(line):
+    """Belt-and-suspenders secret scrubber for the debug log endpoint."""
+    s = line
+    for pat, repl in _SECRET_PATTERNS:
+        s = pat.sub(repl, s)
+    return s
+
+
+@app.route("/api/_debug/server-log")
+def api_debug_server_log():
+    """Tail of server.out.log + server.err.log for the in-browser debug overlay.
+    Requires DIALER_AUTH_TOKEN even in dev mode — the @before_request gate
+    skips when the token env var is unset, but here we require it always
+    because the log content is more sensitive than other /api/* endpoints
+    (it can contain raw API keys, JWTs, account SIDs from tracebacks)."""
+    if DIALER_AUTH_TOKEN:
+        # Normal /api/* gate already enforced in @before_request — fine
+        pass
+    else:
+        # Dev mode (no token configured): allow but only from localhost
+        if request.remote_addr not in {"127.0.0.1", "::1"}:
+            return jsonify({"error": "debug log restricted to localhost when DIALER_AUTH_TOKEN unset"}), 403
+    out_path = HERE / "server.out.log"
+    err_path = HERE / "server.err.log"
+    def _read_tail(p, n=200):
+        if not p.exists():
+            return []
+        try:
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                lines = f.readlines()[-n:]
+            return [l.rstrip("\n") for l in lines]
+        except Exception as e:
+            return [f"[read error: {e}]"]
+    out_lines = [_redact_log_line(l) for l in _read_tail(out_path)]
+    err_lines = [_redact_log_line(l) for l in _read_tail(err_path)]
+    return jsonify({"stdout": out_lines, "stderr": err_lines})
+
+
 @app.route("/healthz")
 def healthz():
     return jsonify({
@@ -1217,6 +1604,19 @@ def healthz():
             "anthropic_key": bool(os.environ.get("ANTHROPIC_API_KEY")),
         },
     })
+
+
+@app.get("/api/deepgram-token")
+def api_deepgram_token():
+    import os
+    key = os.environ.get("DEEPGRAM_API_KEY")
+    if not key:
+        return {"error": "DEEPGRAM_API_KEY not configured"}, 500
+    # Returning the API key directly is acceptable for short-lived
+    # browser WebSocket sessions. Same pattern as NovaIntel.
+    # If you want short-lived keys later, swap for Deepgram's
+    # /v1/projects/{id}/keys API to mint ephemeral tokens.
+    return {"key": key}
 
 
 @app.route("/status")
@@ -1423,6 +1823,39 @@ def get_transcript(session_id):
     return jsonify(out)
 
 
+@app.route("/api/lead/<lead_id>/calls")
+def api_lead_call_history(lead_id):
+    """Past-call list for the View Details panel.
+    Returns: {"calls": [{session_id, started_at, ended_at, duration_s, outcome, summary, preview}, …]}
+    """
+    with _db() as c:
+        rows = c.execute(
+            "SELECT t.session_id, t.started_at, t.ended_at, t.business_name, t.phone, "
+            "       substr(t.transcript, 1, 240) AS preview, length(t.transcript) AS tlen, "
+            "       s.outcome, s.summary, s.duration_s "
+            "FROM call_transcripts t "
+            "LEFT JOIN call_summaries s USING (session_id) "
+            "WHERE t.lead_id = ? "
+            "ORDER BY t.started_at DESC LIMIT 50",
+            (lead_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        # If no summary row exists yet, synthesize the short-call rule on the fly
+        if not d.get("summary"):
+            d["summary"] = _short_call_summary(d.get("preview") or "", d.get("business_name") or "", "")
+        if d.get("duration_s") is None and d.get("started_at") and d.get("ended_at"):
+            try:
+                s_dt = datetime.datetime.fromisoformat(str(d["started_at"]).replace(" ", "T"))
+                e_dt = datetime.datetime.fromisoformat(str(d["ended_at"]).replace(" ", "T"))
+                d["duration_s"] = max(0, int((e_dt - s_dt).total_seconds()))
+            except Exception:
+                d["duration_s"] = None
+        out.append(d)
+    return jsonify({"lead_id": lead_id, "calls": out})
+
+
 @app.route("/summary/<session_id>")
 def get_summary(session_id):
     with _db() as c:
@@ -1463,6 +1896,16 @@ def token():
     return jsonify({"token": tok.to_jwt(), "identity": "dialer"})
 
 
+@app.route("/voicemail-drop.mp3")
+def voicemail_drop_mp3():
+    """Dedicated route for the voicemail-drop audio. We can't rely on Flask's
+    static-folder serving alone because the running process was launched
+    before the file existed and Werkzeug's static handler doesn't pick up
+    new root-level files on this Windows/OneDrive setup. An explicit route
+    resolves the path on every request via send_from_directory."""
+    return send_from_directory(str(HERE), "voicemail-drop.mp3", mimetype="audio/mpeg")
+
+
 @app.route("/voice", methods=["POST"])
 def voice():
     to   = request.values.get("To", "")
@@ -1476,10 +1919,178 @@ def voice():
         stream = start.stream(url=MEDIA_STREAM_URL, track="outbound_track")
         if session_id:
             stream.parameter(name="session_id", value=session_id)
-    dial = Dial(caller_id=FROM_NUMBER, answer_on_bridge=True, time_limit=3600)
-    dial.number(to)
+    dial_kwargs = dict(caller_id=FROM_NUMBER, answer_on_bridge=True, time_limit=3600)
+    # Call recording, applied to BOTH legs of the bridge in separate channels.
+    # The status callback fires once Twilio has finalized the recording and
+    # has a stable URL to share.
+    if RECORDING_ENABLED and PUBLIC_BASE_URL:
+        from urllib.parse import quote as _qr
+        rec_cb = f"{PUBLIC_BASE_URL}/twilio/recording?session_id={_qr(session_id)}"
+        dial_kwargs.update({
+            "record": "record-from-answer-dual",
+            "recording_status_callback": rec_cb,
+            "recording_status_callback_method": "POST",
+            "recording_status_callback_event": "completed",
+        })
+    dial = Dial(**dial_kwargs)
+    number_kwargs = {}
+    # Carrier-level AMD on the prospect's leg. Only enable when we have a
+    # public HTTPS endpoint for Twilio to POST the verdict back to.
+    if AMD_ENABLED and PUBLIC_BASE_URL:
+        from urllib.parse import quote as _q
+        amd_cb = f"{PUBLIC_BASE_URL}/twilio/amd?session_id={_q(session_id)}"
+        number_kwargs.update({
+            "machine_detection": "DetectMessageEnd",
+            "amd_status_callback": amd_cb,
+            "amd_status_callback_method": "POST",
+            # Tuning per Twilio's defaults — DetectMessageEnd waits for the
+            # voicemail greeting to finish so the drop plays after the beep.
+            "machine_detection_timeout": 30,
+            "machine_detection_speech_threshold": 2400,
+            "machine_detection_speech_end_threshold": 1200,
+            "machine_detection_silence_timeout": 5000,
+        })
+    dial.number(to, **number_kwargs)
     resp.append(dial)
     return str(resp), 200, {"Content-Type": "text/xml"}
+
+
+@app.route("/twilio/recording", methods=["POST"])
+def twilio_recording_callback():
+    """Twilio recording-completed status callback.
+
+    Receives RecordingUrl, RecordingSid, RecordingDuration, RecordingChannels.
+    Stores them against the call_session matched by ?session_id=... in the
+    callback URL. The URL is a signed Twilio media URL — anyone with the URL
+    can stream it, so treat it as semi-secret.
+    """
+    rec_url       = (request.values.get("RecordingUrl") or "").strip()
+    rec_sid       = (request.values.get("RecordingSid") or "").strip()
+    rec_duration  = request.values.get("RecordingDuration") or "0"
+    rec_channels  = request.values.get("RecordingChannels") or "1"
+    session_id    = (request.values.get("session_id") or "").strip()
+
+    try:
+        duration_s = int(rec_duration)
+    except (TypeError, ValueError):
+        duration_s = 0
+    try:
+        channels = int(rec_channels)
+    except (TypeError, ValueError):
+        channels = 1
+
+    if session_id and rec_url:
+        try:
+            with _db() as c:
+                c.execute(
+                    "UPDATE call_sessions SET recording_url=?, recording_sid=?, "
+                    "recording_duration_s=?, recording_channels=? "
+                    "WHERE call_session_id=?",
+                    (rec_url, rec_sid, duration_s, channels, session_id),
+                )
+                c.commit()
+        except Exception as e:
+            # Don't 500 — Twilio will retry forever. Log + ack.
+            print(f"[recording-cb] db update failed for {session_id}: {e}", file=sys.stderr)
+
+        _add_ivr_event(
+            session_id,
+            kind="recording_complete",
+            recording_url=rec_url,
+            recording_sid=rec_sid,
+            duration_s=duration_s,
+            channels=channels,
+            message=f"Recording saved: {duration_s}s, {channels}ch — {rec_sid}",
+        )
+
+    return ("", 200)
+
+
+@app.route("/twilio/amd", methods=["POST"])
+def twilio_amd_callback():
+    """Twilio AMD status callback.
+
+    Receives:
+      CallSid      — the prospect leg's call SID (the OUTBOUND child call)
+      AnsweredBy   — one of {human, machine_start, machine_end_beep,
+                             machine_end_silence, machine_end_other,
+                             fax, unknown}
+      MachineBehavior — extra detail (greeting/beep/etc.)
+
+    Flow:
+      1. Always record an `amd_result` IVR event for the UI ("Twilio AMD
+         says: machine_end_beep").
+      2. If AnsweredBy starts with machine_* AND VOICEMAIL_DROP_URL is
+         configured, fire-and-forget update the live call to play the
+         pre-recorded pitch then hang up.
+    """
+    answered_by = (request.values.get("AnsweredBy") or "").strip()
+    call_sid    = (request.values.get("CallSid") or "").strip()
+    behavior    = (request.values.get("MachineBehavior") or "").strip()
+    session_id  = (request.values.get("session_id") or "").strip()
+
+    is_machine = answered_by.startswith("machine_")
+    level = "warn" if is_machine else ("ok" if answered_by == "human" else "")
+    drop_fired = False
+    drop_error = ""
+
+    # Try the voicemail drop. We do this BEFORE logging so the event reflects
+    # what actually happened (or didn't). Fire-and-forget — REST API failures
+    # shouldn't break the AMD flow.
+    # Two emit modes:
+    #   <Play>URL</Play>   when DIALER_VOICEMAIL_DROP_URL is set (real recording)
+    #   <Say>text</Say>    when DIALER_VOICEMAIL_DROP_TEXT is set (TTS fallback,
+    #                      no file hosting needed — sounds ~80% as good using
+    #                      Polly Neural voices).
+    have_drop_audio = bool(VOICEMAIL_DROP_URL or VOICEMAIL_DROP_TEXT)
+    if is_machine and have_drop_audio and call_sid:
+        try:
+            from twilio.rest import Client as TwilioClient
+            auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+            if not auth_token:
+                drop_error = "TWILIO_AUTH_TOKEN not set"
+            else:
+                tw = TwilioClient(ACCOUNT_SID, auth_token)
+                from xml.sax.saxutils import escape as _esc
+                if VOICEMAIL_DROP_URL:
+                    body = f'<Play>{_esc(VOICEMAIL_DROP_URL, {chr(34): "&quot;"})}</Play>'
+                else:
+                    body = (
+                        f'<Say voice="{_esc(VOICEMAIL_DROP_VOICE)}">'
+                        f'{_esc(VOICEMAIL_DROP_TEXT)}</Say>'
+                    )
+                # Small pause lets the carrier-side beep finish before our
+                # audio starts so we don't talk over the greeting tail.
+                twiml = f'<Response><Pause length="1"/>{body}<Hangup/></Response>'
+                tw.calls(call_sid).update(twiml=twiml)
+                drop_fired = True
+        except Exception as e:
+            drop_error = f"{type(e).__name__}: {e}"
+
+    if session_id:
+        _add_ivr_event(
+            session_id,
+            kind="amd_result",
+            level=level,
+            answered_by=answered_by,
+            behavior=behavior,
+            call_sid=call_sid,
+            voicemail_drop_fired=drop_fired,
+            voicemail_drop_error=drop_error,
+            message=(
+                f"Twilio AMD: {answered_by}"
+                + (f" ({behavior})" if behavior else "")
+                + (
+                    " — voicemail drop fired" if drop_fired
+                    else (f" — drop error: {drop_error}" if drop_error
+                          else (" — would drop but no DROP_URL or DROP_TEXT configured" if is_machine and not have_drop_audio
+                                else ""))
+                )
+            ),
+        )
+
+    # Twilio expects 200 + empty body for status callbacks
+    return ("", 200)
 
 
 @app.route("/leads")
@@ -1612,6 +2223,44 @@ def notes_list():
             "SELECT lead_id, phone, email, callback_at, note, updated_at FROM lead_notes ORDER BY updated_at DESC"
         ).fetchall()
     return jsonify({"notes": [dict(r) for r in rows]})
+
+
+# ─── Per-lead note autosave endpoints (prompt #24) ─────────────────────────
+# Wrap the existing lead_notes table so the frontend can autosave the note
+# body on debounce without touching phone/email/callback_at. The old /note
+# POST endpoint above remains for the AI autofill pathway.
+@app.get("/api/notes/<lead_id>")
+def api_notes_get(lead_id):
+    with _db() as c:
+        row = c.execute(
+            "SELECT note, updated_at FROM lead_notes WHERE lead_id=?",
+            (lead_id,),
+        ).fetchone()
+    return jsonify({
+        "body": (row["note"] if row and row["note"] is not None else ""),
+        "updated_at": (row["updated_at"] if row else None),
+    })
+
+
+@app.put("/api/notes/<lead_id>")
+def api_notes_put(lead_id):
+    body = request.get_json(force=True, silent=True) or {}
+    text = (body.get("body") or "")[:32000]
+    with _db() as c:
+        c.execute(
+            """INSERT INTO lead_notes (lead_id, note, updated_at)
+               VALUES (?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT(lead_id) DO UPDATE SET
+                 note=excluded.note,
+                 updated_at=CURRENT_TIMESTAMP""",
+            (lead_id, text),
+        )
+        c.commit()
+        row = c.execute(
+            "SELECT updated_at FROM lead_notes WHERE lead_id=?",
+            (lead_id,),
+        ).fetchone()
+    return jsonify({"ok": True, "updated_at": (row["updated_at"] if row else None)})
 
 
 @app.route("/build", methods=["POST"])
@@ -1786,14 +2435,21 @@ def _run_build_agent_job(job_id, lead):
                 j["error"] = result["error"]
                 j["message"] = f"build failed: {result['error']}"
             else:
-                # Preview URL — for v1 we serve from the local build_agent _data dir
-                j["preview_url"] = f"/build_agent_preview/{result['slug']}/index.html"
+                # Prefer the live Vercel URL (shareable on the cold call); fall back to
+                # the local preview if the deploy step failed for any reason.
+                vercel_url = result.get("vercel_url")
+                local_preview = f"/build_agent_preview/{result['slug']}/index.html"
+                j["preview_url"] = vercel_url or local_preview
+                j["local_preview_url"] = local_preview
+                j["vercel_url"] = vercel_url
+                j["deployment_id"] = result.get("deployment_id")
                 j["status"] = "completed"
+                deploy_status = "LIVE on Vercel" if vercel_url else "local only (deploy failed)"
                 j["message"] = (
                     f"Site ready · code={result.get('code_score')} · "
                     f"vision={result.get('vision_score')} · "
                     f"${result.get('budget_used')} in {result.get('duration_sec')}s · "
-                    f"awaiting rep approval"
+                    f"{deploy_status}"
                 )
                 j["url"] = j["preview_url"]
             j["finished_at"] = _now_iso()
@@ -1840,6 +2496,578 @@ def built_preview(filename):
     return send_from_directory(str(BUILD_DIR), filename)
 
 
+@app.post("/api/agent/coach")
+def api_agent_coach():
+    body = request.get_json(force=True, silent=True) or {}
+    transcript          = body.get("transcript", []) or []
+    prospect_just_said  = (body.get("prospectJustSaid") or "").strip()
+    current_node        = body.get("currentNode") or {}
+    checkpoints         = body.get("checkpoints") or {}
+    call_state          = body.get("callState") or {}
+    agent_name          = body.get("agentName") or "Tyler"
+    business_name       = body.get("businessName") or ""
+    category            = body.get("category") or ""
+
+    # Empty utterance — return empty suggestion
+    if not prospect_just_said:
+        return {"suggestion": "", "reasoning": "", "thinking": ""}
+
+    # Social turn — return script node text, no LLM call
+    if is_social_turn(prospect_just_said, len(transcript)):
+        node_say = (current_node or {}).get("say", "") or "Hey — go ahead, I'm listening."
+        return {
+            "suggestion": node_say,
+            "action": "none",
+            "reasoning": "Social turn — return script node.",
+            "_specialist": "rapport",
+            "_badge": (current_node or {}).get("badge", "Entry"),
+        }
+
+    # IVR fast-path — no LLM call
+    from coach import detect_ivr_action
+    ivr = detect_ivr_action(prospect_just_said)
+    if ivr:
+        return {
+            "suggestion": f"[DTMF {ivr['digit']}]",
+            "action": ivr,
+            "reasoning": ivr.get("reason", "IVR detected"),
+            "_specialist": "ivr",
+            "_badge": (current_node or {}).get("badge", "unknown"),
+        }
+
+    # Route to specialist (objection wins)
+    objection_type = detect_objection_type(prospect_just_said)
+    badge = (current_node or {}).get("badge", "")
+    specialist = "objection" if objection_type else get_specialist_type(badge, "")
+
+    prompt = build_prompt(
+        specialist=specialist,
+        transcript=transcript,
+        prospect_just_said=prospect_just_said,
+        current_node=current_node,
+        checkpoints=checkpoints,
+        call_state=call_state,
+        agent_name=agent_name,
+        business_name=business_name,
+        category=category,
+        objection_type=objection_type,
+    )
+
+    def event_stream():
+        full_text = ""
+        try:
+            for chunk in stream_anthropic(prompt):
+                full_text += chunk
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            result = postprocess(
+                full_text,
+                current_node=current_node,
+                transcript=transcript,
+                business_name=business_name,
+                agent_name=agent_name,
+            )
+            result["_specialist"] = specialist
+            result["_badge"] = badge
+            yield f"data: {json.dumps({'done': True, 'result': result})}\n\n"
+        except Exception as e:
+            app.logger.exception("coach stream error")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+AUTO_DISPOSE_CODES = {"no_answer", "voicemail", "dnc", "not_interested"}
+
+
+@app.post("/api/agent/auto-dispose")
+def api_agent_auto_dispose():
+    """AI-on autonomous disposition endpoint.
+
+    Body: {lead_id, phone, code, reason?, session_id?}
+    code MUST be one of {no_answer, voicemail, dnc, not_interested}.
+    'interested' and 'callback' require human confirmation — refused here.
+
+    Side-effects:
+      1. Writes a dispositions row with the supplied code + reason as note.
+      2. Logs an IVR/agent event so Tyler can audit AI-driven decisions.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    lead_id    = body.get("lead_id")
+    phone      = body.get("phone")
+    code       = body.get("code")
+    reason     = body.get("reason") or "AI auto-dispose"
+    session_id = body.get("session_id") or ""
+
+    if not (lead_id and phone and code):
+        return jsonify({"error": "lead_id, phone, code required"}), 400
+    if code not in AUTO_DISPOSE_CODES:
+        return jsonify({
+            "error": f"code '{code}' not allowed for auto-dispose",
+            "allowed": sorted(AUTO_DISPOSE_CODES),
+        }), 400
+
+    note = f"[AI] {reason}"[:240]
+    with _db() as c:
+        c.execute(
+            "INSERT INTO dispositions (lead_id, phone, code, note, pass) VALUES (?,?,?,?,?)",
+            (lead_id, phone, code, note, 1),
+        )
+        c.commit()
+
+    # Log into the IVR/agent event stream so Tyler can see it in the UI history
+    if session_id:
+        try:
+            _add_ivr_event(
+                session_id,
+                kind="auto_dispose",
+                level="warn",
+                message=f"AI auto-dispositioned as '{code.replace('_',' ')}' — {reason}",
+                reason=reason,
+            )
+        except Exception:
+            pass
+
+    return jsonify({"ok": True, "lead_id": lead_id, "phone": phone, "code": code, "auto": True})
+
+
+@app.post("/api/agent/disposition")
+def api_agent_disposition():
+    body = request.get_json(force=True, silent=True) or {}
+    call_session_id = body.get("call_session_id") or ""
+    if not call_session_id:
+        return {"error": "call_session_id required"}, 400
+
+    with _db() as conn:
+        hdr = conn.execute(
+            "SELECT lead_id, started_at, ended_at FROM call_sessions WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+        if not hdr:
+            return {"error": "unknown call_session_id"}, 404
+
+        entries = conn.execute(
+            "SELECT role, text, ts FROM call_session_entries WHERE call_session_id=? ORDER BY ts ASC",
+            (call_session_id,),
+        ).fetchall()
+
+    transcript = [{"role": e["role"], "text": e["text"], "ts": e["ts"]} for e in entries]
+    duration_s = max(0, ((hdr["ended_at"] or _now_ms()) - hdr["started_at"]) // 1000)
+
+    try:
+        result = auto_disposition(transcript=transcript, duration_s=duration_s)
+    except Exception as e:
+        app.logger.exception("auto_disposition failed")
+        result = {"outcome": "", "confidence": 0.0, "callback_iso": None, "reasoning": str(e)}
+
+    return result
+
+
+# ── Bookings (prompt #21 — Google Calendar URL handoff) ────────────────────
+
+def _parse_iso_to_naive_utc(iso_str: str):
+    """Best-effort ISO 8601 → naive UTC datetime. Returns None on failure."""
+    if not iso_str:
+        return None
+    try:
+        s = iso_str.strip()
+        # Python 3.11+ handles offsets natively; older needs the Z swap
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.datetime.fromisoformat(s)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        return dt
+    except Exception:
+        return None
+
+
+@app.post("/api/booking")
+def api_booking_create():
+    """Persist a callback/discovery/preview-review booking."""
+    body = request.get_json(force=True, silent=True) or {}
+    start_iso = body.get("start_iso") or body.get("start") or ""
+    booking_type = body.get("type") or body.get("booking_type") or "callback"
+    required = ["lead_id", "type", "title", "start_iso"]
+    if not body.get("lead_id") or not booking_type or not body.get("title") or not start_iso:
+        return {"error": f"required: {required}"}, 400
+    try:
+        duration_min = int(body.get("duration_min") or 15)
+    except (TypeError, ValueError):
+        duration_min = 15
+
+    # Validate gcal_url. Reject explicitly (400) rather than silently dropping —
+    # silent-drop creates a stealth failure where the booking row persists with
+    # an empty URL and the user has no signal that the LLM emitted a hostile
+    # value. Whitelist Google Calendar hosts only.
+    raw_url = (body.get("gcal_url") or "").strip()
+    if raw_url and not raw_url.startswith(("https://calendar.google.com/", "https://www.google.com/calendar/")):
+        return jsonify({"error": "gcal_url must point at calendar.google.com",
+                        "got": raw_url[:80]}), 400
+
+    with _db() as c:
+        cur = c.execute(
+            """INSERT INTO bookings(lead_id, call_session_id, type, title, start_iso,
+                                     duration_min, notes, gcal_url, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                body["lead_id"],
+                body.get("call_session_id") or body.get("session_id"),
+                booking_type,
+                body["title"],
+                start_iso,
+                duration_min,
+                body.get("notes", ""),
+                raw_url,
+                _now_ms(),
+            ),
+        )
+        c.commit()
+
+    return {"id": cur.lastrowid, "ok": True}
+
+
+@app.get("/api/booking/lead/<lead_id>")
+def api_booking_list(lead_id):
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM bookings WHERE lead_id=? ORDER BY start_iso ASC",
+            (lead_id,),
+        ).fetchall()
+    return {"bookings": [dict(r) for r in rows]}
+
+
+@app.get("/api/booking/upcoming")
+def api_booking_upcoming():
+    """All upcoming bookings across all leads — for a global agenda view."""
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM bookings WHERE start_iso >= ? ORDER BY start_iso ASC LIMIT 100",
+            (datetime.datetime.utcnow().isoformat(),),
+        ).fetchall()
+    return {"bookings": [dict(r) for r in rows]}
+
+
+@app.route("/api/bookings")
+def api_list_bookings():
+    """Return upcoming + recent bookings. Optional ?lead_id=… filter."""
+    lead_id = request.args.get("lead_id")
+    with _db() as c:
+        if lead_id:
+            rows = c.execute(
+                "SELECT * FROM bookings WHERE lead_id = ? ORDER BY start_iso ASC LIMIT 100",
+                (lead_id,),
+            ).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT * FROM bookings ORDER BY start_iso ASC LIMIT 100"
+            ).fetchall()
+    return jsonify({"bookings": [dict(r) for r in rows]})
+
+
+# ─── Call transcript / summary endpoints (prompt #22) ────────────────────
+# NOTE: Backing tables were renamed call_sessions / call_session_entries /
+# call_session_summaries to avoid colliding with the pre-existing
+# call_transcripts / call_summaries tables from prompts #19 + #21.
+# Endpoint URLs match the prompt #22 spec verbatim.
+
+@app.post("/api/call/start")
+def api_call_start():
+    body = request.get_json(force=True, silent=True) or {}
+    lead_id = body.get("lead_id") or ""
+    phone   = (body.get("phone") or "").strip()
+    if not lead_id:
+        return {"error": "lead_id required"}, 400
+    call_session_id = f"cs_{uuid.uuid4().hex[:12]}"
+    with _db() as c:
+        c.execute(
+            "INSERT INTO call_sessions(call_session_id, lead_id, started_at, phone) VALUES (?,?,?,?)",
+            (call_session_id, lead_id, _now_ms(), phone or None),
+        )
+        c.commit()
+    return {"call_session_id": call_session_id}
+
+
+@app.post("/api/call/<call_session_id>/entry")
+def api_call_entry(call_session_id):
+    body = request.get_json(force=True, silent=True) or {}
+    role = body.get("role") or "agent"
+    text = (body.get("text") or "").strip()
+    ts = int(body.get("ts") or _now_ms())
+    if not text:
+        return {"ok": True}
+    if role not in {"agent", "prospect", "coach", "system"}:
+        role = "agent"
+    with _db() as c:
+        # Reject entries for sessions that have already been finalized — fire-
+        # and-forget client POSTs can otherwise arrive after /end has run and
+        # silently inflate the transcript past the summary's snapshot.
+        ended = c.execute(
+            "SELECT ended_at FROM call_sessions WHERE call_session_id = ?",
+            (call_session_id,),
+        ).fetchone()
+        if ended is None:
+            return jsonify({"ok": False, "reason": "unknown call_session_id"}), 404
+        if ended["ended_at"] is not None:
+            return jsonify({"ok": False, "reason": "session ended"}), 410
+        c.execute(
+            "INSERT INTO call_session_entries(call_session_id, role, text, ts) VALUES (?,?,?,?)",
+            (call_session_id, role, text[:4000], ts),
+        )
+        c.commit()
+    return {"ok": True}
+
+
+@app.post("/api/call/<call_session_id>/end")
+def api_call_end(call_session_id):
+    """Idempotent. First call wins; subsequent calls return the existing
+    summary instead of regenerating + overwriting. Eliminates the
+    race-condition class where hangUpAndStop and the Twilio disconnect
+    handler both fire /end and race on INSERT OR REPLACE."""
+    from coach import summarize_call
+    body = request.get_json(force=True, silent=True) or {}
+    outcome = body.get("outcome") or ""
+    notes = body.get("notes") or ""
+
+    with _db() as c:
+        row = c.execute(
+            "SELECT lead_id, started_at, ended_at FROM call_sessions WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "unknown call_session_id"}), 404
+
+        # Idempotency: if session already ended AND a summary exists, return it
+        if row["ended_at"] is not None:
+            existing = c.execute(
+                "SELECT outcome, summary, duration_s FROM call_session_summaries WHERE call_session_id=?",
+                (call_session_id,),
+            ).fetchone()
+            if existing:
+                return jsonify({
+                    "call_session_id": call_session_id,
+                    "outcome": existing["outcome"],
+                    "summary": existing["summary"],
+                    "duration_s": existing["duration_s"],
+                    "already_ended": True,
+                })
+            # No summary yet (ended_at set, summary missing) → re-derive below
+
+        lead_id    = row["lead_id"]
+        started_at = row["started_at"]
+        ended_at   = row["ended_at"] or _now_ms()
+        duration_s = max(0, (ended_at - started_at) // 1000)
+
+        c.execute(
+            "UPDATE call_sessions SET ended_at=? WHERE call_session_id=? AND ended_at IS NULL",
+            (ended_at, call_session_id),
+        )
+        entry_rows = c.execute(
+            "SELECT role, text, ts FROM call_session_entries WHERE call_session_id=? ORDER BY ts ASC",
+            (call_session_id,),
+        ).fetchall()
+        transcript = [{"role": e["role"], "text": e["text"], "ts": e["ts"]} for e in entry_rows]
+        c.commit()
+
+    try:
+        summary_text = summarize_call(transcript=transcript, outcome=outcome, duration_s=duration_s)
+    except Exception as ex:
+        app.logger.warning("summarize_call failed: %s", ex)
+        summary_text = f"{outcome or 'call'} — see transcript"
+
+    with _db() as c:
+        # Only INSERT if no summary exists yet — never overwrite a prior one
+        existing = c.execute(
+            "SELECT 1 FROM call_session_summaries WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+        if not existing:
+            c.execute(
+                "INSERT INTO call_session_summaries "
+                "(call_session_id, lead_id, outcome, summary, duration_s, notes, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (call_session_id, lead_id, outcome, summary_text, duration_s, notes, _now_ms()),
+            )
+            c.commit()
+
+    return jsonify({
+        "call_session_id": call_session_id,
+        "outcome": outcome,
+        "summary": summary_text,
+        "duration_s": duration_s,
+    })
+
+
+@app.get("/api/call/lead/<lead_id>/history")
+def api_call_lead_history(lead_id):
+    with _db() as c:
+        rows = c.execute(
+            """SELECT s.call_session_id, s.outcome, s.summary, s.duration_s, s.notes,
+                      s.created_at, t.started_at, t.ended_at,
+                      t.recording_url, t.recording_sid, t.recording_duration_s
+               FROM call_session_summaries s
+               JOIN call_sessions t ON t.call_session_id = s.call_session_id
+               WHERE s.lead_id = ?
+               ORDER BY t.started_at DESC
+               LIMIT 50""",
+            (lead_id,),
+        ).fetchall()
+    return {"calls": [dict(r) for r in rows]}
+
+
+# ── Best-time-to-call analytics ────────────────────────────────────────────
+#
+# Pulls historical outcomes from the dispositions table, buckets by
+# hour-of-day in America/New_York (Tyler's TZ), and surfaces the buckets
+# with the best pickup rate. "Pickup" = disposition code ∈ ANSWERED_CODES;
+# "miss" = disposition ∈ MISSED_CODES. Buckets with fewer than MIN_SAMPLES
+# total calls are filtered out so we don't recommend off a sample of 1.
+
+ANSWERED_CODES = ("interested", "callback", "not_interested", "dnc")
+MISSED_CODES   = ("voicemail", "no_answer", "skip")
+LOCAL_TZ_OFFSET_HOURS = -4  # ET (May = EDT). Crude but correct for May 2026.
+BEST_HOURS_MIN_SAMPLES = 2
+
+
+def _hour_bucket(ts_iso_or_ms):
+    """Return local hour (0-23) for either an ISO timestamp string or ms-int.
+
+    Crude UTC→ET shift; good enough for hour-bucketing. Tyler can swap in
+    zoneinfo later if he ever calls leads across multiple zones.
+    """
+    if ts_iso_or_ms is None:
+        return None
+    try:
+        if isinstance(ts_iso_or_ms, (int, float)):
+            dt = datetime.datetime.utcfromtimestamp(ts_iso_or_ms / 1000.0)
+        else:
+            s = str(ts_iso_or_ms).replace(" ", "T").rstrip("Z")
+            dt = datetime.datetime.fromisoformat(s)
+    except Exception:
+        return None
+    dt = dt + datetime.timedelta(hours=LOCAL_TZ_OFFSET_HOURS)
+    return dt.hour
+
+
+def compute_best_hours(rows):
+    """Aggregate disposition rows into 24 hour-of-day buckets.
+
+    Args:
+      rows: iterable of dicts/Row with keys `code` and `at` (timestamp).
+
+    Returns:
+      {
+        "buckets":     [{"hour":0..23, "answered":N, "missed":N, "total":N, "pickup_rate":0..1}, …],
+        "best_hour":   int or None,
+        "worst_hour":  int or None,
+        "sample_size": int,
+      }
+    """
+    buckets = {h: {"answered": 0, "missed": 0, "total": 0} for h in range(24)}
+    total_samples = 0
+    for r in rows:
+        code = (r.get("code") if isinstance(r, dict) else r["code"]) or ""
+        at   = (r.get("at")   if isinstance(r, dict) else r["at"])
+        h = _hour_bucket(at)
+        if h is None:
+            continue
+        if code in ANSWERED_CODES:
+            buckets[h]["answered"] += 1
+        elif code in MISSED_CODES:
+            buckets[h]["missed"] += 1
+        else:
+            continue  # ignore unknown codes
+        buckets[h]["total"] += 1
+        total_samples += 1
+    out_buckets = []
+    for h in range(24):
+        b = buckets[h]
+        pickup_rate = (b["answered"] / b["total"]) if b["total"] > 0 else 0.0
+        out_buckets.append({
+            "hour": h,
+            "answered": b["answered"],
+            "missed": b["missed"],
+            "total": b["total"],
+            "pickup_rate": round(pickup_rate, 3),
+        })
+    # Pick best/worst from buckets meeting min-samples threshold
+    eligible = [b for b in out_buckets if b["total"] >= BEST_HOURS_MIN_SAMPLES]
+    best  = max(eligible, key=lambda b: (b["pickup_rate"], b["total"]), default=None)
+    worst = min(eligible, key=lambda b: (b["pickup_rate"], -b["total"]), default=None)
+    return {
+        "buckets": out_buckets,
+        "best_hour":   best["hour"]  if best  else None,
+        "worst_hour":  worst["hour"] if worst else None,
+        "sample_size": total_samples,
+    }
+
+
+@app.get("/api/leads/<lead_id>/best-hours")
+def api_lead_best_hours(lead_id):
+    """Per-lead best-hour-of-day analysis.
+
+    Reads from the local `dispositions` table (every recorded call outcome
+    has a row there with `at` timestamp + `code`). Returns 24 hour buckets
+    + best/worst hours. Falls back to global cross-lead aggregation when
+    the lead has fewer than BEST_HOURS_MIN_SAMPLES total dispositions.
+    """
+    with _db() as c:
+        rows = c.execute(
+            "SELECT code, at FROM dispositions WHERE lead_id=? ORDER BY at",
+            (lead_id,),
+        ).fetchall()
+    per_lead = compute_best_hours([dict(r) for r in rows])
+    if per_lead["sample_size"] >= BEST_HOURS_MIN_SAMPLES:
+        return {"scope": "lead", "lead_id": lead_id, **per_lead}
+    # Not enough lead-specific data — fall back to global pickup-by-hour
+    with _db() as c:
+        global_rows = c.execute("SELECT code, at FROM dispositions").fetchall()
+    g = compute_best_hours([dict(r) for r in global_rows])
+    return {"scope": "global", "lead_id": lead_id, **g}
+
+
+@app.get("/api/leads/best-hours")
+def api_global_best_hours():
+    """Cross-lead best-hour aggregation — useful for queue prioritization."""
+    with _db() as c:
+        rows = c.execute("SELECT code, at FROM dispositions").fetchall()
+    return {"scope": "global", **compute_best_hours([dict(r) for r in rows])}
+
+
+@app.get("/api/call/<call_session_id>/transcript")
+def api_call_transcript(call_session_id):
+    with _db() as c:
+        hdr = c.execute(
+            "SELECT call_session_id, lead_id, started_at, ended_at FROM call_sessions WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+        if not hdr:
+            return {"error": "not found"}, 404
+        entries = c.execute(
+            "SELECT role, text, ts FROM call_session_entries WHERE call_session_id=? ORDER BY ts ASC",
+            (call_session_id,),
+        ).fetchall()
+        summary = c.execute(
+            "SELECT outcome, summary, duration_s, notes FROM call_session_summaries WHERE call_session_id=?",
+            (call_session_id,),
+        ).fetchone()
+    return {
+        "call_session_id": call_session_id,
+        "lead_id": hdr["lead_id"],
+        "started_at": hdr["started_at"],
+        "ended_at": hdr["ended_at"],
+        "entries": [dict(e) for e in entries],
+        "summary": dict(summary) if summary else None,
+    }
+
+
 PORT = int(os.environ.get("PORT", "5050"))
 
 if __name__ == "__main__":
@@ -1849,4 +3077,8 @@ if __name__ == "__main__":
     print(f"Root page:     {ROOT_PAGE}")
     print(f"DB:            {DB_PATH}")
     print(f"Listening:     0.0.0.0:{PORT}")
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    # Bind to localhost by default; set DIALER_DEV_OPEN=1 to expose on LAN.
+    _host = "0.0.0.0" if os.environ.get("DIALER_DEV_OPEN") == "1" else "127.0.0.1"
+    print(f"Bind:          {_host}:{PORT}{' (OPEN — DIALER_DEV_OPEN=1)' if _host == '0.0.0.0' else ' (localhost)'}")
+    print(f"Auth token:    {'set (production-safe)' if DIALER_AUTH_TOKEN else 'unset (dev mode — no /api/* auth)'}")
+    app.run(host=_host, port=PORT, debug=False)
