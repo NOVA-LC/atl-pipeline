@@ -7208,11 +7208,13 @@ function showSummaryCard(summary, leadId) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// DEBUG OVERLAY — Ctrl+Shift+L to toggle, persists across refresh
+// DEBUG OVERLAY — Ctrl+Shift+L OR Alt+D to toggle, persists across refresh
 // Captures: console.*, fetch requests/responses, state transitions,
 // AI coach traffic, uncaught errors. Buffer cap 500. Export as JSON.
+// Every install step is try/catch-wrapped so a failure in one part doesn't
+// kill the rest of the overlay.
 // ═════════════════════════════════════════════════════════════════════════
-(function installDebugOverlay() {
+try { (function installDebugOverlay() {
   const MAX = 500;
   const KEY = "dialer.debug.log";
   const STATE_KEY = "dialer.debug.visible";
@@ -7227,17 +7229,19 @@ function showSummaryCard(summary, leadId) {
   }
 
   function _dbg(level, source, message, data) {
-    const entry = {
-      t: new Date().toISOString().slice(11, 23),  // HH:MM:SS.mmm
-      level: level || "info",                       // info|warn|err|net|state|ai|call
-      source: source || "",
-      message: String(message || ""),
-      data: data === undefined ? null : (typeof data === "string" ? data : safeStringify(data)),
-    };
-    buffer.push(entry);
-    if (buffer.length > MAX) buffer = buffer.slice(-MAX);
-    persist();
-    renderDebugPanel();
+    try {
+      const entry = {
+        t: new Date().toISOString().slice(11, 23),  // HH:MM:SS.mmm
+        level: level || "info",                       // info|warn|err|net|state|ai|call
+        source: source || "",
+        message: String(message || ""),
+        data: data === undefined ? null : (typeof data === "string" ? data : safeStringify(data)),
+      };
+      buffer.push(entry);
+      if (buffer.length > MAX) buffer = buffer.slice(-MAX);
+      persist();
+      try { renderDebugPanel(); } catch (_) {}
+    } catch (_) {}
   }
   window._dbg = _dbg;
 
@@ -7378,13 +7382,14 @@ function showSummaryCard(summary, leadId) {
     #debug-overlay-body .row .msg pre { margin: 2px 0 0; color: #64748b; font-size: 10px;
       white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
     #debug-trigger {
-      position: fixed; right: 12px; bottom: 12px; z-index: 99998;
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #1e293b; color: #f59e0b; border: 1px solid #475569;
-      cursor: pointer; font: 16px/30px ui-monospace, monospace; text-align: center;
-      opacity: 0.6;
+      position: fixed; right: 16px; bottom: 16px; z-index: 99998;
+      padding: 8px 14px; border-radius: 999px;
+      background: #f59e0b; color: #0f172a; border: 2px solid #1e293b;
+      cursor: pointer;
+      font: 700 13px/1 ui-monospace, "JetBrains Mono", Consolas, monospace;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     }
-    #debug-trigger:hover { opacity: 1; }
+    #debug-trigger:hover { background: #fbbf24; }
     #debug-overlay.open ~ #debug-trigger { display: none; }
   `;
   document.head.appendChild(css);
@@ -7406,8 +7411,8 @@ function showSummaryCard(summary, leadId) {
 
   const trigger = document.createElement("button");
   trigger.id = "debug-trigger";
-  trigger.title = "Open debug log (Ctrl+Shift+L)";
-  trigger.textContent = "🐞";
+  trigger.title = "Open debug log (Ctrl+Shift+L or Alt+D)";
+  trigger.textContent = "🐞 Debug";
   trigger.addEventListener("click", () => toggleDebugPanel(true));
   document.body.appendChild(trigger);
 
@@ -7419,7 +7424,7 @@ function showSummaryCard(summary, leadId) {
   }
 
   function renderDebugPanel() {
-    if (!overlay.classList.contains("open")) return;
+    if (!overlay || !overlay.classList || !overlay.classList.contains("open")) return;
     const q = (filterInput.value || "").toLowerCase();
     const rows = buffer.slice(-MAX).filter(e => {
       if (!q) return true;
@@ -7436,9 +7441,6 @@ function showSummaryCard(summary, leadId) {
     body.scrollTop = body.scrollHeight;
   }
   window._renderDebugPanel = renderDebugPanel;
-  // Replace the stub _dbg-internal call to renderDebugPanel with the real one
-  const realRender = renderDebugPanel;
-  renderDebugPanel = realRender;
 
   function toggleDebugPanel(force) {
     const want = force === undefined ? !overlay.classList.contains("open") : !!force;
@@ -7487,9 +7489,11 @@ function showSummaryCard(summary, leadId) {
   });
   filterInput.addEventListener("input", renderDebugPanel);
 
-  // Keyboard shortcut: Ctrl+Shift+L
+  // Keyboard shortcuts: Ctrl+Shift+L OR Alt+D (in case the first is intercepted
+  // by a password manager or browser extension).
   document.addEventListener("keydown", e => {
-    if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) {
+    if ((e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) ||
+        (e.altKey && !e.ctrlKey && !e.shiftKey && (e.key === "D" || e.key === "d"))) {
       e.preventDefault();
       toggleDebugPanel();
     }
@@ -7525,9 +7529,21 @@ function showSummaryCard(summary, leadId) {
      "goTo", "nextLead", "autoDispose", "maybeExecuteAutonomousAction",
      "aiOnProspectUtterance", "aiOnAgentUtterance", "useIvrSuggestion",
      "openModal", "closeModal", "openDrawer", "closeDrawer"].forEach(n => wrap(n, "call"));
-    window._dbg("info", "debug", "Debug overlay installed. Ctrl+Shift+L to toggle. " + buffer.length + " entries restored.");
+    window._dbg("info", "debug", "Debug overlay installed. Ctrl+Shift+L or Alt+D to toggle. " + buffer.length + " entries restored.");
   }, 0);
-})();
+})(); } catch (installErr) {
+  // The full overlay couldn't install. Last-resort: surface a visible alert
+  // bar at the top of the page so the user knows something went wrong AND
+  // gets the error message to paste back to debug.
+  try {
+    const bar = document.createElement("div");
+    bar.id = "debug-install-error";
+    bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#ef4444;color:#fff;padding:10px 16px;font:13px ui-monospace,monospace;text-align:center";
+    bar.textContent = "🐞 Debug overlay failed to install: " + (installErr && installErr.message ? installErr.message : String(installErr)) + " — paste this into chat";
+    document.body && document.body.appendChild(bar);
+    console.error("Debug overlay install error:", installErr);
+  } catch (_) {}
+}
 </script>
 </body>
 </html>
