@@ -256,6 +256,7 @@
   }
   .icon-btn:hover { background: #f1f5f9; color: var(--text); }
   .icon-btn svg { display: block; flex-shrink: 0; }
+  .list-drawer-trigger { display: none; }
 
   /* Easy / ADHD mode toggle (mode-agnostic base) */
   .mode-toggle {
@@ -278,6 +279,8 @@
   }
   @media (max-width: 767px) {
     .icon-btn span { display: none; }
+    .ai-toggle .ai-label { display: none; }
+    .mode-toggle-label { display: none; }
     .progress-label { display: none; }
   }
   @media (max-width: 480px) {
@@ -296,11 +299,16 @@
     overflow: hidden;
     border: none;
   }
-  .side-panel { gap: var(--s-3); }
+  .side-panel {
+    gap: var(--s-3);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+  }
   .side-panel > .ai-card,
   .side-panel > .notes-card,
   .side-panel > .stats-card { flex: 0 0 auto; }
-  .side-panel > .ai-card { flex: 1 1 auto; min-height: 0; }
+  .side-panel > .ai-card { flex: 0 0 auto; min-height: auto; overflow: visible; }
 
   .app-columns {
     min-height: 0;
@@ -310,13 +318,91 @@
     grid-template-columns: 280px 1fr 320px;
     align-items: stretch;
   }
+  @media (min-width: 1600px) {
+    .app-shell {
+      max-width: 2160px;
+      gap: var(--s-5);
+      padding: var(--s-5);
+    }
+    .app-header { padding-inline: var(--s-6); }
+    .progress-block { max-width: 620px; }
+    .app-columns {
+      gap: var(--s-5);
+      grid-template-columns: 340px minmax(920px, 1fr) 380px;
+    }
+    .now-calling-card,
+    .center-stack {
+      width: 100%;
+      max-width: 1180px;
+      margin-inline: auto;
+    }
+    .bottom-controls { max-width: 1180px; }
+  }
+  @media (min-width: 2400px) {
+    .app-shell { max-width: 2360px; }
+    .app-columns {
+      grid-template-columns: 380px minmax(1040px, 1fr) 420px;
+    }
+    .now-calling-card,
+    .center-stack {
+      max-width: 1320px;
+    }
+    .bottom-controls { max-width: 1320px; }
+  }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .app-shell {
+      gap: var(--s-3);
+      padding-block: var(--s-3);
+    }
+    .app-header {
+      min-height: 56px;
+      padding-block: var(--s-2);
+    }
+    .app-columns { gap: var(--s-3); }
+  }
   @media (max-width: 1279px) {
     .app-columns { grid-template-columns: 1fr 320px; }
     .app-columns > .col-left { display: none; }
+    .list-drawer-trigger { display: inline-flex; }
+    .app-header { gap: var(--s-3); padding-inline: var(--s-3); }
+    .brand-name { font-size: 18px; }
+    .progress-block { max-width: 300px; }
   }
   @media (max-width: 767px) {
     .app-columns { grid-template-columns: 1fr; }
     .app-columns > .col-right { display: none; }
+    .app-shell {
+      padding: var(--s-3);
+      padding-bottom: var(--s-2);
+      gap: var(--s-3);
+    }
+    .app-header {
+      min-height: 64px;
+      gap: var(--s-2);
+      padding: var(--s-2);
+      overflow: hidden;
+    }
+    #mode-toggle,
+    #btn-help,
+    #btn-settings {
+      display: none;
+    }
+    .brand-mark { width: 32px; height: 32px; }
+    .btn-primary { padding: var(--s-2) var(--s-3); }
+    .ai-toggle, .mode-toggle, .icon-btn { padding: var(--s-2); }
+    .active-call-panel {
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: var(--s-3);
+    }
+    .active-call-panel::-webkit-scrollbar { width: 6px; }
+    .active-call-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .app-shell[data-mobile-tab="center"] .col-left,
+    .app-shell[data-mobile-tab="center"] .col-right { display: none; }
+    .app-shell[data-mobile-tab="ai"] .col-center,
+    .app-shell[data-mobile-tab="notes"] .col-center { display: none; }
+    .app-shell[data-mobile-tab="ai"] .col-right,
+    .app-shell[data-mobile-tab="notes"] .col-right { display: flex; }
   }
   .col-left, .col-center, .col-right {
     min-height: 0;
@@ -1182,10 +1268,124 @@
     display: grid;
     place-items: center;
     position: relative;
-    overflow: hidden;
+    overflow: visible;        /* allow Take Over Call button to escape circle */
     box-shadow: var(--shadow-sm);
     flex-shrink: 0;
   }
+  /* Dial Assistant: when JS adds .da-active to .now-calling-art, the
+     storefront and signal are hidden and the pane covers the circle. */
+  .now-calling-art.da-active > .now-calling-illo,
+  .now-calling-art.da-active > .signal-icon { display: none !important; }
+
+  /* ── Dial Assistant pane (prompt #25.6) ──────────────────────────────── */
+  .dial-assistant-pane {
+    /* Absolutely covers the now-calling-art circle (160×160). The takeover
+       button sits BELOW the circle using a negative bottom offset and
+       overflow: visible on the parent. */
+    position: absolute;
+    inset: 0;
+    width: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: var(--shadow-sm);
+  }
+  .dial-assistant-pane[hidden] { display: none; }
+
+  .dial-assistant-eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--purple);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .dial-assistant-ring {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    display: grid;
+    place-items: center;
+  }
+  .dial-assistant-ring svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .dial-assistant-ring .ring-bg {
+    fill: #ffffff;
+    stroke: #e5e7eb;
+    stroke-width: 6;
+  }
+  .dial-assistant-ring .ring-fill {
+    fill: none;
+    stroke: var(--purple);
+    stroke-width: 6;
+    stroke-linecap: round;
+    /* circumference = 2 * pi * 54 ≈ 339.292 */
+    stroke-dasharray: 339.292;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 100ms linear;
+  }
+  .dial-assistant-action {
+    position: relative;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+    line-height: 1.1;
+    text-align: center;
+    padding: 0 6px;
+    max-width: 88px;
+  }
+  .dial-assistant-countdown {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--purple);
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    min-width: 22px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(139,92,246,0.4);
+  }
+  .dial-assistant-reason {
+    /* Hidden — keep the in-circle pane minimal. Reason is shown via the
+       coaching hint pill in the right column. */
+    display: none;
+  }
+  .dial-assistant-takeover {
+    /* Floats outside the circle, sits just below */
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--red);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--r-pill);
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    transition: filter 120ms var(--ease);
+    white-space: nowrap;
+    z-index: 11;
+  }
+  .dial-assistant-takeover:hover { filter: brightness(1.08); }
+  .dial-assistant-takeover:active { transform: scale(0.97); }
   .now-calling-illo {
     width: 96px;
     height: 96px;
@@ -1215,11 +1415,26 @@
   .now-calling-card[data-empty="true"] #lead-locality::before { content: '—'; }
   @media (max-width: 767px) {
     .now-calling-grid { grid-template-columns: 1fr; }
+    .now-calling-card,
+    .center-stack,
+    .outcome-row,
+    .script-card,
+    .quick-actions,
+    .bottom-controls { max-width: 100%; width: 100%; }
+    .now-calling-card { padding: var(--s-4); }
     .now-calling-art { justify-self: flex-end; width: 112px; height: 112px; }
     .now-calling-illo { width: 64px; height: 64px; }
     .signal-icon { width: 18px; height: 18px; top: var(--s-3); right: var(--s-3); }
     .phone-hero { font-size: 32px; }
     .biz-hero { font-size: 20px; }
+  }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .now-calling-card { padding: var(--s-4); }
+    .now-calling-status { margin-bottom: var(--s-3); }
+    .now-calling-art { width: 112px; height: 112px; }
+    .now-calling-illo { width: 76px; height: 76px; }
+    .phone-hero { font-size: clamp(30px, 3.2vw, 40px); }
+    .biz-hero { font-size: 22px; }
   }
 
   /* ── Outcome row (prompt #5) ──────────────────────────────────────────── */
@@ -1289,6 +1504,10 @@
     .outcome-row { grid-template-columns: repeat(2, 1fr); }
     .outcome-sub { display: none; }
   }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .outcome { min-height: 72px; padding: var(--s-2) var(--s-3); }
+    .duration-time { font-size: 28px; }
+  }
 
   /* ── Conversation script (prompt #6) ─────────────────────────────────── */
   .script-card {
@@ -1297,10 +1516,9 @@
     border-radius: var(--r-4);
     padding: var(--s-4);
     display: flex; flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 220px;
-    max-height: 60vh;
-    overflow: hidden;
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
     align-self: stretch;
   }
   .script-head {
@@ -1311,9 +1529,8 @@
   .script-icon { color: var(--purple); flex-shrink: 0; }
   .script-title { font-weight: 600; font-size: 16px; }
   .script-body {
-    flex: 1; min-height: 0;
-    overflow-y: auto;
-    padding-right: var(--s-2);
+    flex: 0 0 auto;
+    min-height: 0;
     font-size: 15px; line-height: 1.6;
     color: var(--text);
   }
@@ -1334,20 +1551,6 @@
     padding: var(--s-2);
     margin-left: calc(var(--s-2) * -1);
   }
-  .script-body::-webkit-scrollbar { width: 6px; }
-  .script-body::-webkit-scrollbar-thumb { background: #d8b4fe; border-radius: 999px; }
-
-  .script-tip {
-    display: flex; align-items: center; gap: var(--s-2);
-    margin-top: var(--s-3);
-    padding-top: var(--s-3);
-    border-top: 1px solid #ede9fe;
-    font-size: 13px;
-  }
-  .script-tip svg { flex-shrink: 0; color: var(--purple); }
-  .script-tip-label { color: var(--purple); font-weight: 700; }
-  .script-tip-text { color: var(--text-dim); }
-
   /* ── Quick actions (prompt #7) ───────────────────────────────────────── */
   .quick-actions {
     background: #ffffff;
@@ -1399,6 +1602,16 @@
   @media (max-width: 480px) {
     .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
   }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .script-card,
+    .quick-actions { padding: var(--s-3); }
+    .script-head,
+    .quick-actions-head { margin-bottom: var(--s-2); }
+    .script-say { font-size: 15px; line-height: 1.45; }
+    .script-answers { gap: var(--s-2); margin-top: var(--s-2); }
+    .answer-btn,
+    .qa-chip { padding: var(--s-2) var(--s-3); }
+  }
 
   /* ── AI Agent Assistant (prompt #9) ──────────────────────────────────── */
   .ai-card {
@@ -1427,6 +1640,12 @@
   .ai-status.idle .ai-status-dot { background: #cbd5e1; box-shadow: none; animation: none; }
   .ai-status.error { color: var(--red); }
   .ai-status.error .ai-status-dot { background: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+  .ai-status.manual { color: var(--accent); }
+  .ai-status.manual .ai-status-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    animation: none;
+  }
   .ai-status.thinking { color: #f59e0b; }
   .ai-status.thinking .ai-status-dot {
     background: #f59e0b;
@@ -1434,24 +1653,120 @@
     animation: pulse 0.8s ease-in-out infinite;
   }
 
-  .ai-bubble {
-    display: grid; grid-template-columns: 48px 1fr;
-    gap: var(--s-3);
+  /* ── AI card persistent-listening UI (prompt #25) ─────────────────────── */
+  .ai-coach-hint {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--purple);
+    padding: var(--s-2) var(--s-3);
+    background: var(--purple-soft);
+    border-radius: var(--r-3);
+    margin-bottom: var(--s-3);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .ai-coach-hint.idle {
+    color: var(--text-dim);
+    background: #f1f5f9;
+  }
+  .ai-coach-hint.listening {
+    color: var(--green);
+    background: var(--green-soft);
+  }
+
+  .ai-transcript {
+    min-height: 180px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: var(--s-3);
     background: #f8fafc;
     border-radius: var(--r-3);
-    padding: var(--s-3);
+    border: 1px solid var(--line);
+    font-size: 13px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
-  .ai-avatar-large {
-    width: 48px; height: 48px;
-    background: var(--green-soft);
-    border-radius: 50%;
-    display: grid; place-items: center;
-    color: var(--green);
+  .ai-transcript-placeholder {
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    padding: var(--s-5) var(--s-3);
   }
-  .ai-avatar-large svg { display: block; }
-  .ai-msg p { margin: 0 0 var(--s-2); font-size: 14px; line-height: 1.4; }
-  .ai-msg-secondary { color: var(--text-dim); }
-  .ai-msg-line:last-child { margin-bottom: 0; }
+  .ai-transcript-line {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: var(--s-2);
+    padding: 4px 0;
+    animation: aiSlideIn 200ms var(--ease);
+  }
+  @keyframes aiSlideIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .ai-transcript-line .ai-t-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding-top: 3px;
+  }
+  .ai-transcript-line.agent    .ai-t-label { color: var(--accent); }
+  .ai-transcript-line.prospect .ai-t-label { color: #92400e; }
+  .ai-transcript-line.coach    .ai-t-label { color: var(--purple); }
+  .ai-transcript-line.system   .ai-t-label { color: var(--text-dim); }
+  .ai-transcript-line .ai-t-text { color: var(--fg); word-break: break-word; }
+  .ai-transcript-line.interim .ai-t-text { color: var(--text-dim); font-style: italic; }
+
+  .ai-card-pane[hidden] { display: none !important; }
+  .ai-card-pane.ai-mode-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-card-pane.ai-dialpad-body {
+    display: none;
+    flex-direction: column;
+    gap: var(--s-3);
+  }
+  #ai-card[data-mode="dialpad"] .ai-mode-body { display: none; }
+  #ai-card[data-mode="dialpad"] .ai-dialpad-body { display: flex; }
+
+  .dialpad-display {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #0f172a; color: #f1f5f9;
+    padding: var(--s-3) var(--s-4);
+    border-radius: var(--r-3);
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 0;
+    min-height: 56px;
+  }
+  .dialpad-readout { font-variant-numeric: tabular-nums; }
+  .dialpad-clear {
+    background: transparent; border: none; color: #94a3b8;
+    font-size: 22px; cursor: pointer;
+    padding: 0 var(--s-2);
+  }
+  .dialpad-clear:hover { color: #f87171; }
+
+  .dialpad-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: var(--s-2);
+  }
+  .dialpad-key {
+    padding: var(--s-3) 0;
+    font-size: 24px; font-weight: 700;
+    background: #f1f5f9;
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), transform 80ms var(--ease-snappy), color var(--dur) var(--ease);
+  }
+  .dialpad-key:hover { background: #e2e8f0; }
+  .dialpad-key:active { transform: scale(0.96); }
+  .dialpad-key.pressed { background: var(--accent); color: #fff; }
+  .dialpad-hint { font-size: 12px; color: var(--text-dim); text-align: center; margin: 0; }
 
   .ai-tip-card {
     margin-top: var(--s-3);
@@ -1577,6 +1892,11 @@
     overflow: hidden;
   }
   .active-call-panel { align-items: stretch; }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .center-stack { gap: var(--s-2); }
+    .bottom-controls { gap: var(--s-2); }
+    .btn-control { padding: var(--s-2) var(--s-3); }
+  }
   .btn-control {
     display: flex; align-items: center; gap: var(--s-3);
     padding: var(--s-3) var(--s-4);
@@ -1597,6 +1917,42 @@
   .btn-control-primary svg, .btn-control-primary em { color: rgba(255,255,255,0.85); }
   .btn-control-primary:hover { filter: brightness(1.05); background: var(--accent); }
 
+  .btn-control-primary.is-live {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #ffffff;
+  }
+  .btn-control-primary.is-live svg,
+  .btn-control-primary.is-live em { color: rgba(255,255,255,0.85); }
+  .btn-control-primary.is-live:hover { background: #ef4444; }
+
+  .btn-control[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-control[disabled]:hover { background: #ffffff; filter: none; }
+
+  .btn-control.is-armed {
+    background: #fef3c7;
+    border-color: #fde68a;
+  }
+  .btn-control.is-armed strong { color: #92400e; }
+  .btn-control.is-armed em { color: #b45309; }
+  .btn-control.is-armed svg { color: #92400e; }
+
+  .btn-control.is-resume {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+  }
+  .btn-control.is-resume strong { color: #ffffff; }
+  .btn-control.is-resume svg,
+  .btn-control.is-resume em { color: rgba(255,255,255,0.9); }
+  .btn-control.is-resume:hover { background: #10b981; filter: brightness(1.05); }
+  @media (min-width: 768px) and (max-height: 950px) {
+    .btn-control { padding: var(--s-2) var(--s-3); }
+  }
+
   .drawer { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
   .drawer[aria-hidden="false"] { pointer-events: auto; }
   .drawer-backdrop {
@@ -1615,6 +1971,19 @@
     transition: transform var(--dur) var(--ease);
   }
   .drawer[aria-hidden="false"] .drawer-panel { transform: translateX(0); }
+  .drawer-panel-left {
+    left: 0;
+    right: auto;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+  }
+  .drawer[aria-hidden="false"] .drawer-panel-left { transform: translateX(0); }
+  .drawer-call-list-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .drawer-call-list-body .call-list-card { min-height: 0; }
   .drawer-head {
     display: flex; align-items: center; justify-content: space-between;
     padding: var(--s-4); border-bottom: 1px solid var(--line);
@@ -1672,6 +2041,93 @@
   }
   .drawer-section p { margin: 0 0 var(--s-2); color: var(--text-dim); font-size: 13px; }
   .drawer-section p:last-child { margin-bottom: 0; }
+
+  /* Call History (prompt #26 — replaces prompt #19 structure) */
+  .call-history-list { display: flex; flex-direction: column; gap: var(--s-2); }
+  .call-history-empty,
+  .call-history-loading,
+  .call-history-error {
+    font-size: 13px; color: var(--text-dim);
+    padding: var(--s-3);
+    text-align: center;
+  }
+  .call-history-row {
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .call-history-toggle {
+    display: block; width: 100%;
+    text-align: left;
+    background: transparent; border: none;
+    padding: var(--s-3) var(--s-4);
+    cursor: pointer;
+    font: inherit;
+    color: var(--text);
+  }
+  .call-history-toggle:hover { background: #f8fafc; }
+  .call-history-meta {
+    display: flex; align-items: center; gap: var(--s-3);
+    font-size: 12px; color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .call-history-time { font-weight: 500; }
+  .call-history-duration { margin-left: auto; }
+  .call-history-summary {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.35;
+  }
+  .call-history-pill {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: var(--r-pill);
+    letter-spacing: 0.04em;
+    background: #f1f5f9; color: var(--text-dim);
+  }
+  .outcome-pill-interested      { background: #d1fae5; color: #065f46; }
+  .outcome-pill-not-interested  { background: #fee2e2; color: #991b1b; }
+  .outcome-pill-dnc             { background: #fee2e2; color: #991b1b; }
+  .outcome-pill-callback        { background: #fed7aa; color: #9a3412; }
+  .outcome-pill-voicemail       { background: #dbeafe; color: #1e40af; }
+  .outcome-pill-no-answer       { background: #f1f5f9; color: #475569; }
+  .call-history-body {
+    display: none;
+    border-top: 1px solid var(--line);
+    padding: var(--s-3) var(--s-4);
+    background: #f8fafc;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .call-history-row.expanded .call-history-body { display: block; }
+  .t-line {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: var(--s-2);
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 4px;
+  }
+  .t-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--text-dim);
+    padding-top: 2px;
+  }
+  .t-agent .t-label    { color: var(--accent); }
+  .t-prospect .t-label { color: #92400e; }
+  .t-coach .t-label    { color: var(--purple); }
+  .bookings-list { display: flex; flex-direction: column; gap: var(--s-2); }
+  .booking-row {
+    border: 1px solid var(--line);
+    border-radius: var(--r-3);
+    padding: var(--s-3) var(--s-4);
+    background: #fffbeb;
+  }
+  .booking-when { font-size: 13px; font-weight: 600; color: #92400e; }
+  .booking-title { font-size: 14px; font-weight: 600; margin-top: 4px; }
+  .booking-notes { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+  .booking-actions { margin-top: var(--s-2); display: flex; gap: var(--s-2); }
   .drawer-list { display: grid; gap: var(--s-2); }
   .drawer-list button, .drawer-list a {
     display: flex; justify-content: space-between; align-items: center; gap: var(--s-2);
@@ -1690,9 +2146,37 @@
   @media (max-width: 639px) {
     .bottom-controls { grid-template-columns: 1fr; }
   }
+  .mobile-tabs { display: none; }
+  .mobile-tabs[hidden] { display: none !important; }
+  @media (max-width: 767px) {
+    .mobile-tabs {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      flex: 0 0 auto;
+      position: sticky; bottom: 0;
+      background: #ffffff;
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -2px 8px rgba(15,23,42,0.04);
+      z-index: 30;
+      padding: var(--s-2);
+      gap: var(--s-1);
+    }
+    .mtab {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px;
+      padding: var(--s-2);
+      background: transparent; border: none;
+      font-size: 11px; color: var(--text-dim);
+      border-radius: var(--r-3);
+      cursor: pointer;
+    }
+    .mtab svg { width: 22px; height: 22px; }
+    .mtab[aria-selected="true"] { color: var(--accent); background: #eff6ff; }
+    .mtab[aria-selected="true"] svg { color: var(--accent); }
+  }
   @media (prefers-reduced-motion: reduce) {
-    .drawer-backdrop, .drawer-panel, .modal-backdrop, .modal-panel, .btn-control {
+    .drawer-backdrop, .drawer-panel, .modal-backdrop, .modal-panel, .btn-control, .ai-mic {
       transition: none !important;
+      animation: none !important;
     }
   }
 
@@ -1716,34 +2200,10 @@
     background: var(--purple-soft);
     padding: 3px 10px; border-radius: var(--r-pill);
   }
-  .script-practice {
-    display: flex; align-items: center; gap: var(--s-2);
-    font-size: 12px; color: var(--text-dim);
-  }
-  .script-practice .switch { width: 36px; height: 20px; }
-  .script-practice .switch-thumb { width: 16px; height: 16px; }
-  .script-practice .switch[aria-checked="true"] .switch-thumb { left: 18px; }
   .script-say {
     font-size: 16px; line-height: 1.55;
     color: var(--text);
   }
-  .script-coaching {
-    background: #ffffff; border: 1px solid var(--line);
-    border-radius: var(--r-3);
-    padding: var(--s-3);
-    display: flex; flex-direction: column; gap: var(--s-2);
-    font-size: 13px;
-    color: var(--text);
-  }
-  .coach-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--s-3); align-items: baseline; }
-  .coach-row strong {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--text-dim);
-    font-weight: 700;
-  }
-  .coach-row.coach-warn { background: #fef2f2; padding: var(--s-2) var(--s-3); border-radius: var(--r-3); margin-top: var(--s-2); }
-  .coach-row.coach-warn strong { color: #b91c1c; }
-  .coach-row.coach-warn span { color: #7f1d1d; }
   .script-answers {
     display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2);
     margin-top: var(--s-2);
@@ -1792,6 +2252,11 @@
     </span>
     <span class="brand-name">NovaIntel Dialer</span>
   </div>
+  <button class="icon-btn list-drawer-trigger" id="btn-list-drawer" type="button" aria-label="Open call list">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M4 5h12M4 10h12M4 15h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+    </svg>
+  </button>
   <button class="btn-primary btn-start-dialer" id="btn-start-dialer" type="button">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path id="btn-start-dialer-icon" d="M4 3.5v9c0 .4.4.6.7.4l7-4.5c.3-.2.3-.6 0-.8l-7-4.5c-.3-.2-.7 0-.7.4z" fill="currentColor"/>
@@ -1933,7 +2398,8 @@
             <span>View Details</span>
           </button>
         </div>
-        <div class="now-calling-art" aria-hidden="true">
+        <div class="now-calling-art" id="now-calling-art" data-mode="illo">
+          <!-- Idle: storefront illustration + signal bars -->
           <div class="now-calling-illo" id="lead-illo"></div>
           <svg class="signal-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="3"  y="14" width="3" height="6" rx="0.5" fill="currentColor"/>
@@ -1941,6 +2407,23 @@
             <rect x="15" y="6"  width="3" height="14" rx="0.5" fill="currentColor"/>
             <rect x="21" y="3"  width="0" height="0"/>
           </svg>
+
+          <!-- Action-pending: dial assistant ring + takeover -->
+          <div class="dial-assistant-pane" id="dial-assistant-pane" hidden>
+            <span class="dial-assistant-eyebrow">DIAL ASSISTANT</span>
+            <div class="dial-assistant-ring">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="ring-bg"    cx="60" cy="60" r="54"/>
+                <circle class="ring-fill"  cx="60" cy="60" r="54" id="dial-assistant-ring-fill"/>
+              </svg>
+              <div class="dial-assistant-action" id="dial-assistant-action">—</div>
+              <div class="dial-assistant-countdown" id="dial-assistant-countdown">3</div>
+            </div>
+            <div class="dial-assistant-reason" id="dial-assistant-reason"></div>
+            <button class="dial-assistant-takeover" id="btn-dial-takeover" type="button">
+              Take Over Call
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -1954,13 +2437,13 @@
         <div class="duration-time" id="call-duration">00:00</div>
         <div class="duration-label">Call Duration</div>
       </div>
-      <button class="outcome outcome-interested" data-outcome="interested" data-key="5" type="button">
+      <button class="outcome outcome-interested" data-outcome="build" data-key="5" type="button">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
           <path d="M6.5 10.2l2.4 2.4L13.8 7.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <span class="outcome-title">INTERESTED</span>
-        <span class="outcome-sub">Move to Next Step</span>
+        <span class="outcome-title">BUILD</span>
+        <span class="outcome-sub">Start Website Build</span>
       </button>
       <button class="outcome outcome-not-interested" data-outcome="not_interested" data-key="4" type="button">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1975,16 +2458,16 @@
           <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
           <path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
-        <span class="outcome-title">DNC</span>
-        <span class="outcome-sub">Do Not Call</span>
+        <span class="outcome-title">DO NOT CALL</span>
+        <span class="outcome-sub">DNC</span>
       </button>
-      <button class="outcome outcome-notes" data-outcome="notes" data-key="n" type="button">
+      <button class="outcome outcome-notes" data-outcome="calendar" data-key="c" type="button">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M5 3h7l3 3v11H5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M12 3v3h3M7.5 9.5h5M7.5 12.5h5M7.5 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <rect x="3.5" y="4.5" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M6.5 2.8v3.4M13.5 2.8v3.4M3.8 8h12.4M7 11h2M11 11h2M7 14h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
-        <span class="outcome-title">NOTES</span>
-        <span class="outcome-sub">Add Note</span>
+        <span class="outcome-title">BOOK IN CALENDAR</span>
+        <span class="outcome-sub">Nova Alignment</span>
       </button>
     </div>
     <section class="script-card">
@@ -2000,32 +2483,13 @@
           <div class="script-toolbar">
             <button class="script-back" id="script-back" type="button" disabled>↩ Back</button>
             <span class="script-badge" id="script-badge">Entry</span>
-            <div class="script-practice">
-              <span>Practice mode</span>
-              <button class="switch" id="script-practice-toggle" type="button" role="switch" aria-checked="false">
-                <span class="switch-thumb"></span>
-              </button>
-            </div>
           </div>
           <div class="script-say" id="script-say"></div>
-          <div class="script-coaching" id="script-coaching" hidden>
-            <div class="coach-row"><strong>Direction</strong><span id="coach-direction"></span></div>
-            <div class="coach-row"><strong>Tonality</strong><span id="coach-tonality"></span></div>
-            <div class="coach-row"><strong>Pacing</strong><span id="coach-pacing"></span></div>
-            <div class="coach-row coach-warn"><strong>Watch out</strong><span id="coach-warn"></span></div>
-          </div>
           <div class="script-answers" id="script-answers" role="list">
             <!-- buttons rendered per answer -->
           </div>
         </div>
       </div>
-      <footer class="script-tip">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M5.6 12.2h4.8M6.1 14h3.8M11.6 6.5c0 1.3-.6 2.1-1.5 3-.4.4-.6.8-.6 1.4h-3c0-.6-.2-1-.6-1.4-.9-.9-1.5-1.7-1.5-3a3.6 3.6 0 017.2 0z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="script-tip-label">TIP:</span>
-        <span class="script-tip-text" id="script-tip">Listen for needs, pain points, and budget</span>
-      </footer>
     </section>
     <section class="quick-actions">
       <div class="quick-actions-head">
@@ -2045,8 +2509,8 @@
         <button class="qa-chip qa-red-light" data-outcome="not_interested" data-key="4" onclick="markOutcome('not_interested')" type="button">
           <kbd>4</kbd><span>Not Interested</span>
         </button>
-        <button class="qa-chip qa-green-light" data-outcome="interested" data-key="5" onclick="markOutcome('interested')" type="button">
-          <kbd>5</kbd><span>Interested</span>
+        <button class="qa-chip qa-green-light" data-outcome="build" data-key="5" onclick="markOutcome('build')" type="button">
+          <kbd>5</kbd><span>Build</span>
         </button>
         <button class="qa-chip qa-red-light" data-outcome="dnc" data-key="d" onclick="markOutcome('dnc')" type="button">
           <kbd>D</kbd><span>DNC</span>
@@ -2054,24 +2518,35 @@
       </div>
     </section>
     <section class="bottom-controls">
-      <button class="btn-control" id="btn-pause-auto" type="button">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M6 4h3v12H6zM11 4h3v12h-3z" fill="currentColor"/>
+      <button class="btn-control btn-control-primary" id="btn-primary-action" type="button">
+        <svg id="btn-primary-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M5 3.5v13c0 .4.4.6.7.4l11-6.5c.3-.2.3-.6 0-.8l-11-6.5c-.3-.2-.7 0-.7.4z" fill="currentColor"/>
         </svg>
-        <span><strong>Start Auto-Dialer</strong><em>Begin calling</em></span>
+        <span>
+          <strong id="btn-primary-label">Start Auto-Dialer</strong>
+          <em id="btn-primary-sub">Begin calling</em>
+        </span>
       </button>
-      <button class="btn-control" id="btn-skip" type="button">
+      <button class="btn-control" id="btn-recall-last" type="button" disabled>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M4 5v10l7-5-7-5zM13 5v10M16 5v10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 4v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.5 9A7 7 0 1 1 6 14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </svg>
-        <span><strong>Skip</strong><em>Next contact</em></span>
+        <span>
+          <strong>Recall Last Lead</strong>
+          <em id="btn-recall-sub">No previous lead</em>
+        </span>
       </button>
-      <button class="btn-control" id="btn-audio" type="button">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M3 8v4h3l5 4V4L6 8H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-          <path d="M14 7c.8.8 1.2 1.8 1.2 3S14.8 12.2 14 13M16.4 5.2A6.6 6.6 0 0118 10a6.6 6.6 0 01-1.6 4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <button class="btn-control" id="btn-pause-after" type="button">
+        <svg id="btn-pause-after-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="10" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7" fill="none"/>
+          <path d="M10 4.5V2.5M8 2.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M8.5 9h1v4h-1zM10.5 9h1v4h-1z" fill="currentColor"/>
         </svg>
-        <span><strong>Audio Settings</strong><em>Test your sound</em></span>
+        <span>
+          <strong id="btn-pause-after-label">Pause After Current Call</strong>
+          <em id="btn-pause-after-sub">Arm for the next call</em>
+        </span>
       </button>
     </section>
 
@@ -2089,42 +2564,46 @@
   <!-- RIGHT: session ──────────────────────────────────────────────────── -->
   <aside class="col-right">
   <div class="side-panel session-panel">
-    <section class="ai-card">
+    <section class="ai-card" id="ai-card" data-mode="ai">
       <header class="ai-head">
-        <h2 class="ai-title">AI Agent Assistant</h2>
+        <h2 class="ai-title" id="ai-card-title">AI Agent Assistant</h2>
         <span class="ai-status" id="ai-status">
           <span class="ai-status-dot"></span> Active
         </span>
       </header>
-      <div class="ai-bubble">
-        <div class="ai-avatar-large" aria-hidden="true">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="8" y="13" width="24" height="19" rx="6" fill="currentColor" fill-opacity="0.18"/>
-            <rect x="10.5" y="15.5" width="19" height="14" rx="4" stroke="currentColor" stroke-width="2"/>
-            <circle cx="17" cy="22" r="1.8" fill="currentColor"/>
-            <circle cx="23" cy="22" r="1.8" fill="currentColor"/>
-            <path d="M17 26c1.8 1.2 4.2 1.2 6 0M20 8v5M16.5 8.5h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="ai-msg" id="ai-msg">
-          <p class="ai-msg-line" id="ai-msg-1">I'm listening and analyzing the conversation...</p>
-          <p class="ai-msg-line ai-msg-secondary" id="ai-msg-2">I'll help you know when they're interested and guide you on what to say next.</p>
-          <div class="ai-tip-card" id="ai-tip-card" hidden>
-            <span class="ai-tip-eyebrow">Suggested next line</span>
-            <p class="ai-tip-text" id="ai-tip-text"></p>
-            <div class="ai-tip-actions">
-              <button class="pill-btn" id="ai-tip-use" type="button">Use this</button>
-              <button class="pill-btn" id="ai-tip-skip" type="button">Skip</button>
-            </div>
+      <div class="ai-card-pane ai-mode-body">
+        <div class="ai-coach-hint idle" id="ai-coach-hint">Idle — start a call to begin listening</div>
+
+        <div class="ai-transcript" id="ai-transcript" role="log" aria-live="polite">
+          <div class="ai-transcript-placeholder" id="ai-transcript-placeholder">
+            Mic will start when the call connects.
           </div>
         </div>
-      </div>
+
+        <div class="ai-tip-card" id="ai-tip-card" hidden>
+          <span class="ai-tip-eyebrow">Suggested next line</span>
+          <p class="ai-tip-text" id="ai-tip-text"></p>
+          <div class="ai-tip-actions">
+            <button class="pill-btn" id="ai-tip-use" type="button">Use this</button>
+            <button class="pill-btn" id="ai-tip-skip" type="button">Skip</button>
+          </div>
+        </div>
+
       <button class="ai-insights-link" id="btn-ai-insights" type="button">
         <span>View AI Insights</span>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
+      </div>
+      <div class="ai-card-pane ai-dialpad-body" hidden>
+        <div class="dialpad-display">
+          <span class="dialpad-readout" id="dialpad-readout">&mdash;</span>
+          <button class="dialpad-clear" id="dialpad-clear" type="button" aria-label="Clear">&times;</button>
+        </div>
+        <div class="dialpad-grid" aria-label="Phone keypad"></div>
+        <p class="dialpad-hint">Sends DTMF tones through the active call.</p>
+      </div>
     </section>
     <section class="notes-card">
       <header class="notes-head"><h2>Call Notes</h2></header>
@@ -2173,6 +2652,19 @@
 </div>
 
 </div>
+
+<aside class="drawer drawer-left" id="drawer-call-list" aria-hidden="true">
+  <div class="drawer-backdrop" data-close></div>
+  <div class="drawer-panel drawer-panel-left">
+    <header class="drawer-head">
+      <h2>Call List</h2>
+      <button class="icon-btn" data-close aria-label="Close" type="button">x</button>
+    </header>
+    <div class="drawer-body drawer-call-list-body" id="drawer-call-list-body">
+      <!-- .call-list-card is moved here on tablet/mobile -->
+    </div>
+  </div>
+</aside>
 
 <aside class="drawer" id="drawer-view-details" aria-hidden="true">
   <div class="drawer-backdrop" data-close></div>
@@ -2250,10 +2742,43 @@
   </div>
 </div>
 
+<nav class="mobile-tabs" id="mobile-tabs" hidden>
+  <button class="mtab" data-target="center" type="button" aria-selected="true">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 5c0 7.2 5.8 13 13 13v-4l-4-1.5-2 2A10 10 0 019.5 11l2-2L10 5H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    </svg>
+    <span>Call</span>
+  </button>
+  <button class="mtab" data-target="list" type="button" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>List</span>
+  </button>
+  <button class="mtab" data-target="ai" type="button" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="8" width="14" height="11" rx="4" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M12 4v4M9 4h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="9.5" cy="13.5" r="1" fill="currentColor"/>
+      <circle cx="14.5" cy="13.5" r="1" fill="currentColor"/>
+    </svg>
+    <span>AI</span>
+  </button>
+  <button class="mtab" data-target="notes" type="button" aria-selected="false">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 19l4-1 9-9-3-3-9 9-1 4zM14 7l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Notes</span>
+  </button>
+</nav>
+
 <script src="https://unpkg.com/@twilio/voice-sdk@2.10.2/dist/twilio.min.js"></script>
 <script src="scripts/cold_call_b2b.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+function newBrowserSessionId() {
+  return (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+}
 
 // ── focus mode (Easy / ADHD) ─────────────────────────────────────────────
 const MODE_KEY = 'dialer.mode';
@@ -2278,6 +2803,16 @@ function renderModeToggle() {
   const lbl = document.getElementById('mode-toggle-label');
   if (lbl) lbl.textContent = mode === 'adhd' ? 'ADHD' : 'Easy';
 }
+const MOBILE_TAB_KEY = 'dialer-mobile-tab';
+const CALENDLY_URL = "https://calendly.com/tylergonenova/novaalignment";
+function loadMobileTab() {
+  try {
+    const tab = localStorage.getItem(MOBILE_TAB_KEY);
+    return ['center', 'ai', 'notes'].includes(tab) ? tab : 'center';
+  } catch (_) {
+    return 'center';
+  }
+}
 // Apply BEFORE first paint to avoid flicker.
 document.documentElement.dataset.mode = loadMode();
 
@@ -2296,12 +2831,15 @@ const state = {
   noteSaveTimer: null,
   noteDraftTimer: null,
   currentNotesLeadId: null,
+  aiNoteFacts: {},
+  aiNoteRendered: {},
+  noteAutofillUpdating: false,
   postCall: null,
   callStartedAt: null,
   callDurationTimerId: null,
   lastCallDurationMs: 0,
   lastCallError: "",
-  sessionId: (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+  sessionId: newBrowserSessionId(),
   ivrSince: 0,
   ivrTimer: null,
   ivrSuggestion: null,
@@ -2317,12 +2855,34 @@ const state = {
   autoDialer: false,
   aiOn: true,
   aiListening: false,
+  aiMicStream: null,
+  aiMicRecorder: null,
+  aiMicChunks: [],
+  aiMicRecording: false,
+  mic: {
+    socket: null,
+    stream: null,
+    context: null,
+    processor: null,
+    agentSpeakerId: null,
+    buffer: '',
+    bufferTimer: null,
+    active: false,
+  },
+  dialpadBuffer: '',
+  dialAssistant: {
+    pending: null,      // { execute, executedLabel, label, reason }
+    countdownTimer: null,
+    intervalId: null,
+    startedAt: 0,
+    totalMs: 0,
+  },
+  mobileTab: loadMobileTab(),
   progressTarget: 100,
   demoMode: false,
   mode: loadMode(),
   scriptCurrentId: 'start',
   scriptHistory: [],
-  scriptPracticeMode: false,
   scriptVars: {
     business_name: '',
     city: '',
@@ -2344,6 +2904,13 @@ const state = {
     consequenceEstablished: false,
     priceQuoted: false,
   },
+  callLive: false,
+  pauseAfterCurrent: false,
+  waitingForResume: false,
+  lastLeadIdx: null,
+  recallReturnIdx: null,
+  currentCallSessionId: null,
+  _lastSummary: null,
 };
 
 // ── demo seed for file:// / backend-down first paint ─────────────────────
@@ -2656,11 +3223,139 @@ function renderViewDetails(lead) {
       <h3>Post-call Actions</h3>
       ${renderPostCallDrawer(lead)}
     </section>
+    <section class="drawer-section" id="call-history-section">
+      <h3>Call History</h3>
+      <div id="call-history-list" class="call-history-list">
+        <div class="call-history-empty">Loading…</div>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <h3>Upcoming Bookings</h3>
+      <div id="bookings-list" class="bookings-list">
+        <div class="call-history-empty">Loading...</div>
+      </div>
+    </section>
     <section class="drawer-section">
       <h3>Recent Calls</h3>
       ${renderRecentCallsDrawer()}
     </section>
   `;
+  refreshCallHistory(lead.id);
+  refreshBookings(lead.id);
+}
+
+async function refreshCallHistory(leadId) {
+  leadId = leadId || (state.leads && state.leads[state.idx] && state.leads[state.idx].id);
+  const wrap = document.getElementById('call-history-list');
+  if (!wrap) return;
+  if (!leadId) {
+    wrap.innerHTML = '<div class="call-history-empty">No lead selected</div>';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/call/lead/${encodeURIComponent(leadId)}/history`);
+    const data = await r.json();
+    const calls = data.calls || [];
+    if (!calls.length) {
+      wrap.innerHTML = '<div class="call-history-empty">No prior calls.</div>';
+      return;
+    }
+    wrap.innerHTML = calls.map(c => renderCallHistoryRow(c)).join('');
+    wrap.querySelectorAll('.call-history-row').forEach(row => {
+      row.querySelector('.call-history-toggle').addEventListener('click', async () => {
+        const id = row.dataset.callId;
+        const body = row.querySelector('.call-history-body');
+        if (row.classList.contains('expanded')) {
+          row.classList.remove('expanded');
+          return;
+        }
+        if (!body.dataset.loaded) {
+          body.innerHTML = '<div class="call-history-loading">Loading transcript…</div>';
+          try {
+            const t = await fetch(`/api/call/${id}/transcript`).then(r => r.json());
+            body.innerHTML = renderTranscriptEntries(t.entries || []);
+            body.dataset.loaded = '1';
+          } catch (e) {
+            body.innerHTML = '<div class="call-history-error">Failed to load.</div>';
+          }
+        }
+        row.classList.add('expanded');
+      });
+    });
+  } catch (e) {
+    wrap.innerHTML = '<div class="call-history-error">Could not load history.</div>';
+  }
+}
+
+async function refreshBookings(leadId) {
+  leadId = leadId || (state.leads && state.leads[state.idx] && state.leads[state.idx].id);
+  const wrap = document.getElementById('bookings-list');
+  if (!wrap || !leadId) return;
+  try {
+    const r = await fetch(`/api/booking/lead/${encodeURIComponent(leadId)}`);
+    const data = await r.json();
+    const bookings = (data.bookings || [])
+      .filter(b => new Date(b.start_iso) >= new Date(Date.now() - 86400000));
+    if (!bookings.length) {
+      wrap.innerHTML = '<div class="call-history-empty">No upcoming bookings.</div>';
+      return;
+    }
+    wrap.innerHTML = bookings.map(b => {
+      const when = new Date(b.start_iso).toLocaleString();
+      const href = b.gcal_url ? escapeHtml(b.gcal_url) : '';
+      return `
+        <div class="booking-row">
+          <div class="booking-when">${escapeHtml(when)}</div>
+          <div class="booking-title">${escapeHtml(b.title || 'Booking')}</div>
+          ${b.notes ? `<div class="booking-notes">${escapeHtml(b.notes)}</div>` : ''}
+          <div class="booking-actions">
+            ${href ? `<a href="${href}" target="_blank" rel="noopener" class="pill-btn">Open in Calendar</a>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="call-history-error">Could not load bookings.</div>';
+  }
+}
+
+function renderCallHistoryRow(c) {
+  const when = new Date(c.started_at || c.created_at).toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+  const duration = formatDuration(c.duration_s || 0);
+  const outcome = (c.outcome || '').replace(/_/g, ' ').toUpperCase() || 'UNKNOWN';
+  const outcomeClass = `outcome-pill-${(c.outcome || 'unknown').replace(/_/g, '-')}`;
+  const summary = c.summary || '—';
+  return `
+    <div class="call-history-row" data-call-id="${escapeHtml(c.call_session_id)}">
+      <button class="call-history-toggle" type="button">
+        <div class="call-history-meta">
+          <span class="call-history-time">${escapeHtml(when)}</span>
+          <span class="call-history-pill ${outcomeClass}">${escapeHtml(outcome)}</span>
+          <span class="call-history-duration">${escapeHtml(duration)}</span>
+        </div>
+        <div class="call-history-summary">${escapeHtml(summary)}</div>
+      </button>
+      <div class="call-history-body"></div>
+    </div>
+  `;
+}
+
+function renderTranscriptEntries(entries) {
+  if (!entries.length) return '<div class="call-history-empty">Empty transcript.</div>';
+  return entries.map(e => {
+    const cls = `t-line t-${e.role}`;
+    const label = ({ agent: 'YOU', prospect: 'THEM', coach: 'AI', system: 'SYS' })[e.role] || '·';
+    return `<div class="${cls}"><span class="t-label">${label}</span><span class="t-text">${escapeHtml(e.text)}</span></div>`;
+  }).join('');
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds < 1) return '—';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
 }
 
 function leadCallEvents(lead) {
@@ -2755,14 +3450,6 @@ function renderScript(lead) {
     sayEl.innerHTML = sayText;
   }
 
-  const coachingEl = document.getElementById('script-coaching');
-  if (coachingEl) coachingEl.hidden = !state.scriptPracticeMode;
-  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  setText('coach-direction', interpolate(node.direction, state.scriptVars));
-  setText('coach-tonality',  interpolate(node.tonality,  state.scriptVars));
-  setText('coach-pacing',    interpolate(node.pacing,    state.scriptVars));
-  setText('coach-warn',      interpolate(node.warn,      state.scriptVars));
-
   const ansEl = document.getElementById('script-answers');
   if (ansEl) {
     ansEl.innerHTML = '';
@@ -2785,22 +3472,6 @@ function renderScript(lead) {
   const backEl = document.getElementById('script-back');
   if (backEl) backEl.disabled = state.scriptHistory.length === 0;
 
-  const tipMap = {
-    'Entry':       'Speak slowly, smile through the phone',
-    'Reason':      'Mystery is the hook — do not reveal what you saw',
-    'Discovery':   'Ask, then count to 5 — let silence work',
-    'Consequence': 'Do not fill the silence after they answer',
-    'Objection':   'Strip to the bone — name the real reason',
-    'Value':       'Anchor the preview, defer the price',
-    'Close':       'Already-done energy — collect logistics, not approval',
-    'Hostile':     'Match their energy, defuse, do not push',
-    'Gatekeeper':  'Be honest — receptionists remember liars',
-    'Pivot':       'Match their pace, give them the choice',
-    'Email':       'Quick exit, document the win',
-    'REENTRY':     'Earned trust — gentle re-engage',
-  };
-  const tipEl = document.getElementById('script-tip');
-  if (tipEl) tipEl.textContent = tipMap[node.badge] || 'Listen for needs, pain points, and budget';
 }
 
 function advanceScript(nextId) {
@@ -2922,16 +3593,6 @@ function normalizeCue(value) {
 
 function currentCallElapsedMs() {
   return state.callStartedAt ? Math.max(0, Date.now() - state.callStartedAt) : 0;
-}
-
-function updateScriptTip(ms = 0) {
-  const tip = $("script-tip");
-  if (!tip) return;
-  const seconds = Math.floor(Math.max(0, ms) / 1000);
-  if (seconds < 30) tip.textContent = "Listen for needs, pain points, and budget";
-  else if (seconds < 120) tip.textContent = "Ask one question, then stay silent";
-  else if (seconds < 300) tip.textContent = "Tie features to what they just told you";
-  else tip.textContent = "Ask for the email and send the preview";
 }
 
 function applyScriptCue() {
@@ -3313,10 +3974,12 @@ function renderNotesCard() {
   }
   if (state.currentNotesLeadId !== lead.id) {
     state.currentNotesLeadId = lead.id;
-    const draft = getNoteDraft(lead.id);
+    // Show cached value instantly to avoid flash, then refresh from backend
     const saved = state.notes[lead.id] || {};
-    textarea.value = draft ?? (saved.note || "");
+    textarea.value = saved.note || "";
+    loadNotesForLead(lead.id);
   }
+  applyAutoCallNotes(lead.id);
   syncSaveNoteButton();
 }
 
@@ -3327,87 +3990,357 @@ function syncSaveNoteButton() {
   saveBtn.disabled = !textarea.value.trim();
 }
 
-function noteDraftKey(leadId) {
-  return `dialer-note-draft:${leadId}`;
+// Per prompt #24 — backend is the source of truth. The four draft helpers
+// below remain as no-op shims to avoid breaking legacy callers (AI autofill,
+// queue refresh). Any state previously held in localStorage is now handled
+// by scheduleNotesSave() → PUT /api/notes/<lead_id>.
+function noteDraftKey(leadId) { return `dialer-note-draft:${leadId}`; }
+function getNoteDraft(_leadId) { return null; }
+function setNoteDraft(_leadId, _value) { /* no-op — backend autosaves */ }
+function clearNoteDraft(_leadId) { /* no-op */ }
+
+function emptyAiNoteFacts() {
+  return {
+    spokeTo: "",
+    role: "",
+    interest: "",
+    email: "",
+    callback: "",
+    budget: "",
+    nextStep: "",
+    needs: [],
+    objections: [],
+    keyDetails: [],
+  };
 }
 
-function getNoteDraft(leadId) {
-  try {
-    return localStorage.getItem(noteDraftKey(leadId));
-  } catch (_) {
-    return null;
+function getAiNoteFacts(leadId) {
+  if (!state.aiNoteFacts[leadId]) state.aiNoteFacts[leadId] = emptyAiNoteFacts();
+  return state.aiNoteFacts[leadId];
+}
+
+function titleCaseWords(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b[a-z]/g, c => c.toUpperCase());
+}
+
+function extractTranscriptSentences(text) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+|\s+-\s+|\s+;\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function firstMatchingSentence(text, pattern) {
+  return extractTranscriptSentences(text).find(s => pattern.test(s)) || "";
+}
+
+function addUniqueNoteFact(list, value, limit = 3) {
+  const clean = String(value || "").replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  const key = clean.toLowerCase();
+  if (list.some(item => item.toLowerCase() === key)) return;
+  list.push(clean);
+  if (list.length > limit) list.splice(0, list.length - limit);
+}
+
+function extractSpokenName(text) {
+  const patterns = [
+    /\b(?:this is|it's|it is|my name is|i'm|i am)\s+([a-z][a-z'-]*(?:\s+[a-z][a-z'-]*)?)/i,
+    /\b(?:speaking with|spoke to|talked to)\s+([a-z][a-z'-]*(?:\s+[a-z][a-z'-]*)?)/i,
+  ];
+  const blocked = new Set(["the owner", "owner", "manager", "not", "busy", "good", "fine", "there", "yes", "no", "calling", "interested"]);
+  for (const pattern of patterns) {
+    const match = String(text || "").match(pattern);
+    if (!match) continue;
+    const name = match[1].replace(/[^\w\s'-]/g, "").replace(/\s+/g, " ").trim();
+    if (!name || blocked.has(name.toLowerCase())) continue;
+    return titleCaseWords(name);
+  }
+  return "";
+}
+
+function extractSpokenEmail(text) {
+  const direct = String(text || "").match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (direct) return direct[0];
+  const spoken = String(text || "")
+    .toLowerCase()
+    .match(/\b([a-z0-9._%+-]+)\s+(?:at|@)\s+([a-z0-9.-]+)\s+(?:dot|\.)\s+([a-z]{2,})\b/i);
+  return spoken ? `${spoken[1]}@${spoken[2]}.${spoken[3]}` : "";
+}
+
+function extractRole(text) {
+  const lower = String(text || "").toLowerCase();
+  if (/\b(owner|co-owner|business owner|decision maker)\b/.test(lower)) return "owner";
+  if (/\b(manager|general manager|office manager)\b/.test(lower)) return "manager";
+  if (/\b(receptionist|front desk|gatekeeper|assistant)\b/.test(lower)) return "front desk";
+  if (/\b(marketing|marketing director|marketing manager)\b/.test(lower)) return "marketing";
+  return "";
+}
+
+function extractInterest(text) {
+  const lower = String(text || "").toLowerCase();
+  if (/\b(not interested|no thanks|not right now|don't need|do not need|take me off|stop calling)\b/.test(lower)) return "not interested";
+  if (/\b(interested|sounds good|send it|send me|book|schedule|calendar|meeting|preview|build|website)\b/.test(lower)) return "interested";
+  return "";
+}
+
+function updateAiNoteFactsFromText(leadId, text, speaker = "prospect") {
+  if (!leadId || !text) return false;
+  const facts = getAiNoteFacts(leadId);
+  let changed = false;
+  const clean = String(text).replace(/\s+/g, " ").trim();
+  const lower = clean.toLowerCase();
+
+  const name = extractSpokenName(clean);
+  if (name && facts.spokeTo !== name) { facts.spokeTo = name; changed = true; }
+
+  const role = extractRole(clean);
+  if (role && facts.role !== role) { facts.role = role; changed = true; }
+
+  const email = extractSpokenEmail(clean);
+  if (email && facts.email !== email) { facts.email = email; changed = true; }
+
+  const interest = extractInterest(clean);
+  if (interest && facts.interest !== interest) { facts.interest = interest; changed = true; }
+
+  const callback = firstMatchingSentence(clean, /\b(call me back|call back|callback|tomorrow|later today|next week|monday|tuesday|wednesday|thursday|friday|after \d|at \d)\b/i);
+  if (callback && facts.callback !== callback) { facts.callback = callback; changed = true; }
+
+  const budget = firstMatchingSentence(clean, /\b(budget|price|pricing|cost|expensive|afford|\$\d+|\d+\s*(dollars|bucks|per month|\/mo))\b/i);
+  if (budget && facts.budget !== budget) { facts.budget = budget; changed = true; }
+
+  const need = firstMatchingSentence(clean, /\b(need|want|looking for|website|site|seo|google|leads|customers|bookings|outdated|slow|not getting|more calls|more jobs)\b/i);
+  if (need) {
+    const before = facts.needs.length;
+    addUniqueNoteFact(facts.needs, need, 3);
+    changed = changed || facts.needs.length !== before;
+  }
+
+  const objection = firstMatchingSentence(clean, /\b(not interested|too expensive|already have|busy|send me an email|no budget|can't afford|call back|not now|don't need)\b/i);
+  if (objection) {
+    const before = facts.objections.length;
+    addUniqueNoteFact(facts.objections, objection, 3);
+    changed = changed || facts.objections.length !== before;
+  }
+
+  if (/\b(book|schedule|calendar|calendly|appointment|meeting)\b/.test(lower) && facts.nextStep !== "Book calendar") {
+    facts.nextStep = "Book calendar";
+    changed = true;
+  } else if (/\b(send|email)\b/.test(lower) && /\b(email|info|details|preview)\b/.test(lower) && facts.nextStep !== "Send follow-up email") {
+    facts.nextStep = "Send follow-up email";
+    changed = true;
+  } else if (callback && facts.nextStep !== "Call back") {
+    facts.nextStep = "Call back";
+    changed = true;
+  } else if (/\b(build|preview|website)\b/.test(lower) && interest === "interested" && facts.nextStep !== "Start build") {
+    facts.nextStep = "Start build";
+    changed = true;
+  }
+
+  if (speaker === "prospect" && clean.length > 18 && !need && !objection && !callback && !budget) {
+    const before = facts.keyDetails.length;
+    addUniqueNoteFact(facts.keyDetails, clean, 2);
+    changed = changed || facts.keyDetails.length !== before;
+  }
+
+  return changed;
+}
+
+function composeAiNotesBlock(facts) {
+  const lines = [];
+  if (facts.spokeTo || facts.role) {
+    const person = facts.spokeTo || facts.role;
+    const role = facts.spokeTo && facts.role ? ` (${facts.role})` : "";
+    lines.push(`Spoke to: ${person}${role}`);
+  }
+  if (facts.interest) lines.push(`Interest: ${facts.interest}`);
+  if (facts.needs.length) lines.push(`Needs: ${facts.needs.join("; ")}`);
+  if (facts.objections.length) lines.push(`Objections: ${facts.objections.join("; ")}`);
+  if (facts.budget) lines.push(`Budget/Pricing: ${facts.budget}`);
+  if (facts.callback) lines.push(`Callback: ${facts.callback}`);
+  if (facts.email) lines.push(`Email: ${facts.email}`);
+  if (facts.nextStep) lines.push(`Next step: ${facts.nextStep}`);
+  if (facts.keyDetails.length) lines.push(`Key details: ${facts.keyDetails.join("; ")}`);
+  return lines.length ? `AI Notes\n${lines.join("\n")}` : "";
+}
+
+function mergeAutoNotesWithManual(current, leadId, nextAutoBlock) {
+  const previous = state.aiNoteRendered[leadId] || "";
+  let manual = String(current || "");
+  if (previous && manual.startsWith(previous)) {
+    manual = manual.slice(previous.length).replace(/^\n{2}/, "");
+  } else if (/^AI Notes\n[\s\S]*?\n\n/.test(manual)) {
+    manual = manual.replace(/^AI Notes\n[\s\S]*?\n\n/, "");
+  }
+  return nextAutoBlock ? `${nextAutoBlock}${manual.trim() ? "\n\n" + manual.trimStart() : ""}` : manual;
+}
+
+function applyAutoCallNotes(leadId) {
+  const facts = state.aiNoteFacts[leadId];
+  if (!facts) return;
+  const nextBlock = composeAiNotesBlock(facts);
+  if (!nextBlock) return;
+  const textarea = $("call-notes");
+  if (!textarea || state.leads[state.idx]?.id !== leadId) {
+    state.aiNoteRendered[leadId] = nextBlock;
+    return;
+  }
+  const oldValue = textarea.value;
+  const nextValue = mergeAutoNotesWithManual(oldValue, leadId, nextBlock);
+  if (nextValue === oldValue) return;
+  const wasFocused = document.activeElement === textarea;
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || start;
+  state.noteAutofillUpdating = true;
+  textarea.value = nextValue;
+  state.noteAutofillUpdating = false;
+  state.aiNoteRendered[leadId] = nextBlock;
+  if (wasFocused) {
+    const delta = nextValue.length - oldValue.length;
+    textarea.setSelectionRange(Math.max(0, start + delta), Math.max(0, end + delta));
+  }
+  state.notes[leadId] = {
+    ...(state.notes[leadId] || {}),
+    lead_id: leadId,
+    phone: (state.leads[state.idx]?.phones && state.leads[state.idx].phones[state.phoneIdx]) || "",
+    note: nextValue,
+  };
+  setNoteDraft(leadId, nextValue);
+  syncSaveNoteButton();
+}
+
+function autoFillCallNotesFromTranscript(text, speaker = "prospect") {
+  const lead = state.leads[state.idx];
+  if (!lead || !text) return;
+  if (updateAiNoteFactsFromText(lead.id, text, speaker)) {
+    applyAutoCallNotes(lead.id);
   }
 }
 
-function setNoteDraft(leadId, value) {
-  try {
-    const key = noteDraftKey(leadId);
-    if (value) localStorage.setItem(key, value);
-    else localStorage.removeItem(key);
-  } catch (e) {
-    console.warn("note draft localStorage unavailable", e);
+function autoFillCallNotesFromSummary(summary, leadId) {
+  if (!summary || !leadId) return;
+  const facts = getAiNoteFacts(leadId);
+  let changed = false;
+  if (summary.sentiment && !facts.interest) {
+    facts.interest = summary.sentiment === "positive" ? "interested" : summary.sentiment;
+    changed = true;
   }
+  if (summary.outcome && !facts.nextStep) {
+    facts.nextStep = String(summary.outcome).replace(/_/g, " ");
+    changed = true;
+  }
+  (summary.key_objections || []).slice(0, 3).forEach(item => {
+    const before = facts.objections.length;
+    addUniqueNoteFact(facts.objections, item, 3);
+    changed = changed || facts.objections.length !== before;
+  });
+  (summary.follow_up_actions || []).slice(0, 3).forEach(item => {
+    const before = facts.keyDetails.length;
+    addUniqueNoteFact(facts.keyDetails, item, 3);
+    changed = changed || facts.keyDetails.length !== before;
+  });
+  if ((summary.key_quotes || [])[0]) {
+    const before = facts.keyDetails.length;
+    addUniqueNoteFact(facts.keyDetails, `"${summary.key_quotes[0]}"`, 3);
+    changed = changed || facts.keyDetails.length !== before;
+  }
+  if (changed) applyAutoCallNotes(leadId);
 }
 
-function clearNoteDraft(leadId) {
-  try {
-    localStorage.removeItem(noteDraftKey(leadId));
-  } catch (_) {}
-}
-
+// ─── Per-lead note autosave (prompt #24) ────────────────────────────────
+// Backend is the source of truth (PUT /api/notes/<lead_id>). No localStorage
+// draft layer — autosave debounced 800ms on input, immediate on button click.
+// AI autofill path uses state.noteAutofillUpdating to suppress autosave races.
 function handleCallNotesInput() {
+  if (state.noteAutofillUpdating) return;
   const lead = state.leads[state.idx];
   const textarea = $("call-notes");
   if (!lead || !textarea) return;
   syncSaveNoteButton();
+  // Mirror to in-memory cache for renderQueue() / AI autofill compatibility
   state.notes[lead.id] = {
     ...(state.notes[lead.id] || {}),
     lead_id: lead.id,
     phone: (lead.phones && lead.phones[state.phoneIdx]) || "",
     note: textarea.value,
   };
-  clearTimeout(state.noteDraftTimer);
-  state.noteDraftTimer = setTimeout(() => setNoteDraft(lead.id, textarea.value), 500);
+  scheduleNotesSave();
 }
 
-async function saveCurrentCallNote() {
+function scheduleNotesSave() {
+  clearTimeout(state.noteDraftTimer);
+  state.noteDraftTimer = setTimeout(saveNotesNow, 800);
+}
+
+async function saveNotesNow() {
   const lead = state.leads[state.idx];
   const textarea = $("call-notes");
-  const saveBtn = $("btn-save-note");
-  if (!lead || !textarea || !saveBtn) return;
-  const body = textarea.value.trim();
-  if (!body) { syncSaveNoteButton(); return; }
-  const prevLabel = saveBtn.textContent;
-  saveBtn.disabled = true;
-  saveBtn.textContent = "Saving...";
-  const payload = {
-    ...(state.notes[lead.id] || {}),
-    lead_id: lead.id,
-    phone: (lead.phones && lead.phones[state.phoneIdx]) || "",
-    note: body,
-  };
+  if (!lead?.id || !textarea) return;
   try {
-    const r = await fetch("/note", {
-      method: "POST",
+    const r = await fetch(`/api/notes/${encodeURIComponent(lead.id)}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ body: textarea.value }),
     });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-    state.notes[lead.id] = d.note;
-    clearTimeout(state.noteDraftTimer);
-    clearNoteDraft(lead.id);
-    textarea.value = "";
-    saveBtn.textContent = "Saved";
-    syncSaveNoteButton();
-    setTimeout(() => { if (saveBtn) saveBtn.textContent = prevLabel || "Save Note"; }, 1200);
+    // Keep in-memory cache hot for queue badges and AI autofill
+    state.notes[lead.id] = {
+      ...(state.notes[lead.id] || {}),
+      lead_id: lead.id,
+      note: textarea.value,
+      updated_at: d.updated_at,
+    };
+    flashNotesStatus("Saved");
     renderQueue();
   } catch (e) {
     console.error("note save failed", e);
-    saveBtn.textContent = "Save failed";
-    syncSaveNoteButton();
-    setTimeout(() => { if (saveBtn) saveBtn.textContent = prevLabel || "Save Note"; }, 1200);
+    flashNotesStatus("Save failed");
   }
+}
+
+function flashNotesStatus(text) {
+  const btn = $("btn-save-note");
+  if (!btn) return;
+  const orig = btn.dataset.origLabel || btn.textContent;
+  btn.dataset.origLabel = orig;
+  btn.textContent = text;
+  setTimeout(() => {
+    if (btn) btn.textContent = btn.dataset.origLabel || "Save Note";
+  }, 1200);
+}
+
+async function loadNotesForLead(leadId) {
+  const textarea = $("call-notes");
+  if (!textarea) return;
+  if (!leadId) { textarea.value = ""; syncSaveNoteButton(); return; }
+  try {
+    const r = await fetch(`/api/notes/${encodeURIComponent(leadId)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    textarea.value = d.body || "";
+    state.notes[leadId] = {
+      ...(state.notes[leadId] || {}),
+      lead_id: leadId,
+      note: d.body || "",
+      updated_at: d.updated_at,
+    };
+    syncSaveNoteButton();
+  } catch (e) {
+    console.warn("loadNotesForLead failed", e);
+    textarea.value = state.notes[leadId]?.note || "";
+    syncSaveNoteButton();
+  }
+}
+
+// Legacy export — manual click on Save Note now just triggers an immediate save.
+async function saveCurrentCallNote() {
+  clearTimeout(state.noteDraftTimer);
+  await saveNotesNow();
 }
 
 function focusCurrentLead(behavior = "smooth") {
@@ -3435,8 +4368,17 @@ function goTo(i) {
     consequenceEstablished: false,
     priceQuoted: false,
   };
+  state.currentCallSessionId = null;
+  state._lastSummary = null;
+  // Reset AI listening UI (prompt #25) + clear any pending dial-assistant action
+  clearAiTip();
+  clearDialAssistantAction();
+  resetAiTranscript('Mic will start when the call connects.');
+  setCoachingHint('Idle — start a call to begin listening', 'idle');
+  loadNotesForLead(state.leads?.[state.idx]?.id);
   renderAll();
   focusCurrentLead();
+  if (isTabletViewport()) closeDrawer("drawer-call-list");
 }
 function selectPhone(i) { state.phoneIdx = i; renderCurrent(); renderQueue(); focusCurrentLead(); }
 
@@ -3486,8 +4428,10 @@ async function makeCall() {
   if (!to) return;
   if (!state.device) { setDeviceStatus("device not ready", "err"); return; }
   try {
+    state.sessionId = newBrowserSessionId();
     state.postCall = null;
     state.lastCallError = "";
+    state.lastOutcome = null;
     startCallDuration();
     state.ivrSuggestion = null;
     state.ivrSince = 0;
@@ -3511,21 +4455,88 @@ async function makeCall() {
       }).catch(() => {});
     } catch (_) {}
     state.call = await state.device.connect({ params: { To: to, SessionId: state.sessionId } });
+    state.callLive = true;
+    state.lastLeadIdx = state.idx;
+    try {
+      if (lead && lead.id) {
+        const r = await postJson('/api/call/start', { lead_id: lead.id });
+        state.currentCallSessionId = r.call_session_id;
+      }
+    } catch (e) {
+      console.warn('call/start failed', e);
+      state.currentCallSessionId = null;
+    }
+    if (state.aiOn) startMicCapture();
+    // Persistent-listening UI reset (prompt #25)
+    clearAiTip();
+    resetAiTranscript('Listening...');
+    setCoachingHint('Listening for pain points and intent...', 'listening');
+    renderBottomControls();
+    if (typeof renderHeader === "function") renderHeader();
     document.body.setAttribute("data-mode", "calling");
     startIvrPolling();
     renderCurrent();
     if ($("btn-call")) $("btn-call").disabled = true;
     if ($("btn-hang")) $("btn-hang").disabled = false;
-    state.call.on("accept",     () => setDeviceStatus("connected · " + fmtPhone(to), "live"));
+    state.call.on("accept",     () => {
+      setDeviceStatus("connected · " + fmtPhone(to), "live");
+      // Now that media is flowing, upgrade mic capture to dual-channel
+      // (mic on ch0 + Twilio remote on ch1) for clean speaker routing.
+      upgradeMicToDual();
+    });
     state.call.on("ringing",    () => setDeviceStatus("ringing " + fmtPhone(to) + "…"));
     state.call.on("disconnect", () => {
+      stopMicCapture();
+      const sessionId = state.currentCallSessionId;
+      if (sessionId && state.aiOn) {
+        // Fire-and-forget — disposition runs in background.
+        (async () => {
+          try {
+            const r = await fetch('/api/agent/disposition', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({call_session_id: sessionId}),
+            });
+            const d = await r.json();
+            if (d.outcome && (d.confidence ?? 0) >= 0.6 && !state.lastOutcome) {
+              // Only auto-fire if Tyler hasn't already pressed an outcome button.
+              markOutcome(d.outcome);
+              showAiTip(`Auto-dispositioned: ${d.outcome.replace(/_/g,' ').toUpperCase()} (${Math.round(d.confidence*100)}%)`);
+              setTimeout(clearAiTip, 4000);
+            }
+          } catch (e) {
+            console.warn('auto-disposition failed', e);
+          }
+        })();
+      }
+      // Finalize transcript + generate summary BEFORE any other state mutates
+      if (state.currentCallSessionId) {
+        const sessionId = state.currentCallSessionId;
+        state.currentCallSessionId = null;
+        const outcome = state.lastOutcome || '';
+        postJson(`/api/call/${sessionId}/end`, { outcome })
+          .then(res => {
+            state._lastSummary = (res && res.summary) || '';
+            const drawer = document.getElementById('drawer-view-details');
+            if (drawer && drawer.getAttribute('aria-hidden') === 'false') {
+              refreshCallHistory();
+            }
+          })
+          .catch(e => console.warn('call/end failed', e));
+      }
       setDeviceStatus("call ended");
       if ($("btn-call")) $("btn-call").disabled = false;
       if ($("btn-hang")) $("btn-hang").disabled = true;
       state.call = null;
+      state.callLive = false;
+      // Persistent-listening UI: idle the hint, keep transcript visible (history)
+      setCoachingHint('Call ended', 'idle');
+      clearAiTip();
+      clearDialAssistantAction();
       stopCallDuration();
       state.dialingLeadId = null;
       document.body.setAttribute("data-mode", "idle");
+      if (typeof renderHeader === "function") renderHeader();
       // Fetch the AI summary ~8s after disconnect (gives Haiku time to finish)
       const sid = state.sessionId;
       const lid = lead && lead.id;
@@ -3533,18 +4544,63 @@ async function makeCall() {
       try { fetch("/calls/clear", { method: "POST" }).catch(() => {}); } catch (_) {}
       setTimeout(stopIvrPolling, 2500);
       renderQueue();
+      // Pause-After-Current armed → hard pause, keep screen on this lead
+      if (state.pauseAfterCurrent) {
+        state.pauseAfterCurrent = false;
+        state.waitingForResume = true;
+        state.autoDialer = false;
+        state.autoAdvance = false;
+        if (typeof renderHeader === "function") renderHeader();
+        renderBottomControls();
+        renderCurrent();
+        return;
+      }
+      // Recall flow → after the recalled call ends, jump to recallReturnIdx
+      if (state.recallReturnIdx != null) {
+        const target = state.recallReturnIdx;
+        state.recallReturnIdx = null;
+        if (target >= 0 && target < state.leads.length) state.idx = target;
+        renderAll();
+        renderBottomControls();
+        if (state.autoAdvance && !state.paused) autoDialAfterAdvance(400);
+        return;
+      }
+      renderBottomControls();
       // Auto-advance unless paused or a disposition was already pressed
       if (state.autoAdvance && !state.paused) scheduleAutoAdvance();
       else renderCurrent();
     });
-    state.call.on("error", e => { state.lastCallError = e.message || String(e); stopCallDuration(); setDeviceStatus("call error: " + state.lastCallError, "err"); state.dialingLeadId = null; renderQueue(); });
+    state.call.on("error", e => {
+      state.lastCallError = e.message || String(e);
+      // Mirror the disconnect-finalize so an errored call doesn't leave an
+      // open call_sessions row that /api/call/lead/<id>/history will never
+      // surface (no ended_at → orphaned by /end's snapshot logic).
+      if (state.currentCallSessionId) {
+        const sessionId = state.currentCallSessionId;
+        state.currentCallSessionId = null;
+        postJson(`/api/call/${sessionId}/end`, { outcome: state.lastOutcome || "error", notes: state.lastCallError })
+          .catch(err => console.warn("call/end (error path) failed", err));
+      }
+      stopMicCapture();
+      stopCallDuration();
+      setDeviceStatus("call error: " + state.lastCallError, "err");
+      state.dialingLeadId = null;
+      state.callLive = false;
+      renderQueue();
+      if (typeof renderHeader === "function") renderHeader();
+      renderBottomControls();
+    });
   } catch (e) {
     setDeviceStatus("connect failed: " + e.message, "err");
     state.postCall = null;
+    stopMicCapture();
     stopCallDuration();
     stopIvrPolling();
     state.dialingLeadId = null;
+    state.callLive = false;
     renderQueue();
+    if (typeof renderHeader === "function") renderHeader();
+    renderBottomControls();
     if ($("btn-call")) $("btn-call").disabled = false;
     if ($("btn-hang")) $("btn-hang").disabled = true;
   }
@@ -3594,6 +4650,10 @@ function stopIvrPolling() {
 function handleIvrEvent(event) {
   state.ivrSince = Math.max(state.ivrSince, event.seq || 0);
   if (event.message) logCallEvent(event.message, event.level || "");
+  if (event.kind === "transcript" && event.transcript) {
+    void aiOnProspectUtterance(event.transcript);
+    return;
+  }
 
   // Agent: live human or gatekeeper — flash banner so Tyler stops navigating
   if (event.kind === "alert") {
@@ -3603,6 +4663,10 @@ function handleIvrEvent(event) {
 
   // Agent: detected voicemail — auto-mark + advance (still pauseable)
   if (event.kind === "mark_voicemail") {
+    if (!state.aiOn) {
+      logCallEvent("AI-off: voicemail detected, leaving disposition manual.", "warn");
+      return;
+    }
     const lead = state.leads[state.idx];
     if (lead) {
       const phone = lead.phones[state.phoneIdx];
@@ -3622,7 +4686,7 @@ function handleIvrEvent(event) {
   if (event.kind !== "ivr_digit" || !event.digit) return;
   state.ivrSuggestion = event;
   renderCurrent();
-  if (event.auto_press) {
+  if (event.auto_press && state.aiOn) {
     sendDtmf(event.digit);
     logCallEvent(`Auto-pressed ${event.digit}.`, "ok");
     state.ivrSuggestion = null;
@@ -3949,6 +5013,15 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && closeTopOverlay()) { e.preventDefault(); return; }
   if (isShortcutTextTarget(e.target)) return;
 
+  if ($("ai-card")?.dataset.mode === "dialpad") {
+    const dtmfKeys = "0123456789*#";
+    if (dtmfKeys.includes(e.key)) {
+      pressDialpadKey(e.key);
+      e.preventDefault();
+      return;
+    }
+  }
+
   // Backspace → undo last script-node step
   if (e.key === "Backspace") {
     if (state.scriptHistory && state.scriptHistory.length) {
@@ -3966,7 +5039,7 @@ document.addEventListener("keydown", e => {
     if (btns[idx]) { e.preventDefault(); btns[idx].click(); return; }
   }
 
-  const outcomeKeyMap = {"4":"not_interested","5":"interested","d":"dnc","D":"dnc","n":"notes","N":"notes"};
+  const outcomeKeyMap = {"4":"not_interested","5":"build","d":"dnc","D":"dnc","c":"calendar","C":"calendar","n":"notes","N":"notes"};
   if (outcomeKeyMap[e.key]) {
     e.preventDefault();
     markOutcome(outcomeKeyMap[e.key]);
@@ -3984,6 +5057,17 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") { e.preventDefault(); goTo(state.idx + 1); return; }
   if (state.call && /^[0-9*#]$/.test(e.key)) { e.preventDefault(); sendDtmf(e.key); return; }
   if (e.key === "b" || e.key === "B") { e.preventDefault(); interestedAndBuild(); return; }
+  if (e.key === "h" || e.key === "H") {
+    if (state.callLive) { e.preventDefault(); hangUpAndStop(); return; }
+  }
+  if (e.key === "r" || e.key === "R") {
+    const btn = document.getElementById("btn-recall-last");
+    if (btn && !btn.disabled) { e.preventDefault(); btn.click(); return; }
+  }
+  if (e.key === "p" || e.key === "P") {
+    const btn = document.getElementById("btn-pause-after");
+    if (btn) { e.preventDefault(); btn.click(); return; }
+  }
 });
 
 // ── init ────────────────────────────────────────────────────────────────
@@ -4003,30 +5087,272 @@ async function initDevice() {
 
 // ── header wiring ────────────────────────────────────────────────────────
 // ───── AI AGENT HOOKS — Tyler ports gates/prompts here ─────
+function resetMicState() {
+  state.mic = {
+    socket: null,
+    stream: null,
+    remoteStream: null,
+    context: null,
+    processor: null,
+    agentSpeakerId: null,
+    mode: null,            // 'mic-only' | 'dual'
+    buffer: '',
+    bufferTimer: null,
+    active: false,
+  };
+}
+
+async function requestMicPermission() {
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(t => t.stop());
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ─── Dual-channel audio capture (prompt #25.5) ──────────────────────────
+// Channel 0 = local mic (agent), Channel 1 = Twilio remote (prospect).
+// Sent to Deepgram with multichannel=true so each transcript carries its
+// channel_index → zero-ambiguity speaker routing, headphones-friendly,
+// no speakerphone required. Falls back to mic-only if no Twilio remote
+// stream is available yet (e.g., ringing / pre-accept).
+function _getTwilioRemoteStream() {
+  try {
+    if (state.call && typeof state.call.getRemoteStream === 'function') {
+      const s = state.call.getRemoteStream();
+      if (s && s.getAudioTracks().length > 0) return s;
+    }
+  } catch (e) { /* fall through */ }
+  return null;
+}
+
+async function startMicCapture() {
+  if (!state.aiOn || state.mic.active || state.mic.socket) return;
+  try {
+    const tokenRes = await fetch('/api/deepgram-token');
+    const tokenData = await tokenRes.json();
+    if (!tokenData.key) throw new Error(tokenData.error || 'No Deepgram key');
+
+    const micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        sampleRate: 16000,
+        echoCancellation: true,    // OK now — prospect is on its own channel
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    state.mic.stream = micStream;
+
+    const remoteStream = _getTwilioRemoteStream();
+    const useDual = !!remoteStream;
+    state.mic.mode = useDual ? 'dual' : 'mic-only';
+    state.mic.remoteStream = remoteStream;
+
+    const params = new URLSearchParams({
+      model: 'nova-2',
+      language: 'en-US',
+      smart_format: 'true',
+      interim_results: 'true',
+      utterance_end_ms: '1500',
+      vad_events: 'true',
+      encoding: 'linear16',
+      sample_rate: '16000',
+      channels: useDual ? '2' : '1',
+    });
+    if (useDual) {
+      params.set('multichannel', 'true');
+    } else {
+      // mic-only mode: rely on diarization for speaker separation
+      params.set('diarize', 'true');
+    }
+    const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ['token', tokenData.key]);
+    state.mic.socket = ws;
+
+    ws.onopen = () => {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContextCtor({ sampleRate: 16000 });
+      state.mic.context = ctx;
+
+      const micSource = ctx.createMediaStreamSource(micStream);
+
+      if (useDual) {
+        // Merge mic → ch0, remote → ch1
+        const merger = ctx.createChannelMerger(2);
+        micSource.connect(merger, 0, 0);
+        const remoteSource = ctx.createMediaStreamSource(remoteStream);
+        remoteSource.connect(merger, 0, 1);
+        const processor = ctx.createScriptProcessor(4096, 2, 2);
+        state.mic.processor = processor;
+        processor.onaudioprocess = (e) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const ch0 = e.inputBuffer.getChannelData(0);
+          const ch1 = e.inputBuffer.numberOfChannels > 1
+            ? e.inputBuffer.getChannelData(1)
+            : ch0;
+          const n = ch0.length;
+          // Deepgram linear16 + channels=2 expects interleaved L,R,L,R,...
+          const int16 = new Int16Array(n * 2);
+          for (let i = 0; i < n; i++) {
+            const a = Math.max(-1, Math.min(1, ch0[i]));
+            const b = Math.max(-1, Math.min(1, ch1[i]));
+            int16[i * 2]     = a < 0 ? a * 0x8000 : a * 0x7FFF;
+            int16[i * 2 + 1] = b < 0 ? b * 0x8000 : b * 0x7FFF;
+          }
+          ws.send(int16.buffer);
+        };
+        merger.connect(processor);
+        processor.connect(ctx.destination);
+      } else {
+        // mic-only path (no Twilio remote yet)
+        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        state.mic.processor = processor;
+        processor.onaudioprocess = (e) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const input = e.inputBuffer.getChannelData(0);
+          const int16 = new Int16Array(input.length);
+          for (let i = 0; i < input.length; i++) {
+            const s = Math.max(-1, Math.min(1, input[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          ws.send(int16.buffer);
+        };
+        micSource.connect(processor);
+        processor.connect(ctx.destination);
+      }
+
+      state.mic.active = true;
+      clearAiMicError();
+      setAiStatus('active');
+      if (useDual) {
+        setCoachingHint('Listening (dual channel — agent + prospect)', 'listening');
+      }
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type !== 'Results') return;
+        const alt = msg.channel?.alternatives?.[0];
+        if (!alt?.transcript) return;
+
+        let role;
+        if (state.mic.mode === 'dual') {
+          // Multichannel: channel_index 0 = mic (agent), 1 = remote (prospect)
+          role = (msg.channel_index === 0 || msg.channel_index?.[0] === 0) ? 'agent' : 'prospect';
+        } else {
+          // mic-only: diarization fallback
+          const speaker = (alt.words || [])[0]?.speaker;
+          if (state.mic.agentSpeakerId == null && speaker != null) {
+            state.mic.agentSpeakerId = speaker;
+          }
+          role = (speaker === state.mic.agentSpeakerId) ? 'agent' : 'prospect';
+        }
+
+        if (msg.is_final) handleFinalUtterance(role, alt.transcript.trim());
+      } catch (e) {}
+    };
+
+    ws.onerror = (e) => {
+      console.warn('Deepgram error', e);
+      setAiStatus('error');
+      stopMicCapture();
+    };
+    ws.onclose = () => {
+      state.mic.active = false;
+      if (state.aiOn && !document.getElementById('ai-status')?.classList.contains('error')) {
+        setAiStatus(state.callLive ? 'active' : 'idle');
+      }
+    };
+  } catch (e) {
+    console.error('Mic capture failed', e);
+    setAiStatus('error');
+    showAiTip(`Mic error: ${e.message}`);
+    showAiMicError(e.message || 'Microphone unavailable.');
+    stopMicCapture();
+  }
+}
+
+// Called on Twilio call 'accept' — if we started in mic-only mode (no
+// remote stream available yet), tear down and restart in dual-channel mode.
+async function upgradeMicToDual() {
+  if (!state.aiOn) return;
+  if (state.mic.mode === 'dual') return;
+  const remote = _getTwilioRemoteStream();
+  if (!remote) return;
+  console.log('[mic] upgrading to dual-channel capture');
+  stopMicCapture();
+  // small breath so the WS fully closes before we open a new one
+  await new Promise(r => setTimeout(r, 120));
+  await startMicCapture();
+}
+
+function stopMicCapture() {
+  const pending = String(state.mic.buffer || '').trim();
+  if (pending && state.aiOn && typeof aiOnProspectUtterance === 'function') {
+    aiOnProspectUtterance(pending);
+  }
+  if (state.mic.bufferTimer) clearTimeout(state.mic.bufferTimer);
+  try { state.mic.socket?.send(JSON.stringify({ type: 'CloseStream' })); } catch {}
+  try { state.mic.socket?.close(); } catch {}
+  try { state.mic.processor?.disconnect(); } catch {}
+  try { state.mic.context?.close(); } catch {}
+  try { state.mic.stream?.getTracks().forEach(t => t.stop()); } catch {}
+  resetMicState();
+}
+
+function handleFinalUtterance(role, text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return;
+  if (role === 'agent') {
+    if (typeof aiOnAgentUtterance === 'function') aiOnAgentUtterance(clean);
+    return;
+  }
+
+  clearTimeout(state.mic.bufferTimer);
+  state.mic.buffer = `${state.mic.buffer} ${clean}`.trim();
+  state.mic.bufferTimer = setTimeout(() => {
+    const final = state.mic.buffer;
+    state.mic.buffer = '';
+    if (typeof aiOnProspectUtterance === 'function') aiOnProspectUtterance(final);
+  }, 1000);
+}
+
 async function aiStartListening() {
   // TODO: replace with port from NovaIntel LiveCoach.startAudio()
   setAiStatus("active");
   state.aiListening = true;
+  if (state.callLive) await startMicCapture();
 }
 
 async function aiStopListening() {
+  stopMicCapture();
   setAiStatus("idle");
   state.aiListening = false;
 }
 
 async function aiOnProspectUtterance(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (clean.length < 2) return;
+  autoFillCallNotesFromTranscript(clean, "prospect");
+  state.aiTranscript.push({ role: 'prospect', text: clean, ts: Date.now() });
+  appendAiTranscriptLine('prospect', clean);
+  if (state.currentCallSessionId) {
+    postJson(`/api/call/${state.currentCallSessionId}/entry`,
+             { role: 'prospect', text: clean, ts: Date.now() }).catch(() => {});
+  }
   if (!state.aiOn) return;
-  if (!text || text.trim().length < 2) return;
 
-  state.aiTranscript.push({ role: 'prospect', text: text.trim(), ts: Date.now() });
-  if (text.length > 20) {
+  if (clean.length > 20) {
     state.callState.excavation_depth = (state.callState.excavation_depth || 0) + 1;
   }
 
   // Fuzzy match against current node's answers — auto-advance if confident
   const node = window.COLD_CALL_B2B?.[state.scriptCurrentId];
   if (node?.answers?.length) {
-    const lower = text.toLowerCase();
+    const lower = clean.toLowerCase();
     for (const ans of node.answers) {
       const labelWords = ans.label.toLowerCase().split(/\s+/).filter(w => w.length > 3);
       if (!labelWords.length) continue;
@@ -4045,7 +5371,7 @@ async function aiOnProspectUtterance(text) {
   const lead = state.leads?.[state.idx];
   const reqBody = {
     transcript: state.aiTranscript.slice(-20),
-    prospectJustSaid: text,
+    prospectJustSaid: clean,
     currentNode: node || {},
     callState: state.callState,
     checkpoints: state.checkpoints,
@@ -4064,11 +5390,22 @@ async function aiOnProspectUtterance(text) {
     });
     if (!res.ok) throw new Error(`coach ${res.status}`);
 
-    // Non-streaming fast path (social/empty returns JSON, not SSE)
+    // Non-streaming fast path (social/empty/IVR returns JSON, not SSE)
     const ct = res.headers.get('content-type') || '';
     if (ct.includes('application/json')) {
       const data = await res.json();
-      if (data.suggestion) showAiTip(data.suggestion);
+      if (data.suggestion) {
+        const sug = data.suggestion;
+        const isSilence = /HOLD SILENCE/i.test(sug);
+        if (isSilence) {
+          setCoachingHint('Stay quiet — let it land', 'listening');
+        } else {
+          showAiTip(sug);
+          appendAiTranscriptLine('coach', sug);
+        }
+      }
+      if (data.action) dispatchCoachAction(data.action);
+      if (data.action && data.action !== 'none') maybeExecuteAutonomousAction(data);
       return;
     }
 
@@ -4092,7 +5429,25 @@ async function aiOnProspectUtterance(text) {
     }
 
     if (finalResult?.suggestion) {
-      showAiTip(finalResult.suggestion);
+      const sug = finalResult.suggestion;
+      const isSilence = sug === '[HOLD SILENCE — do not speak first]' || /HOLD SILENCE/i.test(sug);
+      if (isSilence) {
+        setCoachingHint('Stay quiet — let it land', 'listening');
+      } else {
+        showAiTip(sug);
+        appendAiTranscriptLine('coach', sug);
+        state.aiTranscript.push({ role: 'coach', text: sug, ts: Date.now() });
+        if (state.currentCallSessionId) {
+          postJson(`/api/call/${state.currentCallSessionId}/entry`,
+                   { role: 'coach', text: sug, ts: Date.now() }).catch(() => {});
+        }
+      }
+      // Update coaching hint with what the AI is watching for next
+      if (finalResult.next_anticipation) {
+        setCoachingHint(`Watch for: ${finalResult.next_anticipation}`, 'listening');
+      } else if (finalResult.prospect_needs && !isSilence) {
+        setCoachingHint(`They need: ${finalResult.prospect_needs}`, 'listening');
+      }
       if (finalResult.resistance_level) state.callState.resistance_level = finalResult.resistance_level;
       if (finalResult.rapport_level)    state.callState.rapport_level    = finalResult.rapport_level;
       if (finalResult.recommended_branch) {
@@ -4102,7 +5457,10 @@ async function aiOnProspectUtterance(text) {
           wireAiTipAdvance(branchId);
         }
       }
-      state.aiTranscript.push({ role: 'coach', text: finalResult.suggestion, ts: Date.now() });
+    }
+    if (finalResult?.action && finalResult.action !== 'none') {
+      dispatchCoachAction(finalResult.action);
+      maybeExecuteAutonomousAction(finalResult);
     }
   } catch (e) {
     console.error('coach error', e);
@@ -4110,7 +5468,7 @@ async function aiOnProspectUtterance(text) {
     return;
   } finally {
     // Reset status (unless we set 'error' above)
-    const target = state.aiOn && (state.autoDialer || state.demoMode) ? 'active' : 'idle';
+    const target = state.aiOn && (state.callLive || state.autoDialer || state.demoMode) ? 'active' : 'idle';
     if (document.getElementById('ai-status')?.className.indexOf('error') === -1) {
       setAiStatus(target);
     }
@@ -4127,38 +5485,467 @@ function wireAiTipAdvance(branchId) {
   };
 }
 
+// ─── Dial Assistant pane controller (prompt #25.6) ───────────────────────
+// Shows pending autonomous actions inside the Now Calling card's circle
+// with a 3-second countdown and a "Take Over Call" button. Click takeover
+// → kills AI, pauses dialer, surfaces dialpad. Toggling AI back on
+// restores everything.
+function presentDialAssistantAction(spec) {
+  // If AI is off, fire immediately with no UI (the action shouldn't
+  // even have been queued, but be defensive).
+  if (!state.aiOn) {
+    try { spec.execute?.(); } catch (e) { console.warn('action execute failed', e); }
+    return;
+  }
+  // Cancel any in-flight action
+  _cancelDialAssistantTimers();
+
+  const art      = document.getElementById('now-calling-art');
+  const pane     = document.getElementById('dial-assistant-pane');
+  const labelEl  = document.getElementById('dial-assistant-action');
+  const reasonEl = document.getElementById('dial-assistant-reason');
+  const countEl  = document.getElementById('dial-assistant-countdown');
+  const ringEl   = document.getElementById('dial-assistant-ring-fill');
+  if (!art || !pane || !labelEl || !reasonEl || !countEl || !ringEl) {
+    // UI missing — just fire it
+    try { spec.execute?.(); } catch (e) {}
+    return;
+  }
+
+  const totalMs = spec.countdownMs ?? 3000;
+  state.dialAssistant.pending = spec;
+  state.dialAssistant.totalMs = totalMs;
+  state.dialAssistant.startedAt = Date.now();
+
+  labelEl.textContent  = spec.label || 'Action pending';
+  reasonEl.textContent = spec.reason || '';
+  countEl.textContent  = Math.ceil(totalMs / 1000);
+
+  const CIRC = 339.292;       // 2*pi*54
+  ringEl.style.strokeDasharray = String(CIRC);
+  ringEl.style.strokeDashoffset = '0';
+  // Trigger animation to full offset over totalMs
+  requestAnimationFrame(() => {
+    ringEl.style.transition = `stroke-dashoffset ${totalMs}ms linear`;
+    ringEl.style.strokeDashoffset = String(CIRC);
+  });
+
+  art.classList.add('da-active');
+  pane.hidden = false;
+
+  // Live countdown number
+  state.dialAssistant.intervalId = setInterval(() => {
+    const elapsed = Date.now() - state.dialAssistant.startedAt;
+    const remain = Math.max(0, totalMs - elapsed);
+    countEl.textContent = Math.ceil(remain / 1000);
+  }, 100);
+
+  // Fire on timeout
+  state.dialAssistant.countdownTimer = setTimeout(() => {
+    const pending = state.dialAssistant.pending;
+    if (!pending) return;
+    state.dialAssistant.pending = null;
+    try { pending.execute?.(); } catch (e) { console.warn('action execute failed', e); }
+    // Brief confirmation, then clear
+    if (labelEl) labelEl.textContent = pending.executedLabel || 'Done';
+    if (countEl) countEl.textContent = '✓';
+    if (ringEl)  ringEl.style.stroke = 'var(--green)';
+    setTimeout(clearDialAssistantAction, 1200);
+  }, totalMs);
+}
+
+function _cancelDialAssistantTimers() {
+  if (state.dialAssistant.countdownTimer) clearTimeout(state.dialAssistant.countdownTimer);
+  if (state.dialAssistant.intervalId)     clearInterval(state.dialAssistant.intervalId);
+  state.dialAssistant.countdownTimer = null;
+  state.dialAssistant.intervalId = null;
+}
+
+function clearDialAssistantAction() {
+  _cancelDialAssistantTimers();
+  state.dialAssistant.pending = null;
+  const art  = document.getElementById('now-calling-art');
+  const pane = document.getElementById('dial-assistant-pane');
+  const ring = document.getElementById('dial-assistant-ring-fill');
+  if (ring) {
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '0';
+    ring.style.stroke = 'var(--purple)';
+  }
+  if (art)  art.classList.remove('da-active');
+  if (pane) pane.hidden = true;
+}
+
+// User pressed Take Over Call: cancel the pending action, kill AI, pause
+// the auto-dialer, surface the dialpad. When the agent flips AI back on,
+// the AI Agent (coach + dial assistant) returns automatically.
+function takeOverCall() {
+  // 1. Cancel pending dial-assistant action
+  clearDialAssistantAction();
+  // 2. Turn off AI Agent (this also flips the right-column card to dialpad
+  //    via switchAiCardMode() inside toggleAiAgent).
+  if (state.aiOn) {
+    if (typeof toggleAiAgent === 'function') toggleAiAgent();
+    else state.aiOn = false;
+  }
+  // 3. Pause the auto-dialer (don't end the active call)
+  if (state.autoDialer) {
+    state.autoDialer = false;
+    state.autoAdvance = false;
+    if (typeof renderHeader === 'function') renderHeader();
+    if (typeof renderBottomControls === 'function') renderBottomControls();
+  }
+  // 4. Confirm to the user via the coaching hint
+  if (typeof setCoachingHint === 'function') {
+    setCoachingHint('Manual takeover — AI off, dialer paused', 'idle');
+  }
+}
+
+function dispatchCoachAction(action) {
+  if (!action || !action.type) return;
+  if (action.type === 'dtmf' && action.digit) {
+    // Route through Dial Assistant pane with 3s countdown + Take Over Call
+    presentDialAssistantAction({
+      label: `Press ${action.digit}`,
+      reason: action.reason || 'IVR menu',
+      countdownMs: 3000,
+      execute: () => {
+        if (typeof sendDtmf === 'function') sendDtmf(action.digit);
+      },
+      executedLabel: `Pressed ${action.digit}`,
+    });
+    return;
+  }
+  if (action.type === 'schedule') {
+    const lead = state.leads?.[state.idx];
+    const title = action.title || `Callback — ${lead?.business_name || 'Lead'}`;
+    const startIso = action.start_iso || action.start;
+    const url = buildGcalUrl({
+      title,
+      start_iso: startIso,
+      duration_min: action.duration_min || 15,
+      notes: action.notes || '',
+      location: lead?.phones?.[0] || 'Phone Call',
+    });
+    if (!url) {
+      console.warn('schedule action missing valid start_iso', action);
+      return;
+    }
+    if (lead?.id) {
+      postJson('/api/booking', {
+        lead_id: lead.id,
+        call_session_id: state.currentCallSessionId,
+        type: 'callback',
+        title,
+        start_iso: startIso,
+        duration_min: action.duration_min || 15,
+        notes: action.notes || '',
+        gcal_url: url,
+      }).then(() => refreshBookings(lead.id))
+        .catch(e => console.warn('booking save failed', e));
+    }
+    showAiTipWithLink(
+      `Schedule: ${title} — ${new Date(startIso).toLocaleString()}`,
+      'Open in Google Calendar',
+      url
+    );
+    return;
+  }
+  console.warn('Unknown coach action', action);
+}
+
+async function postJson(url, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  // Pick up DIALER_AUTH_TOKEN from a meta tag or localStorage so production
+  // deploys can authenticate without baking the token into source.
+  const token = (document.querySelector('meta[name="dialer-token"]') || {}).content
+              || (window.localStorage ? localStorage.getItem('dialer.token') : '') || '';
+  if (token) headers['X-Dialer-Token'] = token;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body || {}),
+  });
+  if (!res.ok) throw new Error(`${url} ${res.status}`);
+  return res.json();
+}
+
+// (refreshCallHistory now lives near renderViewDetails — prompt #26.)
+
+// Autonomous actions arrive on the coach response as `action`.
+// We ONLY execute them automatically when AI-on + autoDialer are both true.
+// Otherwise we surface them as a suggestion and let the human confirm.
+function maybeExecuteAutonomousAction(result) {
+  const rawAction = result && result.action;
+  if (!rawAction || rawAction === 'none') return;
+  const autonomous = state.aiOn && state.autoDialer;
+
+  // Object-form dtmf/schedule actions are handled by dispatchCoachAction().
+  if (typeof rawAction === 'object' && (rawAction.type === 'schedule' || rawAction.type === 'dtmf')) {
+    return;
+  }
+
+  const action = String(rawAction).toLowerCase();
+
+  if (action === 'alert') {
+    setAiStatus('error');
+    showAiTip(`⚠️ ${result.reasoning || 'AI flagged this moment for your attention.'}`);
+    return;
+  }
+
+  if (action.startsWith('press_digit:')) {
+    const digit = action.split(':', 2)[1];
+    if (!/^[0-9*#]$/.test(digit)) return;
+    if (autonomous && state.call && typeof sendDtmf === 'function') {
+      sendDtmf(digit);
+      showAiTip(`AI pressed ${digit} on the IVR menu.`);
+      if (typeof logCallEvent === 'function') logCallEvent(`AI auto-pressed ${digit} on IVR — ${result.reasoning || ''}`, 'ok');
+    } else {
+      showAiTip(`Suggested IVR digit: ${digit} — click to send.`);
+      wireAiTipAction(() => { if (typeof sendDtmf === 'function') sendDtmf(digit); });
+    }
+    return;
+  }
+
+  if (action.startsWith('dispose:')) {
+    const code = action.split(':', 2)[1];
+    const allowed = ['no_answer', 'voicemail', 'dnc', 'not_interested'];
+    if (!allowed.includes(code)) return;
+    if (autonomous) {
+      autoDispose(code, result.reasoning || 'AI autonomous disposition');
+    } else {
+      showAiTip(`Suggested outcome: ${code.replace('_', ' ')} — click to confirm.`);
+      wireAiTipAction(() => markOutcome(code));
+    }
+    return;
+  }
+}
+
+function wireAiTipAction(handler) {
+  const btn = document.getElementById('ai-tip-use');
+  if (!btn) return;
+  btn.onclick = () => { try { handler(); } finally { clearAiTip(); } };
+}
+
+function buildGcalUrl({ title, start_iso, start, duration_min, notes, location }) {
+  const d = new Date(start_iso || start);
+  if (isNaN(d.getTime())) return null;
+  const end = new Date(d.getTime() + (duration_min || 15) * 60 * 1000);
+  const fmt = dt => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const params = new URLSearchParams({
+    text: title || 'NovaIntel Callback',
+    dates: `${fmt(d)}/${fmt(end)}`,
+    details: notes || '',
+    location: location || 'Phone Call',
+  });
+  return `https://calendar.google.com/calendar/u/0/r/eventedit?${params}`;
+}
+
+function fmtScheduleHuman(startIso, durationMin) {
+  try {
+    const d = new Date(startIso);
+    if (isNaN(d.getTime())) return startIso;
+    const when = d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return `${when} · ${durationMin || 15}m`;
+  } catch (_) { return startIso; }
+}
+
+function handleScheduleAction(spec, autonomous) {
+  const title    = String(spec.title || '').trim();
+  const start    = String(spec.start || '').trim();
+  const duration = Number(spec.duration_min) || 15;
+  const notes    = String(spec.notes || '').trim();
+  if (!title || !start) return;
+
+  const gcalUrl = buildGcalUrl({ title, start, duration_min: duration, notes });
+  if (!gcalUrl) return;
+
+  const lead   = state.leads[state.idx];
+  const phone  = lead && lead.phones && lead.phones[state.phoneIdx] || '';
+  const human  = fmtScheduleHuman(start, duration);
+
+  // Persist regardless of mode — booking history is the source of truth in-app.
+  fetch('/api/booking', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lead_id: lead && lead.id || '',
+      phone,
+      business_name: lead && lead.business_name || '',
+      title, start, duration_min: duration, notes,
+      session_id: state.sessionId,
+      gcal_url: gcalUrl,
+    }),
+  }).catch(e => console.error('booking persist failed', e));
+
+  if (autonomous) {
+    try { window.open(gcalUrl, '_blank', 'noopener,noreferrer'); } catch (_) {}
+    showAiTip(`📅 Opened calendar for "${title}" — ${human}. Confirm in the new tab.`);
+    if (typeof logCallEvent === 'function') {
+      logCallEvent(`AI opened gcal booking: ${title} @ ${human}`, 'ok');
+    }
+  } else {
+    showAiTip(`📅 Suggested booking: ${title} — ${human}. Click to open calendar.`);
+    wireAiTipAction(() => {
+      try { window.open(gcalUrl, '_blank', 'noopener,noreferrer'); } catch (_) {}
+    });
+  }
+}
+
+async function autoDispose(code, reason) {
+  const lead = state.leads[state.idx];
+  if (!lead) return;
+  const phone = (lead.phones && lead.phones[state.phoneIdx]) || '';
+  try {
+    await fetch('/api/agent/auto-dispose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lead_id: lead.id,
+        phone,
+        code,
+        reason,
+        session_id: state.sessionId,
+      }),
+    });
+  } catch (e) {
+    console.error('auto-dispose request failed', e);
+  }
+  if (typeof logCallEvent === 'function') {
+    logCallEvent(`AI auto-dispositioned ${lead.business_name} as "${code.replace('_', ' ')}" — ${reason}`, 'warn');
+  }
+  if (typeof markOutcome === 'function') markOutcome(code);
+}
+
 async function aiOnAgentUtterance(text) {
   // text: final transcribed agent turn — log only, don't trigger tips
-  console.log("agent utterance", text);
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  state.aiTranscript.push({ role: 'agent', text: clean, ts: Date.now() });
+  appendAiTranscriptLine('agent', clean);
+  if (state.currentCallSessionId) {
+    postJson(`/api/call/${state.currentCallSessionId}/entry`,
+             { role: 'agent', text: clean, ts: Date.now() }).catch(() => {});
+  }
+  autoFillCallNotesFromTranscript(clean, "agent");
 }
 // ────────────────────────────────────────────────────────────
 
 function setAiStatus(status) {
   const el = $("ai-status");
   if (!el) return;
-  el.classList.remove("idle", "error", "thinking");
+  el.classList.remove("idle", "error", "thinking", "manual");
   if (status === "idle") el.classList.add("idle");
   if (status === "error") el.classList.add("error");
   if (status === "thinking") el.classList.add("thinking");
+  if (status === "manual") el.classList.add("manual");
   const label = { active: "Active", idle: "Idle", error: "Error", thinking: "Thinking…" }[status] || "Active";
-  el.innerHTML = `<span class="ai-status-dot"></span> ${label}`;
+  const resolvedLabel = status === "manual" ? "Dialpad" : label;
+  el.innerHTML = `<span class="ai-status-dot"></span> ${resolvedLabel}`;
 }
 
 function syncAiAgentStatus() {
-  setAiStatus(state.aiOn && (state.autoDialer || state.demoMode) ? "active" : "idle");
+  switchAiCardMode();
+  if (!state.aiOn) {
+    setAiStatus("manual");
+    return;
+  }
+  setAiStatus(state.callLive || state.autoDialer || state.demoMode ? "active" : "idle");
 }
 
+function switchAiCardMode() {
+  const card = $("ai-card");
+  if (!card) return;
+  const isAi = !!state.aiOn;
+  card.dataset.mode = isAi ? "ai" : "dialpad";
+  const title = $("ai-card-title");
+  if (title) title.textContent = isAi ? "AI Agent Assistant" : "Dialpad";
+  const aiBody = card.querySelector(".ai-mode-body");
+  const dialpadBody = card.querySelector(".ai-dialpad-body");
+  if (aiBody) aiBody.hidden = !isAi;
+  if (dialpadBody) dialpadBody.hidden = isAi;
+  const micError = $("ai-mic-error");
+  if (micError && !isAi) micError.hidden = true;
+}
+
+function syncAiCardMode() {
+  switchAiCardMode();
+}
+
+// ─── Persistent listening UI helpers (prompt #25) ──────────────────────
+let _aiTipAutoClear = null;
 function showAiTip(text) {
   const card = $("ai-tip-card");
   const tip = $("ai-tip-text");
   if (!card || !tip) return;
   tip.textContent = text || "";
   card.hidden = false;
+  clearTimeout(_aiTipAutoClear);
+  _aiTipAutoClear = setTimeout(clearAiTip, 10000);
+}
+
+function showAiTipWithLink(text, linkLabel, linkUrl) {
+  showAiTip(text);
+  const tipText = document.getElementById('ai-tip-text');
+  if (!tipText) return;
+  const link = document.createElement('a');
+  link.href = linkUrl;
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.className = 'pill-btn';
+  link.style.cssText = 'display:inline-block; margin-top: 8px; background: var(--accent); color: #fff; text-decoration: none;';
+  link.textContent = linkLabel;
+  tipText.appendChild(document.createElement('br'));
+  tipText.appendChild(link);
 }
 
 function clearAiTip() {
   const card = $("ai-tip-card");
   if (card) card.hidden = true;
+  clearTimeout(_aiTipAutoClear);
+  _aiTipAutoClear = null;
+  const useBtn = document.getElementById('ai-tip-use');
+  if (useBtn) { useBtn.onclick = null; delete useBtn.dataset.branch; }
+}
+
+function appendAiTranscriptLine(role, text, opts) {
+  const pane = document.getElementById('ai-transcript');
+  if (!pane) return;
+  const placeholder = document.getElementById('ai-transcript-placeholder');
+  if (placeholder) placeholder.remove();
+  const labels = { agent: 'YOU', prospect: 'THEM', coach: 'AI', system: 'SYS' };
+  const row = document.createElement('div');
+  row.className = 'ai-transcript-line ' + role + ((opts && opts.interim) ? ' interim' : '');
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'ai-t-label';
+  labelSpan.textContent = labels[role] || '·';
+  const textSpan = document.createElement('span');
+  textSpan.className = 'ai-t-text';
+  textSpan.textContent = text;
+  row.appendChild(labelSpan);
+  row.appendChild(textSpan);
+  pane.appendChild(row);
+  pane.scrollTop = pane.scrollHeight;
+  while (pane.children.length > 200) pane.firstElementChild.remove();
+}
+
+function resetAiTranscript(placeholderText) {
+  const pane = document.getElementById('ai-transcript');
+  if (!pane) return;
+  pane.innerHTML = '';
+  const ph = document.createElement('div');
+  ph.className = 'ai-transcript-placeholder';
+  ph.id = 'ai-transcript-placeholder';
+  ph.textContent = placeholderText || 'Mic will start when the call connects.';
+  pane.appendChild(ph);
+}
+
+function setCoachingHint(text, variant) {
+  const el = document.getElementById('ai-coach-hint');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('idle', 'listening');
+  if (variant) el.classList.add(variant);
 }
 
 async function useAiTip() {
@@ -4176,7 +5963,13 @@ function renderHeader() {
   const lbl = $("btn-start-dialer-label");
   const icon = $("btn-start-dialer-icon");
   if (btn && lbl && icon) {
-    if (state.autoDialer) {
+    icon.removeAttribute("transform");
+    if (state.callLive) {
+      btn.classList.add("is-active");
+      lbl.textContent = "Hang Up & Stop";
+      icon.setAttribute("d", "M13.2 10.7l-1-1a1 1 0 0 0-1.2-.2l-1.3.7a.6.6 0 0 1-.7-.1L6.9 9a.6.6 0 0 1-.1-.7L7.5 7a1 1 0 0 0-.2-1.2l-1-1a1 1 0 0 0-1.5.1L4 5.8a1.7 1.7 0 0 0-.2 1.9 11 11 0 0 0 4.5 4.5 1.7 1.7 0 0 0 1.9-.2l.9-.8a1 1 0 0 0 .1-1.5z");
+      icon.setAttribute("transform", "rotate(135 8 8)");
+    } else if (state.autoDialer) {
       btn.classList.add("is-active");
       lbl.textContent = "Pause Auto-Dialer";
       // pause icon (two bars)
@@ -4223,32 +6016,151 @@ function toggleAutoDialer() {
 
 function toggleAiAgent() {
   state.aiOn = !state.aiOn;
-  if (state.aiOn) aiStartListening();
-  else aiStopListening();
+  switchAiCardMode();
+  if (state.aiOn) {
+    setCoachingHint(state.callLive ? 'Listening...' : 'AI on — waiting for call', 'listening');
+    requestMicPermission().then(ok => {
+      if (!state.aiOn) return;
+      if (!ok) {
+        setAiStatus("error");
+        setCoachingHint('Mic permission denied', 'idle');
+        showAiTip("Mic error: permission denied");
+        return;
+      }
+      aiStartListening();
+    });
+  } else {
+    aiStopListening();
+    clearAiTip();
+    clearDialAssistantAction();
+    setCoachingHint('AI off — manual mode', 'idle');
+  }
   renderHeader();
 }
 
 function syncBottomControls() {
-  const pause = $("btn-pause-auto");
   const autoToggle = $("auto-advance-toggle");
   if (autoToggle) autoToggle.setAttribute("aria-checked", state.autoAdvance ? "true" : "false");
-  if (!pause) return;
-  const strong = pause.querySelector("strong");
-  const em = pause.querySelector("em");
-  if (state.autoDialer) {
-    pause.classList.add("btn-control-primary");
-    if (strong) strong.textContent = "Pause Auto-Dialer";
-    if (em) em.textContent = "Stop calling";
+  renderBottomControls();
+}
+
+const BTN_ICON_PLAY      = '<path d="M5 3.5v13c0 .4.4.6.7.4l11-6.5c.3-.2.3-.6 0-.8l-11-6.5c-.3-.2-.7 0-.7.4z" fill="currentColor"/>';
+const BTN_ICON_PAUSE     = '<path d="M6 4h3v12H6zM11 4h3v12h-3z" fill="currentColor"/>';
+const BTN_ICON_PHONE_DOWN = '<path d="M16.5 13.5l-1.2-1.2a1.2 1.2 0 0 0-1.4-.2l-1.6.8a.7.7 0 0 1-.8-.1l-3.1-3.1a.7.7 0 0 1-.1-.8l.8-1.6a1.2 1.2 0 0 0-.2-1.4L7.7 4.7a1.2 1.2 0 0 0-1.8.1l-1 1.2a2 2 0 0 0-.3 2.2c1.7 3.2 4.3 5.8 7.5 7.5a2 2 0 0 0 2.2-.3l1.2-1a1.2 1.2 0 0 0 .1-1.8z" fill="currentColor" transform="rotate(135 10 10)"/>';
+const BTN_ICON_PAUSE_CLOCK = '<circle cx="10" cy="11" r="6.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M10 4.5V2.5M8 2.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8.5 9h1v4h-1zM10.5 9h1v4h-1z" fill="currentColor"/>';
+const BTN_ICON_PLAY_ARROW = '<path d="M6 4.5v11l9-5.5z" fill="currentColor"/>';
+
+function renderBottomControls() {
+  const primaryBtn   = document.getElementById("btn-primary-action");
+  const primaryLabel = document.getElementById("btn-primary-label");
+  const primarySub   = document.getElementById("btn-primary-sub");
+  const primaryIcon  = document.getElementById("btn-primary-icon");
+  if (!primaryBtn) return;
+
+  primaryBtn.classList.remove("is-live");
+  if (state.callLive) {
+    primaryBtn.classList.add("is-live");
+    primaryLabel.textContent = "Hang Up & Stop";
+    primarySub.textContent   = "End this call";
+    primaryIcon.innerHTML    = BTN_ICON_PHONE_DOWN;
+  } else if (state.autoDialer) {
+    primaryLabel.textContent = "Pause Auto-Dialer";
+    primarySub.textContent   = "Stop calling";
+    primaryIcon.innerHTML    = BTN_ICON_PAUSE;
   } else {
-    pause.classList.remove("btn-control-primary");
-    if (strong) strong.textContent = "Start Auto-Dialer";
-    if (em) em.textContent = "Begin calling";
+    primaryLabel.textContent = "Start Auto-Dialer";
+    primarySub.textContent   = "Begin calling";
+    primaryIcon.innerHTML    = BTN_ICON_PLAY;
   }
+
+  const recallBtn = document.getElementById("btn-recall-last");
+  const recallSub = document.getElementById("btn-recall-sub");
+  if (recallBtn) {
+    const hasPrev = state.lastLeadIdx != null && state.lastLeadIdx !== state.idx;
+    recallBtn.disabled = !hasPrev || state.callLive;
+    if (hasPrev) {
+      const lead = state.leads && state.leads[state.lastLeadIdx];
+      recallSub.textContent = lead ? `Call ${lead.business_name} again` : "Call last lead again";
+    } else {
+      recallSub.textContent = "No previous lead";
+    }
+  }
+
+  const pauseAfterBtn   = document.getElementById("btn-pause-after");
+  const pauseAfterLabel = document.getElementById("btn-pause-after-label");
+  const pauseAfterSub   = document.getElementById("btn-pause-after-sub");
+  const pauseAfterIcon  = document.getElementById("btn-pause-after-icon");
+  if (!pauseAfterBtn) return;
+  pauseAfterBtn.classList.remove("is-armed", "is-resume");
+
+  if (state.waitingForResume) {
+    pauseAfterBtn.classList.add("is-resume");
+    pauseAfterLabel.textContent = "Resume with Next Lead";
+    pauseAfterSub.textContent   = "Advance and start the next call";
+    pauseAfterIcon.innerHTML    = BTN_ICON_PLAY_ARROW;
+  } else if (state.pauseAfterCurrent) {
+    pauseAfterBtn.classList.add("is-armed");
+    pauseAfterLabel.textContent = "Pause Armed";
+    pauseAfterSub.textContent   = "Will pause when this call ends";
+    pauseAfterIcon.innerHTML    = BTN_ICON_PAUSE_CLOCK;
+  } else {
+    pauseAfterLabel.textContent = "Pause After Current Call";
+    pauseAfterSub.textContent   = state.callLive
+      ? "Stay on this lead after hangup"
+      : "Arm for the next call";
+    pauseAfterIcon.innerHTML    = BTN_ICON_PAUSE_CLOCK;
+  }
+}
+
+function endCurrentCall() {
+  if (state.call) {
+    try { state.call.disconnect(); } catch (_) {}
+  }
+}
+
+function hangUpAndStop() {
+  if (!state.callLive) return;
+  endCurrentCall();
+  state.autoDialer = false;
+  state.autoAdvance = false;
+  state.pauseAfterCurrent = false;
+  state.waitingForResume = false;
+  if (typeof renderHeader === "function") renderHeader();
+  renderBottomControls();
+}
+
+function recallLastLead() {
+  if (state.callLive) return;
+  const target = state.lastLeadIdx;
+  if (target == null || target === state.idx) return;
+  state.recallReturnIdx = state.leads.length ? (state.idx + 1) % state.leads.length : null;
+  state.idx = target;
+  state.lastLeadIdx = null;
+  renderAll();
+  if (typeof renderHeader === "function") renderHeader();
+  renderBottomControls();
+  makeCall();
+}
+
+function togglePauseAfterCurrent() {
+  if (state.waitingForResume) {
+    state.waitingForResume = false;
+    state.autoDialer = true;
+    state.autoAdvance = true;
+    if (typeof renderHeader === "function") renderHeader();
+    renderBottomControls();
+    if (typeof nextLead === "function" && nextLead()) autoDialAfterAdvance(250);
+    else setDeviceStatus("queue exhausted");
+    return;
+  }
+  state.pauseAfterCurrent = !state.pauseAfterCurrent;
+  renderBottomControls();
 }
 
 function openDrawer(id) {
   const el = document.getElementById(id);
   if (!el) return;
+  if (id === "drawer-call-list") syncCallListLocation();
   if (id === "drawer-ai-insights") {
     renderBuilds();
     renderCallEvents();
@@ -4261,6 +6173,9 @@ function closeDrawer(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.setAttribute("aria-hidden", "true");
+  if (id === "drawer-call-list" && mobileMedia.matches) {
+    applyMobileTab(state.mobileTab || "center", { persist: false, scroll: false });
+  }
   if (!hasOpenOverlay()) document.body.style.overflow = "";
 }
 
@@ -4371,9 +6286,182 @@ function testMicrophone() {
   }
 }
 
+const tabletMedia = window.matchMedia("(max-width: 1279px)");
+const mobileMedia = window.matchMedia("(max-width: 767px)");
+
+function isTabletViewport() {
+  return tabletMedia.matches;
+}
+
+function syncResponsiveShell() {
+  syncCallListLocation();
+  syncMobileTabs();
+}
+
+function syncCallListLocation() {
+  const card = document.querySelector(".call-list-card");
+  const drawerBody = $("drawer-call-list-body");
+  const desktopHome = document.querySelector(".call-list-panel");
+  if (!card || !drawerBody || !desktopHome) return;
+  if (tabletMedia.matches) {
+    if (card.parentElement !== drawerBody) drawerBody.appendChild(card);
+  } else {
+    if (card.parentElement !== desktopHome) desktopHome.insertBefore(card, desktopHome.firstChild);
+    closeDrawer("drawer-call-list");
+  }
+}
+
+function syncMobileTabs() {
+  const tabs = $("mobile-tabs");
+  const shell = document.querySelector(".app-shell");
+  if (!tabs || !shell) return;
+  if (!mobileMedia.matches) {
+    tabs.hidden = true;
+    shell.removeAttribute("data-mobile-tab");
+    return;
+  }
+  tabs.hidden = false;
+  if (!["center", "ai", "notes"].includes(state.mobileTab)) state.mobileTab = "center";
+  applyMobileTab(state.mobileTab, { persist: false, scroll: false });
+}
+
+function applyMobileTab(target, options = {}) {
+  const persist = options.persist !== false;
+  const shouldScroll = options.scroll !== false;
+  const shell = document.querySelector(".app-shell");
+  const tabs = $("mobile-tabs");
+  if (!shell || !tabs) return;
+
+  if (target === "list") {
+    openDrawer("drawer-call-list");
+    tabs.querySelectorAll(".mtab").forEach(btn => {
+      btn.setAttribute("aria-selected", btn.dataset.target === "list" ? "true" : "false");
+    });
+    return;
+  }
+
+  state.mobileTab = ["ai", "notes"].includes(target) ? target : "center";
+  shell.dataset.mobileTab = state.mobileTab;
+  if (persist) {
+    try { localStorage.setItem(MOBILE_TAB_KEY, state.mobileTab); } catch (_) {}
+  }
+  tabs.querySelectorAll(".mtab").forEach(btn => {
+    btn.setAttribute("aria-selected", btn.dataset.target === state.mobileTab ? "true" : "false");
+  });
+  if (shouldScroll) {
+    const selector = state.mobileTab === "ai" ? ".ai-card" : state.mobileTab === "notes" ? ".notes-card" : ".now-calling-card";
+    document.querySelector(selector)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+function showAiMicError(message) {
+  // Prompt #25: surface mic errors through the new coaching-hint UI
+  // (the old #ai-mic-error DOM element was removed).
+  setCoachingHint(message || 'Microphone unavailable', 'idle');
+}
+
+function clearAiMicError() { /* no-op — coaching-hint is the new home */ }
+
+function setAiMicRecording(recording) {
+  // Prompt #25: the hold-to-talk button was removed; reflect recording
+  // state in the coaching hint instead.
+  if (recording) setCoachingHint('Recording...', 'listening');
+}
+
+async function startAiMicCapture(event) {
+  event?.preventDefault?.();
+  if (state.mic.active) {
+    showAiTip("Live Deepgram transcription is already running.");
+    setTimeout(clearAiTip, 1800);
+    return;
+  }
+  if (state.aiMicRecording) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showAiMicError("Microphone capture needs HTTPS or localhost in this browser.");
+    return;
+  }
+  try {
+    clearAiMicError();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.aiMicStream = stream;
+    state.aiMicChunks = [];
+    state.aiMicRecording = true;
+    setAiMicRecording(true);
+
+    if (typeof MediaRecorder !== "undefined") {
+      const recorder = new MediaRecorder(stream);
+      state.aiMicRecorder = recorder;
+      recorder.addEventListener("dataavailable", e => {
+        if (e.data && e.data.size) state.aiMicChunks.push(e.data);
+      });
+      recorder.addEventListener("stop", async () => {
+        const blob = new Blob(state.aiMicChunks, { type: recorder.mimeType || "audio/webm" });
+        cleanupAiMicStream();
+        try {
+          setAiStatus("thinking");
+          const text = await transcribeBlob(blob);
+          await aiOnProspectUtterance(text);
+        } catch (e) {
+          showAiMicError(e.message || "Transcription failed. Try again.");
+          setAiStatus("error");
+        } finally {
+          syncAiAgentStatus();
+        }
+      });
+      recorder.start();
+    }
+  } catch (e) {
+    state.aiMicRecording = false;
+    setAiMicRecording(false);
+    cleanupAiMicStream();
+    showAiMicError(e.message || "Microphone permission was denied. Use HTTPS or localhost, then retry.");
+  }
+}
+
+async function stopAiMicCapture(event) {
+  event?.preventDefault?.();
+  if (!state.aiMicRecording) return;
+  state.aiMicRecording = false;
+  setAiMicRecording(false);
+  const recorder = state.aiMicRecorder;
+  if (recorder && recorder.state !== "inactive") {
+    recorder.stop();
+    return;
+  }
+  cleanupAiMicStream();
+  try {
+    setAiStatus("thinking");
+    const text = await transcribeBlob(new Blob([], { type: "audio/webm" }));
+    await aiOnProspectUtterance(text);
+  } catch (e) {
+    showAiMicError(e.message || "Transcription failed. Try again.");
+    setAiStatus("error");
+  } finally {
+    syncAiAgentStatus();
+  }
+}
+
+function cleanupAiMicStream() {
+  if (state.aiMicStream) {
+    state.aiMicStream.getTracks().forEach(track => track.stop());
+  }
+  state.aiMicStream = null;
+  state.aiMicRecorder = null;
+  state.aiMicChunks = [];
+}
+
+async function transcribeBlob(blob) {
+  // TODO: POST blob to STT backend (/api/agent/transcribe) using Deepgram, Whisper, or Tyler's provider.
+  void blob;
+  return "(stub transcript)";
+}
+
 (function wireHeader() {
   const start = $("btn-start-dialer");
-  if (start) start.addEventListener("click", toggleAutoDialer);
+  if (start) start.addEventListener("click", () => {
+    if (state.callLive) hangUpAndStop();
+    else toggleAutoDialer();
+  });
   const ai = $("ai-toggle");
   if (ai) ai.addEventListener("click", toggleAiAgent);
   const help = $("btn-help");
@@ -4390,12 +6478,15 @@ function testMicrophone() {
   if (help) help.addEventListener("click", e => { e.stopImmediatePropagation(); openModal("modal-help"); }, true);
   const settings = $("btn-settings");
   if (settings) settings.addEventListener("click", e => { e.stopImmediatePropagation(); openModal("modal-settings"); }, true);
-  const pause = $("btn-pause-auto");
-  if (pause) pause.addEventListener("click", toggleAutoDialer);
-  const skip = $("btn-skip");
-  if (skip) skip.addEventListener("click", () => advance(400));
-  const audio = $("btn-audio");
-  if (audio) audio.addEventListener("click", () => openModal("modal-settings"));
+  const primary = $("btn-primary-action");
+  if (primary) primary.addEventListener("click", () => {
+    if (state.callLive) hangUpAndStop();
+    else toggleAutoDialer();
+  });
+  const recall = $("btn-recall-last");
+  if (recall) recall.addEventListener("click", recallLastLead);
+  const pauseAfter = $("btn-pause-after");
+  if (pauseAfter) pauseAfter.addEventListener("click", togglePauseAfterCurrent);
   const test = $("btn-test-mic");
   if (test) test.addEventListener("click", testMicrophone);
   const insights = $("btn-ai-insights");
@@ -4412,15 +6503,84 @@ function testMicrophone() {
   });
 })();
 
+(function wireResponsiveControls() {
+  const listBtn = $("btn-list-drawer");
+  if (listBtn) listBtn.addEventListener("click", () => openDrawer("drawer-call-list"));
+
+  document.querySelectorAll("#mobile-tabs .mtab").forEach(btn => {
+    btn.addEventListener("click", () => applyMobileTab(btn.dataset.target || "center"));
+  });
+
+  const resync = () => syncResponsiveShell();
+  if (tabletMedia.addEventListener) tabletMedia.addEventListener("change", resync);
+  else tabletMedia.addListener(resync);
+  if (mobileMedia.addEventListener) mobileMedia.addEventListener("change", resync);
+  else mobileMedia.addListener(resync);
+  syncResponsiveShell();
+})();
+
+(function wireAiMic() {
+  const mic = $("ai-mic");
+  if (mic) {
+    mic.addEventListener("pointerdown", e => {
+      try { mic.setPointerCapture?.(e.pointerId); } catch (_) {}
+      startAiMicCapture(e);
+    });
+    mic.addEventListener("pointerup", stopAiMicCapture);
+    mic.addEventListener("pointercancel", stopAiMicCapture);
+    mic.addEventListener("lostpointercapture", stopAiMicCapture);
+    mic.addEventListener("keydown", e => {
+      if (e.key === " " || e.key === "Enter") startAiMicCapture(e);
+    });
+    mic.addEventListener("keyup", e => {
+      if (e.key === " " || e.key === "Enter") stopAiMicCapture(e);
+    });
+  }
+  const retry = $("ai-mic-retry");
+  if (retry) retry.addEventListener("click", e => {
+    clearAiMicError();
+    $("ai-mic")?.focus();
+    startAiMicCapture(e);
+  });
+})();
+
+function pressDialpadKey(d) {
+  if (typeof sendDtmf === "function") sendDtmf(d);
+  state.dialpadBuffer = (state.dialpadBuffer + d).slice(-12);
+  const readout = $("dialpad-readout");
+  if (readout) readout.textContent = state.dialpadBuffer || "\u2014";
+  const safeDigit = window.CSS && CSS.escape ? CSS.escape(d) : d.replace(/"/g, '\\"');
+  const btn = document.querySelector(`.dialpad-key[data-digit="${safeDigit}"]`);
+  if (btn) {
+    btn.classList.add("pressed");
+    setTimeout(() => btn.classList.remove("pressed"), 140);
+  }
+}
+
+(function initDialpad() {
+  const grid = document.querySelector(".dialpad-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "dialpad-key";
+    btn.type = "button";
+    btn.dataset.digit = d;
+    btn.textContent = d;
+    btn.addEventListener("click", () => pressDialpadKey(d));
+    grid.appendChild(btn);
+  });
+  $("dialpad-clear")?.addEventListener("click", () => {
+    state.dialpadBuffer = "";
+    const readout = $("dialpad-readout");
+    if (readout) readout.textContent = "\u2014";
+  });
+  switchAiCardMode();
+})();
+
 (function wireScriptTree() {
   const back = document.getElementById("script-back");
   if (back) back.addEventListener("click", scriptBack);
-  const practice = document.getElementById("script-practice-toggle");
-  if (practice) practice.addEventListener("click", () => {
-    state.scriptPracticeMode = !state.scriptPracticeMode;
-    practice.setAttribute("aria-checked", state.scriptPracticeMode ? "true" : "false");
-    renderScript(state.leads ? state.leads[state.idx] : null);
-  });
 })();
 
 (function wireActiveCall() {
@@ -4432,6 +6592,10 @@ function testMicrophone() {
     const code = btn.getAttribute("data-outcome");
     btn.addEventListener("click", () => markOutcome(code));
   });
+
+  // Dial Assistant: Take Over Call button (prompt #25.6)
+  const takeover = $("btn-dial-takeover");
+  if (takeover) takeover.addEventListener("click", takeOverCall);
 })();
 
 (function wireCallNotes() {
@@ -4446,13 +6610,30 @@ function triggerOutcome(code) {
 }
 
 function markOutcome(code) {
+  // Don't overwrite lastOutcome for the Notes shortcut — pressing Notes mid-call
+  // shouldn't poison the /api/call/<id>/end outcome payload with the string
+  // "notes", which isn't a valid disposition and renders as a default-grey
+  // pill in Call History.
+  if (code !== "notes") state.lastOutcome = code;
   flashQaChip(code);
   flashOutcome(code);
+  if (code === "build") {
+    return interestedAndBuild();
+  }
+  if (code === "calendar") return openCalendarBooking();
   if (code === "notes") return focusCallNotes();
-  state.lastOutcome = code;
   if (typeof disposeAndNext === "function" && state.leads[state.idx]) return disposeAndNext(code);
   if (typeof logCallEvent === "function") logCallEvent(`Marked outcome: ${code.replace("_", " ")}`, code === "callback" ? "warn" : "ok");
   if (state.autoAdvance && code !== "callback" && typeof advance === "function") advance(400);
+}
+
+function openCalendarBooking() {
+  state.lastOutcome = "calendar";
+  const lead = state.leads[state.idx];
+  if (typeof logCallEvent === "function") {
+    logCallEvent(`Opening calendar booking link${lead ? ` for ${lead.business_name}` : ""}.`, "ok");
+  }
+  window.open(CALENDLY_URL, "_blank", "noopener,noreferrer");
 }
 
 function focusCallNotes() {
@@ -4489,12 +6670,10 @@ function updateDuration() {
   const el = $("call-duration");
   if (!state.callStartedAt) {
     if (el) el.textContent = "00:00";
-    updateScriptTip(0);
     return;
   }
   const s = Math.max(0, Math.floor((Date.now() - state.callStartedAt) / 1000));
   if (el) el.textContent = `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-  updateScriptTip(Date.now() - state.callStartedAt);
 }
 updateDuration();
 
@@ -4520,6 +6699,7 @@ updateDuration();
 })();
 
 renderHeader();
+renderBottomControls();
 // Paint fallback content immediately so the page reads correctly before
 // /leads has a chance to respond. loadQueue() will replace this with real
 // data when the backend is reachable; otherwise it re-enters demo mode.
@@ -4667,6 +6847,7 @@ async function fetchAndShowSummary(sessionId, leadId) {
     const r = await fetch("/summary/" + encodeURIComponent(sessionId));
     if (!r.ok) return; // no summary yet, fall back to manual prompt
     const s = await r.json();
+    autoFillCallNotesFromSummary(s, leadId);
     showSummaryCard(s, leadId);
   } catch (_) {}
 }
