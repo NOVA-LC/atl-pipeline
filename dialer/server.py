@@ -89,6 +89,31 @@ DASHBOARD_URL = os.environ.get(
 IVR_COPILOT_MODE = os.environ.get("IVR_COPILOT_MODE", "suggest").lower()  # off | suggest | auto
 DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 
+# ─── Twilio Answering Machine Detection (AMD) ───────────────────────────────
+# Twilio's carrier-level AMD analyzes the called party's audio (cadence,
+# beep, pause-after-greeting) and posts the verdict to amd_status_callback.
+# AnsweredBy ∈ {human, machine_start, machine_end_beep, machine_end_silence,
+# machine_end_other, fax, unknown}. This is the AUDIO-side classifier that
+# pairs with coach.classify_caller_party (text-side). Two-axis voicemail
+# detection — text alone can't tell an AI receptionist from voicemail; AMD
+# audio cues catch the polished-prosody case where text-classification gets
+# fooled.
+# Set AMD_ENABLED=1 to turn on. Adds ~1.5-3s of detection latency before
+# dial connects; turn off for hot-dial workflows. Pricing: ~$0.0005/call.
+AMD_ENABLED = os.environ.get("DIALER_AMD_ENABLED", "1").strip() not in ("", "0", "false", "no")
+# Pre-recorded voicemail-drop MP3. When AMD fires machine_end_*, Twilio's
+# REST API is invoked to update the live call with <Play>VOICEMAIL_DROP_URL</Play>
+# then <Hangup/>. The recording should be Tyler's 15-25 second pitch ending
+# with a callback number. Leave unset to skip the drop and just record the
+# AMD verdict for the UI.
+VOICEMAIL_DROP_URL = os.environ.get("DIALER_VOICEMAIL_DROP_URL", "").strip()
+# Public HTTPS base used to construct amd_status_callback. Falls back to
+# DIALER_PUBLIC_BASE_URL (already used for the media stream).
+def _public_base_url():
+    base = os.environ.get("DIALER_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    return base
+PUBLIC_BASE_URL = _public_base_url()
+
 # Agent mode: when "agent" or "auto", Haiku reasons about each transcript chunk and
 # decides actions (press digit, alert Tyler, mark voicemail, etc). "regex" is the
 # legacy pattern-matching path. Default to "agent" if Anthropic credentials present.
@@ -1861,9 +1886,104 @@ def voice():
         if session_id:
             stream.parameter(name="session_id", value=session_id)
     dial = Dial(caller_id=FROM_NUMBER, answer_on_bridge=True, time_limit=3600)
-    dial.number(to)
+    number_kwargs = {}
+    # Carrier-level AMD on the prospect's leg. Only enable when we have a
+    # public HTTPS endpoint for Twilio to POST the verdict back to.
+    if AMD_ENABLED and PUBLIC_BASE_URL:
+        from urllib.parse import quote as _q
+        amd_cb = f"{PUBLIC_BASE_URL}/twilio/amd?session_id={_q(session_id)}"
+        number_kwargs.update({
+            "machine_detection": "DetectMessageEnd",
+            "amd_status_callback": amd_cb,
+            "amd_status_callback_method": "POST",
+            # Tuning per Twilio's defaults — DetectMessageEnd waits for the
+            # voicemail greeting to finish so the drop plays after the beep.
+            "machine_detection_timeout": 30,
+            "machine_detection_speech_threshold": 2400,
+            "machine_detection_speech_end_threshold": 1200,
+            "machine_detection_silence_timeout": 5000,
+        })
+    dial.number(to, **number_kwargs)
     resp.append(dial)
     return str(resp), 200, {"Content-Type": "text/xml"}
+
+
+@app.route("/twilio/amd", methods=["POST"])
+def twilio_amd_callback():
+    """Twilio AMD status callback.
+
+    Receives:
+      CallSid      — the prospect leg's call SID (the OUTBOUND child call)
+      AnsweredBy   — one of {human, machine_start, machine_end_beep,
+                             machine_end_silence, machine_end_other,
+                             fax, unknown}
+      MachineBehavior — extra detail (greeting/beep/etc.)
+
+    Flow:
+      1. Always record an `amd_result` IVR event for the UI ("Twilio AMD
+         says: machine_end_beep").
+      2. If AnsweredBy starts with machine_* AND VOICEMAIL_DROP_URL is
+         configured, fire-and-forget update the live call to play the
+         pre-recorded pitch then hang up.
+    """
+    answered_by = (request.values.get("AnsweredBy") or "").strip()
+    call_sid    = (request.values.get("CallSid") or "").strip()
+    behavior    = (request.values.get("MachineBehavior") or "").strip()
+    session_id  = (request.values.get("session_id") or "").strip()
+
+    is_machine = answered_by.startswith("machine_")
+    level = "warn" if is_machine else ("ok" if answered_by == "human" else "")
+    drop_fired = False
+    drop_error = ""
+
+    # Try the voicemail drop. We do this BEFORE logging so the event reflects
+    # what actually happened (or didn't). Fire-and-forget — REST API failures
+    # shouldn't break the AMD flow.
+    if is_machine and VOICEMAIL_DROP_URL and call_sid:
+        try:
+            from twilio.rest import Client as TwilioClient
+            auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+            if not auth_token:
+                drop_error = "TWILIO_AUTH_TOKEN not set"
+            else:
+                tw = TwilioClient(ACCOUNT_SID, auth_token)
+                # Small pause lets the carrier-side beep finish before our
+                # audio starts so we don't talk over the greeting tail.
+                from xml.sax.saxutils import escape as _esc
+                twiml = (
+                    f'<Response><Pause length="1"/>'
+                    f'<Play>{_esc(VOICEMAIL_DROP_URL, {chr(34): "&quot;"})}</Play>'
+                    f'<Hangup/></Response>'
+                )
+                tw.calls(call_sid).update(twiml=twiml)
+                drop_fired = True
+        except Exception as e:
+            drop_error = f"{type(e).__name__}: {e}"
+
+    if session_id:
+        _add_ivr_event(
+            session_id,
+            kind="amd_result",
+            level=level,
+            answered_by=answered_by,
+            behavior=behavior,
+            call_sid=call_sid,
+            voicemail_drop_fired=drop_fired,
+            voicemail_drop_error=drop_error,
+            message=(
+                f"Twilio AMD: {answered_by}"
+                + (f" ({behavior})" if behavior else "")
+                + (
+                    " — voicemail drop fired" if drop_fired
+                    else (f" — drop error: {drop_error}" if drop_error
+                          else (" — would drop but no URL configured" if is_machine and not VOICEMAIL_DROP_URL
+                                else ""))
+                )
+            ),
+        )
+
+    # Twilio expects 200 + empty body for status callbacks
+    return ("", 200)
 
 
 @app.route("/leads")

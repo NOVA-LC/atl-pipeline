@@ -310,6 +310,159 @@ class TestDispatchAgentActionGates:
         assert ev["kind"] == "agent_wait"
 
 
+# ── Twilio AMD (Answering Machine Detection) + voicemail drop ──────────────
+
+class TestTwilioAMD:
+    def setup_method(self):
+        self._prev_enabled = server.AMD_ENABLED
+        self._prev_base    = server.PUBLIC_BASE_URL
+        self._prev_drop    = server.VOICEMAIL_DROP_URL
+        server.IVR_EVENTS.clear()
+        server.IVR_SEQ.clear()
+        server.IVR_SESSION_STARTED_AT.clear()
+
+    def teardown_method(self):
+        server.AMD_ENABLED       = self._prev_enabled
+        server.PUBLIC_BASE_URL   = self._prev_base
+        server.VOICEMAIL_DROP_URL = self._prev_drop
+
+    def test_voice_twiml_includes_machine_detection_when_amd_enabled(self, client):
+        server.AMD_ENABLED     = True
+        server.PUBLIC_BASE_URL = "https://example.test"
+        r = client.post("/voice", data={"To": "+14045551234", "SessionId": "cs_abc"})
+        assert r.status_code == 200
+        body = r.data.decode("utf-8")
+        # Twilio TwiML SDK emits attributes in camelCase
+        assert "machineDetection" in body
+        assert "DetectMessageEnd" in body
+        assert "amdStatusCallback" in body
+        assert "/twilio/amd" in body
+        assert "session_id=cs_abc" in body
+
+    def test_voice_twiml_omits_amd_when_disabled(self, client):
+        server.AMD_ENABLED     = False
+        server.PUBLIC_BASE_URL = "https://example.test"
+        r = client.post("/voice", data={"To": "+14045551234"})
+        assert r.status_code == 200
+        assert "machineDetection" not in r.data.decode("utf-8")
+
+    def test_voice_twiml_omits_amd_when_no_public_base(self, client):
+        server.AMD_ENABLED     = True
+        server.PUBLIC_BASE_URL = ""  # no public base → AMD callback URL would be broken
+        r = client.post("/voice", data={"To": "+14045551234"})
+        assert r.status_code == 200
+        assert "machineDetection" not in r.data.decode("utf-8")
+
+    def test_amd_callback_records_event_human(self, client):
+        server.VOICEMAIL_DROP_URL = ""
+        r = client.post("/twilio/amd?session_id=cs_h", data={
+            "AnsweredBy": "human",
+            "CallSid": "CA" + "0" * 32,
+        })
+        assert r.status_code == 200
+        events = list(server.IVR_EVENTS.get("cs_h", []))
+        assert events and events[-1]["kind"] == "amd_result"
+        assert events[-1]["answered_by"] == "human"
+        assert events[-1]["level"] == "ok"
+        assert events[-1]["voicemail_drop_fired"] is False
+
+    def test_amd_callback_records_event_machine(self, client):
+        server.VOICEMAIL_DROP_URL = ""  # no drop URL → just record verdict
+        r = client.post("/twilio/amd?session_id=cs_m", data={
+            "AnsweredBy": "machine_end_beep",
+            "CallSid": "CA" + "1" * 32,
+            "MachineBehavior": "answering_machine",
+        })
+        assert r.status_code == 200
+        ev = list(server.IVR_EVENTS.get("cs_m", []))[-1]
+        assert ev["kind"] == "amd_result"
+        assert ev["answered_by"] == "machine_end_beep"
+        assert ev["level"] == "warn"
+        assert ev["voicemail_drop_fired"] is False
+
+    def test_amd_callback_attempts_drop_when_url_configured(self, client, monkeypatch):
+        """Verify the REST-API path is invoked for machine_* with drop URL set."""
+        server.VOICEMAIL_DROP_URL = "https://example.test/pitch.mp3"
+        os.environ["TWILIO_AUTH_TOKEN"] = "fake-token-for-test"
+
+        # Patch the TwilioClient before its first import inside the handler.
+        # We replace the entire twilio.rest module's Client to record the call.
+        calls_captured = []
+
+        class FakeCallContext:
+            def __init__(self, sid):
+                self.sid = sid
+
+            def update(self, twiml=None, **kw):
+                calls_captured.append({"sid": self.sid, "twiml": twiml, **kw})
+                return {"sid": self.sid}
+
+        class FakeCalls:
+            def __call__(self, sid):
+                return FakeCallContext(sid)
+
+        class FakeClient:
+            def __init__(self, *a, **kw):
+                self.calls = FakeCalls()
+
+        import twilio.rest
+        monkeypatch.setattr(twilio.rest, "Client", FakeClient)
+
+        try:
+            r = client.post("/twilio/amd?session_id=cs_d", data={
+                "AnsweredBy": "machine_end_beep",
+                "CallSid": "CA" + "2" * 32,
+            })
+            assert r.status_code == 200
+            assert len(calls_captured) == 1
+            sent = calls_captured[0]
+            assert sent["sid"] == "CA" + "2" * 32
+            assert "<Play>" in sent["twiml"]
+            assert "https://example.test/pitch.mp3" in sent["twiml"]
+            assert "<Hangup/>" in sent["twiml"]
+            ev = list(server.IVR_EVENTS.get("cs_d", []))[-1]
+            assert ev["voicemail_drop_fired"] is True
+        finally:
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+    def test_amd_callback_skips_drop_for_human(self, client, monkeypatch):
+        """Even with drop URL configured, AnsweredBy=human must not fire the drop."""
+        server.VOICEMAIL_DROP_URL = "https://example.test/pitch.mp3"
+        os.environ["TWILIO_AUTH_TOKEN"] = "fake"
+        calls_captured = []
+
+        class FakeClient:
+            def __init__(self, *a, **kw): pass
+            def calls(self, sid):
+                calls_captured.append(sid)
+                raise AssertionError("Drop must not fire on human")
+
+        import twilio.rest
+        monkeypatch.setattr(twilio.rest, "Client", FakeClient)
+        try:
+            r = client.post("/twilio/amd?session_id=cs_x", data={
+                "AnsweredBy": "human",
+                "CallSid": "CA" + "3" * 32,
+            })
+            assert r.status_code == 200
+            assert calls_captured == []
+        finally:
+            os.environ.pop("TWILIO_AUTH_TOKEN", None)
+
+    def test_amd_callback_records_drop_error_when_no_auth_token(self, client):
+        """When TWILIO_AUTH_TOKEN is missing, drop fails gracefully."""
+        server.VOICEMAIL_DROP_URL = "https://example.test/pitch.mp3"
+        os.environ.pop("TWILIO_AUTH_TOKEN", None)
+        r = client.post("/twilio/amd?session_id=cs_e", data={
+            "AnsweredBy": "machine_end_beep",
+            "CallSid": "CA" + "4" * 32,
+        })
+        assert r.status_code == 200
+        ev = list(server.IVR_EVENTS.get("cs_e", []))[-1]
+        assert ev["voicemail_drop_fired"] is False
+        assert "TWILIO_AUTH_TOKEN" in ev["voicemail_drop_error"]
+
+
 # ── /api/_debug/server-log access control ──────────────────────────────────
 
 class TestDebugLogEndpoint:
