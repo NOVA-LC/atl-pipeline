@@ -130,6 +130,39 @@ VOICEMAIL_DROP_AUTO = os.environ.get("DIALER_VOICEMAIL_DROP_AUTO", "0").strip() 
 # RecordingSid + RecordingDuration to the matching call_session.
 RECORDING_ENABLED = os.environ.get("DIALER_RECORDING_ENABLED", "0").strip() not in ("", "0", "false", "no")
 RECORDING_CONSENT_REMINDER = os.environ.get("DIALER_RECORDING_CONSENT_REMINDER", "1").strip() not in ("", "0", "false", "no")
+
+# Twilio webhook signature validation. When DIALER_VALIDATE_TWILIO_SIGNATURE=1,
+# every /voice + /twilio/* request must arrive with a valid X-Twilio-Signature
+# header. This blocks attackers who'd spoof an AMD callback to trigger a
+# voicemail drop or recording webhook to clobber a row. Off by default during
+# dev because Twilio's signed-webhook URL has to match exactly (including
+# query string) and our cloudflared/Railway flips during testing make that
+# annoying. Flip to 1 in production.
+VALIDATE_TWILIO_SIGNATURE = os.environ.get("DIALER_VALIDATE_TWILIO_SIGNATURE", "0").strip() not in ("", "0", "false", "no")
+
+
+def _validate_twilio_signature():
+    """Returns (ok, error_msg). Always returns ok=True when validation is
+    disabled OR no auth token is configured (dev mode)."""
+    if not VALIDATE_TWILIO_SIGNATURE:
+        return True, ""
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "")
+    if not auth_token:
+        return True, ""  # can't validate without the token
+    signature = request.headers.get("X-Twilio-Signature", "")
+    if not signature:
+        return False, "missing X-Twilio-Signature"
+    try:
+        from twilio.request_validator import RequestValidator
+        validator = RequestValidator(auth_token)
+        # Twilio signs URL + sorted POST params. Pass full URL including query.
+        url = request.url
+        params = request.form.to_dict()
+        if validator.validate(url, params, signature):
+            return True, ""
+        return False, "signature mismatch"
+    except Exception as e:
+        return False, f"validator exception: {e}"
 # Public HTTPS base used to construct amd_status_callback. Falls back to
 # DIALER_PUBLIC_BASE_URL (already used for the media stream).
 def _public_base_url():
@@ -209,8 +242,23 @@ def _enforce_dialer_auth():
 
 # ─── local SQLite for dispositions ────────────────────────────────────────────
 def _db():
-    c = sqlite3.connect(DB_PATH)
+    # check_same_thread=False because gunicorn gthread workers may pass the
+    # connection between threads via the `with _db() as c:` context manager.
+    # We always create a fresh connection per request so there's no true
+    # sharing — just suppressing sqlite's reflexive thread check.
+    c = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=15)
     c.row_factory = sqlite3.Row
+    # WAL mode lets readers proceed while a writer holds the lock. Without
+    # this, the 100 gthread workers serialize ALL queries on every write,
+    # which becomes the bottleneck on concurrent calls.
+    # busy_timeout: when SQLite hits a write lock, wait 5000ms (and retry)
+    # before throwing "database is locked". Beats blowing up the request.
+    try:
+        c.execute("PRAGMA journal_mode=WAL")
+        c.execute("PRAGMA busy_timeout=5000")
+        c.execute("PRAGMA synchronous=NORMAL")  # WAL-safe; ~2x write speed vs FULL
+    except sqlite3.OperationalError:
+        pass  # already configured by another connection — harmless
     c.execute("""CREATE TABLE IF NOT EXISTS dispositions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lead_id TEXT NOT NULL,
@@ -526,6 +574,25 @@ def _add_ivr_event(session_id, **event):
         event["seq"] = seq
         IVR_EVENTS.setdefault(session_id, []).append(event)
         IVR_EVENTS[session_id] = IVR_EVENTS[session_id][-100:]
+        # GC sessions that haven't seen activity in 4+ hours. Keeps the
+        # dict from growing unboundedly across hundreds of calls over a
+        # work day. Run this lazily — only on event writes, no background
+        # thread needed.
+        _gc_stale_ivr_sessions_unlocked()
+
+
+def _gc_stale_ivr_sessions_unlocked():
+    """Drop IVR session state for sessions idle > 4 hours. Must be called
+    while holding IVR_LOCK."""
+    cutoff = time.time() - (4 * 3600)
+    stale = [sid for sid, started in IVR_SESSION_STARTED_AT.items()
+             if started < cutoff]
+    if not stale:
+        return
+    for sid in stale:
+        IVR_EVENTS.pop(sid, None)
+        IVR_SEQ.pop(sid, None)
+        IVR_SESSION_STARTED_AT.pop(sid, None)
 
 
 def _session_elapsed_s(session_id):
@@ -1978,6 +2045,9 @@ def voicemail_drop_mp3():
 
 @app.route("/voice", methods=["POST"])
 def voice():
+    ok, err = _validate_twilio_signature()
+    if not ok:
+        return f"<Response><Say>Unauthorized: {err}</Say><Hangup/></Response>", 403, {"Content-Type": "text/xml"}
     to   = request.values.get("To", "")
     session_id = request.values.get("SessionId", "")
     resp = VoiceResponse()
@@ -2032,6 +2102,9 @@ def voice():
 
 @app.route("/twilio/recording", methods=["POST"])
 def twilio_recording_callback():
+    ok, err = _validate_twilio_signature()
+    if not ok:
+        return ("", 403)
     """Twilio recording-completed status callback.
 
     Receives RecordingUrl, RecordingSid, RecordingDuration, RecordingChannels.
@@ -2083,6 +2156,13 @@ def twilio_recording_callback():
 
 @app.route("/twilio/amd", methods=["POST"])
 def twilio_amd_callback():
+    ok, err = _validate_twilio_signature()
+    if not ok:
+        return ("", 403)
+    return _twilio_amd_callback_impl()
+
+
+def _twilio_amd_callback_impl():
     """Twilio AMD status callback — two-axis verdict.
 
     Receives:
