@@ -7,7 +7,7 @@ dockerfilePath = "Dockerfile"
 [deploy]
 # Shell form (`sh -c`) is required — Dockerfile-based services run start commands in exec form
 # which does not expand shell variables. Without this wrapper, ${PORT} is passed as a literal.
-startCommand = "/bin/sh -c 'exec gunicorn --workers 1 --worker-class gthread --threads 16 --timeout 0 --bind 0.0.0.0:${PORT:-5050} --access-logfile - --access-logformat \"%(t)s | %(s)s | %(m)s %(U)s%(q)s | %(D)sµs\" server:app'"
+startCommand = "/bin/sh -c 'exec gunicorn --workers 1 --worker-class gthread --threads 100 --timeout 0 --graceful-timeout 30 --bind 0.0.0.0:${PORT:-5050} --access-logfile - --access-logformat \"%(t)s | %(s)s | %(m)s %(U)s%(q)s | %(D)sµs\" server:app'"
 healthcheckPath = "/healthz"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

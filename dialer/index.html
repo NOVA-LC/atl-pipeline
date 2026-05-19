@@ -5472,9 +5472,38 @@ async function initDevice() {
     if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `HTTP ${r.status}`); }
     const { token } = await r.json();
     setDeviceStatus("registering with Twilio…");
-    state.device = new Twilio.Device(token, { codecPreferences: ["opus", "pcmu"], logLevel: 1 });
-    state.device.on("registered", () => setDeviceStatus("ready", "live"));
-    state.device.on("error", e => setDeviceStatus("device error: " + (e.message || e), "err"));
+    // enableImprovedSignalingErrorPrecision: surfaces precise Twilio error
+    // codes (per docs) instead of swallowing them into generic 53000s. Big
+    // help when debugging "user couldn't speak" or audio-path issues.
+    state.device = new Twilio.Device(token, {
+      codecPreferences: ["opus", "pcmu"],
+      logLevel: 1,
+      enableImprovedSignalingErrorPrecision: true,
+      closeProtection: true,  // warn if user closes tab mid-call
+    });
+    state.device.on("registered", () => {
+      setDeviceStatus("ready", "live");
+      // Pre-warm mic permission once device is registered. Twilio Best
+      // Practices: 'ask for device permissions before creating the device
+      // object to avoid problems at call connect or accept time.' By the
+      // time Tyler hits Call, mic is already granted and audio is bidirectional
+      // from the first frame — no more 'I can't hear myself talking' bug.
+      try { requestMicPermission(); } catch (_) {}
+    });
+    state.device.on("error", e => {
+      console.warn("[twilio.device.error]", e);
+      setDeviceStatus("device error: " + (e.message || e), "err");
+    });
+    state.device.on("tokenWillExpire", async () => {
+      // Refresh the token before it expires so long-running sessions don't drop.
+      try {
+        const tr = await fetch("/token");
+        if (tr.ok) {
+          const { token: fresh } = await tr.json();
+          if (fresh) state.device.updateToken(fresh);
+        }
+      } catch (e) { console.warn("[token-refresh]", e); }
+    });
     await state.device.register();
   } catch (e) { setDeviceStatus("init failed: " + e.message, "err"); }
 }

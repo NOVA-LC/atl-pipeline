@@ -951,7 +951,15 @@ def _deepgram_url():
 
 
 def _bridge_twilio_to_deepgram(ws):
-    """Receive Twilio Media Streams frames and feed Deepgram live STT."""
+    """Receive Twilio Media Streams frames and feed Deepgram live STT.
+
+    Architecture (after production-gotchas research):
+      Twilio WS → main thread reads + decodes → bounded queue → sender thread
+        writes to Deepgram WS → reader thread reads transcripts back.
+      Three threads decouples the Twilio read loop from Deepgram I/O so a
+      slow Deepgram .send() never blocks Twilio frame ingestion (which would
+      cause Twilio to drop the stream silently after ~500ms of backpressure).
+    """
     # Visibility — log every Twilio WebSocket connect so we know when
     # Twilio is hitting /media. Goes to stdout → Railway logs.
     print(f"[/media] WebSocket connected from Twilio at {_now_iso()}", flush=True)
@@ -964,10 +972,17 @@ def _bridge_twilio_to_deepgram(ws):
         ws.close()
         return
 
+    import queue as _queue
     session_id = ""
     seen = set()
     dg = None
     stop = threading.Event()
+    # 200 frames * 160 bytes = ~64 KB headroom. At 50 fps that's 4 seconds
+    # of backpressure tolerance before we start dropping frames — which is
+    # vastly more than Deepgram's typical .send() latency (~1-5ms).
+    audio_q = _queue.Queue(maxsize=200)
+    frames_received = 0
+    frames_dropped  = 0
 
     def read_deepgram():
         while not stop.is_set() and dg is not None:
@@ -985,13 +1000,34 @@ def _bridge_twilio_to_deepgram(ws):
                     _add_ivr_event(session_id, kind="error", level="err", message=f"Deepgram stream ended: {e}")
                 break
 
+    def send_to_deepgram():
+        """Drain audio_q and forward to Deepgram. Decoupled from Twilio read
+        loop so a slow Deepgram .send() never causes Twilio frame drops."""
+        while not stop.is_set():
+            try:
+                chunk = audio_q.get(timeout=0.5)
+            except _queue.Empty:
+                continue
+            if chunk is None:
+                break
+            if dg is None:
+                continue
+            try:
+                dg.send_binary(chunk)
+            except Exception as e:
+                if session_id:
+                    _add_ivr_event(session_id, kind="error", level="err",
+                                   message=f"Deepgram send failed: {e}")
+                break
+
     try:
         dg = websocket.create_connection(
             _deepgram_url(),
             header=[f"Authorization: Token {DEEPGRAM_API_KEY}"],
             timeout=10,
         )
-        threading.Thread(target=read_deepgram, daemon=True).start()
+        threading.Thread(target=read_deepgram,    daemon=True, name="dg-read").start()
+        threading.Thread(target=send_to_deepgram, daemon=True, name="dg-send").start()
         while True:
             raw = ws.receive()
             if raw is None:
@@ -1001,19 +1037,35 @@ def _bridge_twilio_to_deepgram(ws):
             if event == "start":
                 params = msg.get("start", {}).get("customParameters") or {}
                 session_id = params.get("session_id") or params.get("SessionId") or ""
+                stream_sid = msg.get("start", {}).get("streamSid", "")
+                print(f"[/media] start event session_id={session_id!r} streamSid={stream_sid!r}", flush=True)
                 _add_ivr_event(session_id, kind="status", level="ok", message="IVR Copilot audio stream connected.")
-            elif event == "media" and dg is not None:
+            elif event == "media":
                 payload = msg.get("media", {}).get("payload")
                 if payload:
-                    dg.send_binary(base64.b64decode(payload))
+                    frames_received += 1
+                    try:
+                        decoded = base64.b64decode(payload)
+                        audio_q.put_nowait(decoded)
+                    except _queue.Full:
+                        frames_dropped += 1
+                        if frames_dropped == 1 or frames_dropped % 50 == 0:
+                            print(f"[/media] audio_q FULL — dropped {frames_dropped} frames so far "
+                                  f"(received {frames_received}). Deepgram likely stalled.", flush=True)
             elif event == "stop":
+                print(f"[/media] stop event after {frames_received} frames received, {frames_dropped} dropped", flush=True)
                 _add_ivr_event(session_id, kind="status", message="IVR Copilot audio stream stopped.")
                 _finalize_transcript(session_id)
                 break
     except Exception as e:
+        print(f"[/media] EXCEPTION in main read loop: {type(e).__name__}: {e}", flush=True)
         _add_ivr_event(session_id, kind="error", level="err", message=f"IVR Copilot failed: {e}")
     finally:
         stop.set()
+        try:
+            audio_q.put_nowait(None)  # poison pill to wake sender
+        except Exception:
+            pass
         if dg is not None:
             try:
                 dg.close()
@@ -1024,6 +1076,8 @@ def _bridge_twilio_to_deepgram(ws):
                 call_agent.reset_session(session_id)
             except Exception:
                 pass
+        print(f"[/media] bridge closed. session_id={session_id!r} "
+              f"frames_received={frames_received} frames_dropped={frames_dropped}", flush=True)
 
 
 MOCK_LEADS = [
