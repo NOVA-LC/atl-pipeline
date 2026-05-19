@@ -276,6 +276,10 @@ def _enforce_dialer_auth():
 
 
 # ─── local SQLite for dispositions ────────────────────────────────────────────
+_DB_SCHEMA_INITIALIZED = False
+_DB_INIT_LOCK = threading.Lock()
+
+
 def _db():
     # check_same_thread=False because gunicorn gthread workers may pass the
     # connection between threads via the `with _db() as c:` context manager.
@@ -286,14 +290,30 @@ def _db():
     # WAL mode lets readers proceed while a writer holds the lock. Without
     # this, the 100 gthread workers serialize ALL queries on every write,
     # which becomes the bottleneck on concurrent calls.
-    # busy_timeout: when SQLite hits a write lock, wait 5000ms (and retry)
-    # before throwing "database is locked". Beats blowing up the request.
     try:
         c.execute("PRAGMA journal_mode=WAL")
         c.execute("PRAGMA busy_timeout=5000")
         c.execute("PRAGMA synchronous=NORMAL")  # WAL-safe; ~2x write speed vs FULL
     except sqlite3.OperationalError:
         pass  # already configured by another connection — harmless
+    # Schema is initialized lazily once per process. Code review surfaced
+    # that running CREATE TABLE IF NOT EXISTS + ~12 ALTERs on every request
+    # added ~5-10ms per request AND created concurrent-writer contention
+    # under load. Now: first caller wins the init lock, runs DDL, sets the
+    # flag, all subsequent callers skip the DDL block.
+    global _DB_SCHEMA_INITIALIZED
+    if _DB_SCHEMA_INITIALIZED:
+        return c
+    with _DB_INIT_LOCK:
+        if _DB_SCHEMA_INITIALIZED:
+            return c
+        _init_db_schema(c)
+        _DB_SCHEMA_INITIALIZED = True
+    return c
+
+
+def _init_db_schema(c):
+    """Idempotent DDL — runs once per process on first _db() call."""
     c.execute("""CREATE TABLE IF NOT EXISTS dispositions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         lead_id TEXT NOT NULL,
@@ -413,7 +433,6 @@ def _db():
             c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
             pass  # column already exists
-    return c
 
 
 def _now_ms() -> int:

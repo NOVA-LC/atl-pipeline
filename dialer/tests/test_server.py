@@ -117,6 +117,102 @@ class TestAuthGate:
         finally:
             server.DIALER_AUTH_TOKEN = ""
 
+    def test_token_endpoint_gated_in_iter2(self, client):
+        """Iter-2 fix: /token (Twilio JWT mint = toll fraud risk) was previously
+        unprotected because it doesn't start with /api/. Now it requires the
+        dialer token like everything else."""
+        server.DIALER_AUTH_TOKEN = "secret456"
+        try:
+            r = client.get("/token")
+            assert r.status_code == 401
+            r = client.get("/token", headers={"X-Dialer-Token": "secret456"})
+            # 200 or 500 (if TWIML_APP_SID isn't set) — but NOT 401
+            assert r.status_code != 401
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+    def test_leads_gated_in_iter2(self, client):
+        server.DIALER_AUTH_TOKEN = "secret789"
+        try:
+            r = client.get("/leads")
+            assert r.status_code == 401
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+    def test_disposition_gated_in_iter2(self, client):
+        server.DIALER_AUTH_TOKEN = "secret-disp"
+        try:
+            r = client.post("/disposition", json={"lead_id": "x", "phone": "+1", "code": "voicemail"})
+            assert r.status_code == 401
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+    def test_query_param_token_accepted(self, client):
+        """SSE/EventSource fallback — ?token= in query string is honored when
+        the header can't be set (some EventSource implementations)."""
+        server.DIALER_AUTH_TOKEN = "qparam-token"
+        try:
+            r = client.get("/leads?token=qparam-token")
+            assert r.status_code != 401
+            r = client.get("/leads?token=wrong")
+            assert r.status_code == 401
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+    def test_static_extensions_bypass_gate(self, client):
+        """CSS/JS/images must always be servable without a token, otherwise
+        the dialer UI can't bootstrap."""
+        server.DIALER_AUTH_TOKEN = "static-test"
+        try:
+            # Even if these files don't exist, the gate should let them through
+            # (then Flask's static handler 404s — not 401)
+            for ext in [".css", ".js", ".png", ".woff2"]:
+                r = client.get(f"/nonexistent{ext}")
+                assert r.status_code != 401, f"Static {ext} got 401 — gate too aggressive"
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+    def test_voice_webhook_bypasses_dialer_token_gate(self, client):
+        """Twilio webhooks must bypass the X-Dialer-Token gate (Twilio doesn't
+        know about it) — they're auth'd via X-Twilio-Signature instead when
+        DIALER_VALIDATE_TWILIO_SIGNATURE is on. With validation off (test default),
+        Twilio webhooks are unauth'd."""
+        server.DIALER_AUTH_TOKEN = "voice-test"
+        try:
+            r = client.post("/voice", data={"To": "+14041234567", "SessionId": "x"})
+            assert r.status_code == 200  # passes gate without token
+        finally:
+            server.DIALER_AUTH_TOKEN = ""
+
+
+# ── /voice E.164 validation ──────────────────────────────────────────────────
+
+class TestVoiceE164Validation:
+    def test_rejects_non_e164_destination(self, client):
+        r = client.post("/voice", data={"To": "not-a-number", "SessionId": "x"})
+        assert r.status_code == 200  # TwiML always 200; rejects via <Say>
+        assert "Invalid destination" in r.data.decode("utf-8")
+
+    def test_rejects_destination_without_plus(self, client):
+        r = client.post("/voice", data={"To": "14041234567", "SessionId": "x"})
+        assert "Invalid destination" in r.data.decode("utf-8")
+
+    def test_rejects_destination_with_letters(self, client):
+        r = client.post("/voice", data={"To": "+1404ABCD123", "SessionId": "x"})
+        assert "Invalid destination" in r.data.decode("utf-8")
+
+    def test_accepts_us_e164(self, client):
+        r = client.post("/voice", data={"To": "+14041234567", "SessionId": "x"})
+        body = r.data.decode("utf-8")
+        assert "Invalid destination" not in body
+        assert "<Dial" in body
+
+    def test_accepts_international_e164(self, client):
+        r = client.post("/voice", data={"To": "+447700123456", "SessionId": "x"})
+        body = r.data.decode("utf-8")
+        assert "Invalid destination" not in body
+        assert "<Dial" in body
+
 
 # ── /api/booking validation ────────────────────────────────────────────────
 
