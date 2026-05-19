@@ -153,14 +153,21 @@ def think(session_id: str, transcript_chunk: str) -> dict[str, Any] | None:
         return None
 
     s = _session(session_id)
+    # Atomic rate-limit + state mutation under lock. Without this, two
+    # concurrent calls to think() for the same session could both pass the
+    # MIN_TICK_INTERVAL check (race) and both push to s["actions"]. With
+    # the post-research three-thread bridge, concurrent ticks per session
+    # are unlikely but possible (read_deepgram thread + retry path).
     now = time.time()
-    if now - s["last_tick_at"] < MIN_TICK_INTERVAL:
-        return None
-    s["last_tick_at"] = now
-
-    # Accumulate transcript (cap window)
-    if chunk not in s["transcript"]:
-        s["transcript"] = (s["transcript"] + " " + chunk).strip()[-TRANSCRIPT_WINDOW_CHARS:]
+    with _STATE_LOCK:
+        if now - s["last_tick_at"] < MIN_TICK_INTERVAL:
+            return None
+        s["last_tick_at"] = now
+        # Accumulate transcript (cap window) inside the lock
+        if chunk not in s["transcript"]:
+            s["transcript"] = (s["transcript"] + " " + chunk).strip()[-TRANSCRIPT_WINDOW_CHARS:]
+        transcript_snapshot = s["transcript"]
+        actions_snapshot = list(s["actions"][-6:])
 
     lead = get_active_lead() or {}
     biz = lead.get("business_name", "(unknown business)")
@@ -176,11 +183,11 @@ def think(session_id: str, transcript_chunk: str) -> dict[str, Any] | None:
         + f"\nOWNER: {owner}"
         + (f"\nPHONE: {phone}" if phone else "")
         + "\n\nFULL TRANSCRIPT (most recent at end):\n"
-        + (s["transcript"] or "(silence so far)")
+        + (transcript_snapshot or "(silence so far)")
         + "\n\nLATEST CHUNK (just heard):\n"
         + chunk
         + "\n\nACTIONS YOU'VE TAKEN THIS CALL:\n"
-        + (json.dumps(s["actions"][-6:], indent=1) if s["actions"] else "(none)")
+        + (json.dumps(actions_snapshot, indent=1) if actions_snapshot else "(none)")
         + "\n\nWhat one tool do you call? JSON only."
     )
 
@@ -190,6 +197,7 @@ def think(session_id: str, transcript_chunk: str) -> dict[str, Any] | None:
             max_tokens=180,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_msg}],
+            timeout=15.0,  # don't let one stalled Anthropic call hold a thread forever
         )
         text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
     except Exception as e:
@@ -201,12 +209,13 @@ def think(session_id: str, transcript_chunk: str) -> dict[str, Any] | None:
         return {"action": "error", "reason": f"agent returned unparseable output: {text[:200]}"}
 
     parsed["raw_model_output"] = text
-    s["actions"].append({
-        "action": parsed.get("action"),
-        "arg": parsed.get("arg"),
-        "confidence": parsed.get("confidence"),
-        "reason": parsed.get("reason"),
-        "at": int(now),
-    })
-    s["actions"] = s["actions"][-12:]
+    with _STATE_LOCK:
+        s["actions"].append({
+            "action": parsed.get("action"),
+            "arg": parsed.get("arg"),
+            "confidence": parsed.get("confidence"),
+            "reason": parsed.get("reason"),
+            "at": int(now),
+        })
+        s["actions"] = s["actions"][-12:]
     return parsed
