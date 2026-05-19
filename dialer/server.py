@@ -200,6 +200,17 @@ def _media_stream_url():
 MEDIA_STREAM_URL = _media_stream_url()
 
 app = Flask(__name__, static_folder=str(HERE), static_url_path="")
+
+# Trust Railway's reverse proxy. Without this, request.url reflects the
+# internal http://10.x.x.x:8080/... URL the container sees rather than the
+# public https://nova-dialer.up.railway.app/... URL Twilio signs against.
+# Critical when DIALER_VALIDATE_TWILIO_SIGNATURE=1 — without it every
+# Twilio webhook would 403 on signature mismatch.
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+except ImportError:
+    pass  # Werkzeug always provides this; fall through silently if not
 sock = Sock(app) if Sock else None
 BUILD_DIR.mkdir(exist_ok=True)
 BUILD_JOBS = {}
@@ -503,7 +514,8 @@ def _slugify(value):
 
 
 def _now_iso():
-    return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    # datetime.utcnow is deprecated in 3.12+ — use timezone-aware now()
+    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0, tzinfo=None).isoformat() + "Z"
 
 
 def _job_update(job_id, **fields):
@@ -3228,28 +3240,38 @@ def api_call_lead_history(lead_id):
 
 ANSWERED_CODES = ("interested", "callback", "not_interested", "dnc")
 MISSED_CODES   = ("voicemail", "no_answer", "skip")
-LOCAL_TZ_OFFSET_HOURS = -4  # ET (May = EDT). Crude but correct for May 2026.
 BEST_HOURS_MIN_SAMPLES = 2
+
+try:
+    from zoneinfo import ZoneInfo
+    _ET = ZoneInfo("America/New_York")  # DST-aware
+except Exception:
+    _ET = None
 
 
 def _hour_bucket(ts_iso_or_ms):
-    """Return local hour (0-23) for either an ISO timestamp string or ms-int.
+    """Return local-ET hour (0-23) for either an ISO timestamp string or ms-int.
 
-    Crude UTC→ET shift; good enough for hour-bucketing. Tyler can swap in
-    zoneinfo later if he ever calls leads across multiple zones.
+    Uses zoneinfo.ZoneInfo("America/New_York") so DST is handled correctly
+    year-round (was: hardcoded -4 offset, off by 1 in winter).
     """
     if ts_iso_or_ms is None:
         return None
     try:
         if isinstance(ts_iso_or_ms, (int, float)):
-            dt = datetime.datetime.utcfromtimestamp(ts_iso_or_ms / 1000.0)
+            dt = datetime.datetime.fromtimestamp(ts_iso_or_ms / 1000.0, tz=datetime.timezone.utc)
         else:
             s = str(ts_iso_or_ms).replace(" ", "T").rstrip("Z")
             dt = datetime.datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                # Naive timestamps from SQLite default to UTC (CURRENT_TIMESTAMP is UTC)
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
     except Exception:
         return None
-    dt = dt + datetime.timedelta(hours=LOCAL_TZ_OFFSET_HOURS)
-    return dt.hour
+    if _ET is not None:
+        return dt.astimezone(_ET).hour
+    # Fallback: crude -4 offset if zoneinfo is unavailable
+    return (dt - datetime.timedelta(hours=4)).hour
 
 
 def compute_best_hours(rows):
