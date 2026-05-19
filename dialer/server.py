@@ -952,7 +952,15 @@ def _deepgram_url():
 
 def _bridge_twilio_to_deepgram(ws):
     """Receive Twilio Media Streams frames and feed Deepgram live STT."""
-    if not DEEPGRAM_API_KEY or websocket is None:
+    # Visibility — log every Twilio WebSocket connect so we know when
+    # Twilio is hitting /media. Goes to stdout → Railway logs.
+    print(f"[/media] WebSocket connected from Twilio at {_now_iso()}", flush=True)
+    if not DEEPGRAM_API_KEY:
+        print("[/media] CLOSING — DEEPGRAM_API_KEY not set", flush=True)
+        ws.close()
+        return
+    if websocket is None:
+        print("[/media] CLOSING — websocket-client library not importable", flush=True)
         ws.close()
         return
 
