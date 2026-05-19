@@ -227,15 +227,50 @@ AUTO_ACTION_GRACE_SECONDS = float(os.environ.get("AGENT_AUTO_GRACE_SECONDS", "10
 # Twilio's signed webhooks keep working.
 DIALER_AUTH_TOKEN = os.environ.get("DIALER_AUTH_TOKEN", "").strip()
 
+_PUBLIC_PATH_PREFIXES = (
+    # Twilio webhooks — auth'd separately via X-Twilio-Signature
+    "/voice",
+    "/twilio/",
+    # Health + static
+    "/healthz",
+    "/voicemail-drop.mp3",
+    "/index.html", "/single.html",
+    # Twilio Media Streams WebSocket — Twilio doesn't sign upgrades; the
+    # SessionId customParameter is the only authorizer (treat as capability).
+    "/media",
+)
+
+
 @app.before_request
 def _enforce_dialer_auth():
+    """Gate EVERY route by default. Whitelist only Twilio webhooks (which
+    have their own X-Twilio-Signature auth when VALIDATE_TWILIO_SIGNATURE
+    is on) and static assets.
+
+    Code review surfaced: previously the gate only protected /api/*, which
+    left /token (Twilio JWT mint — toll fraud risk), /api/deepgram-token
+    (raw Deepgram key — billing risk), /leads, /disposition, /note,
+    /briefing, /build, /ivr/events wide open. Now everything requires
+    X-Dialer-Token in production.
+    """
     if not DIALER_AUTH_TOKEN:
         return  # dev mode: no token configured
-    if not request.path.startswith("/api/"):
-        return  # only gate the new API surface
     if request.method == "OPTIONS":
         return  # let CORS preflight through
+    path = request.path or "/"
+    if path in ("/", "/queue", "/dashboard", "/single"):
+        return  # HTML shells; JS inside attaches the token to its own calls
+    if any(path.startswith(p) for p in _PUBLIC_PATH_PREFIXES):
+        return
+    for ext in (".css", ".js", ".png", ".jpg", ".jpeg", ".svg", ".ico",
+                ".woff", ".woff2", ".ttf", ".map", ".webp", ".gif"):
+        if path.endswith(ext):
+            return
     supplied = (request.headers.get("X-Dialer-Token") or "").strip()
+    if not supplied:
+        # SSE/EventSource can't set custom headers in some browsers; accept
+        # ?token=... as a fallback for those endpoints.
+        supplied = (request.args.get("token") or "").strip()
     if supplied != DIALER_AUTH_TOKEN:
         return jsonify({"error": "unauthorized"}), 401
 
@@ -1680,6 +1715,12 @@ _SECRET_PATTERNS = [
     (re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"), "[REDACTED_OPENAI_KEY]"),
     # Deepgram keys (40-hex)
     (re.compile(r"\b[a-f0-9]{40}\b"), "[REDACTED_HEX40]"),
+    # Twilio Auth Tokens (32 lowercase hex, no prefix). Per code review —
+    # without this, a traceback that interpolates TWILIO_AUTH_TOKEN
+    # accidentally would leak via /api/_debug/server-log. Must run AFTER
+    # the longer 40-hex Deepgram pattern so 40-hex strings aren't caught
+    # by this 32-hex rule first.
+    (re.compile(r"\b[a-f0-9]{32}\b"), "[REDACTED_HEX32]"),
 ]
 
 
@@ -2053,6 +2094,13 @@ def voice():
     resp = VoiceResponse()
     if not to:
         resp.say("No destination number provided.")
+        return str(resp), 200, {"Content-Type": "text/xml"}
+    # E.164 validation — defense against toll fraud if signature validation
+    # is off and an attacker probes /voice. Accept +<country code><digits>
+    # with total 8-15 digits. Twilio Client SDK always sends well-formed
+    # numbers; this catches abuse.
+    if not re.match(r"^\+[1-9]\d{7,14}$", to.strip()):
+        resp.say("Invalid destination number.")
         return str(resp), 200, {"Content-Type": "text/xml"}
     if IVR_COPILOT_MODE != "off" and MEDIA_STREAM_URL and DEEPGRAM_API_KEY:
         start = resp.start()

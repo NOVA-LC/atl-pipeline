@@ -2915,6 +2915,54 @@ function newBrowserSessionId() {
   return (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 }
 
+// ── Global fetch wrapper: inject X-Dialer-Token on every same-origin call ──
+// After the iter-2 auth-scope fix, EVERY non-whitelisted route requires the
+// token. Wrapping window.fetch here means every existing fetch() call —
+// including the dozens that pre-date apiFetch — automatically attaches the
+// header. New code can still use apiFetch for clarity, but this is the
+// belt-and-suspenders so nothing 401s due to a forgotten header.
+// Bootstrap: if the URL has ?token=XXX, store it in localStorage so future
+// loads don't need it. Then strip from URL so it doesn't get bookmarked.
+(function bootstrapToken() {
+  try {
+    const u = new URL(window.location.href);
+    const tk = u.searchParams.get('token');
+    if (tk && tk.trim()) {
+      localStorage.setItem('dialer.token', tk.trim());
+      u.searchParams.delete('token');
+      window.history.replaceState({}, '', u.toString());
+    }
+  } catch (_) {}
+})();
+
+(function patchFetch() {
+  const orig = window.fetch.bind(window);
+  function _token() {
+    const meta = document.querySelector('meta[name="dialer-token"]');
+    return (meta && meta.content)
+        || (window.localStorage ? localStorage.getItem('dialer.token') : '')
+        || '';
+  }
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    // Only inject for same-origin URLs (treat path-only as same-origin)
+    let isSameOrigin = true;
+    try {
+      const u = (typeof url === 'string') ? url : (url && url.url) || '';
+      if (u && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//'))) {
+        const parsed = new URL(u, window.location.href);
+        isSameOrigin = parsed.origin === window.location.origin;
+      }
+    } catch (_) { /* assume same-origin on parse failure */ }
+    if (!isSameOrigin) return orig(url, opts);
+    const token = _token();
+    if (!token) return orig(url, opts);
+    const headers = new Headers(opts.headers || {});
+    if (!headers.has('X-Dialer-Token')) headers.set('X-Dialer-Token', token);
+    return orig(url, Object.assign({}, opts, { headers }));
+  };
+})();
+
 // ── focus mode (Easy / ADHD) ─────────────────────────────────────────────
 const MODE_KEY = 'dialer.mode';
 function loadMode() {
